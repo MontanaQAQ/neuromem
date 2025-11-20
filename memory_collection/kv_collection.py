@@ -569,9 +569,9 @@ if __name__ == "__main__":
                 print(f"✓ '{query}' 找到 {len(results)} 条结果")
                 if results:
                     top_result = (
-                        results[0]["text"][:30] + "..."
-                        if len(results[0]["text"]) > 30
-                        else results[0]["text"]
+                        results[0]["text"][:30] + "..."  # type: ignore
+                        if len(results[0]["text"]) > 30  # type: ignore
+                        else results[0]["text"]  # type: ignore
                     )
                     print(f"  最相关: {top_result}")
             except Exception as e:
@@ -589,7 +589,7 @@ if __name__ == "__main__":
                 priority=1,  # 只检索优先级为1的文档
             )
             high_priority_count = len(
-                [r for r in results if r["metadata"].get("priority") == 1]
+                [r for r in results if r["metadata"].get("priority") == 1]  # type: ignore
             )
             print(
                 f"✓ 优先级过滤测试: 找到 {len(results)} 条结果，高优先级文档 {high_priority_count} 条"
@@ -622,7 +622,7 @@ if __name__ == "__main__":
                     with_metadata=True,
                     index_name="main_index",
                 )
-                if results and results[0]["metadata"].get("updated"):
+                if results and results[0]["metadata"].get("updated"):  # type: ignore
                     print("✓ 更新验证成功")
                 else:
                     print("✗ 更新验证失败")

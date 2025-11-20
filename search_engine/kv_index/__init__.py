@@ -114,7 +114,7 @@ class KVIndexFactory:
         if not issubclass(index_class, BaseKVIndex):
             raise ValueError("Index class must be a subclass of BaseKVIndex")
 
-        cls._index_registry[index_type] = index_class
+        cls._index_registry[index_type] = index_class  # type: ignore
 
     @classmethod
     def is_supported(cls, index_type: str) -> bool:

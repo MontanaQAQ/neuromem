@@ -29,7 +29,7 @@ class MemoryManager:
         self.manager_path = os.path.join(self.data_dir, "manager.json")
         self._load_manager()
 
-    def create_collection(self, config: dict[str, Any] = None):
+    def create_collection(self, config: dict[str, Any] | None = None):
         """
         创建新的collection并返回
         """
@@ -168,7 +168,7 @@ class MemoryManager:
             collection = self.collections[cname]
             if hasattr(collection, "store"):
                 # 传递MemoryManager的数据目录，让collection使用统一的目录结构
-                collection.store(self.data_dir)
+                collection.store(self.data_dir)  # type: ignore
         self._save_manager()
 
     def _save_manager(self):
@@ -193,20 +193,21 @@ class MemoryManager:
 
         meta = self.collection_metadata[name]
         backend_type = meta.get("backend_type")
-        if "vdb" in backend_type:
+        if backend_type and "vdb" in backend_type:
             vdb_path = os.path.join(self.data_dir, "vdb_collection", name)
             collection = VDBMemoryCollection.load(name, vdb_path)
-        elif "kv" in backend_type:
+        elif backend_type and "kv" in backend_type:
             kv_path = os.path.join(self.data_dir, "kv_collection", name)
             collection = KVMemoryCollection.load(name, kv_path)
-        elif "graph" in backend_type:
+        elif backend_type and "graph" in backend_type:
             graph_path = os.path.join(self.data_dir, "graph_collection", name)
             collection = GraphMemoryCollection.load(name, graph_path)
         else:
             self.logger.warning(f"Unknown backend_type: {backend_type}")
             return None
 
-        self.collections[name] = collection
+        if collection:
+            self.collections[name] = collection  # type: ignore
         self.collection_status[name] = "loaded"
         return collection
 
@@ -220,7 +221,7 @@ class MemoryManager:
         if name:
             if name not in self.collection_metadata:
                 self.logger.warning(f"Collection '{name}' not found.")
-                return None
+                return {}  # type: ignore
             return {
                 "name": name,
                 "status": self.collection_status.get(name, "unknown"),
@@ -271,7 +272,7 @@ class MemoryManager:
 
         old_path = get_path(former_name)
         new_path = get_path(new_name)
-        if os.path.exists(old_path):
+        if old_path and new_path and os.path.exists(old_path):
             os.rename(old_path, new_path)
         self._save_manager()
         return True
@@ -303,7 +304,7 @@ if __name__ == "__main__":
 
     # 测试1: 创建新VDB collection
     manager = MemoryManager()
-    c1 = manager.create_collection(name="test_vdb", backend_type="VDB")
+    c1 = manager.create_collection(name="test_vdb", backend_type="VDB")  # type: ignore
     passed = c1 is not None and "test_vdb" in manager.collections
     print_result(
         "新建test_vdb后能在collections中查到",
@@ -312,13 +313,13 @@ if __name__ == "__main__":
     )
 
     # 测试2: 再次新建同名collection应警告并返回None
-    c2 = manager.create_collection(name="test_vdb", backend_type="VDB")
+    c2 = manager.create_collection(name="test_vdb", backend_type="VDB")  # type: ignore
     passed = c2 is None
     print_result("新建已存在collection应返回None", str(c2 is None), passed)
 
     # 测试3: list_collection返回正确，状态为loaded
     info = manager.list_collection("test_vdb")
-    passed = info is not None and info["status"] == "loaded"
+    passed = info is not None and info["status"] == "loaded"  # type: ignore
     print_result("list_collection显示状态为loaded", f"{info}", passed)
 
     # 测试4: get_collection取已存在的
@@ -404,7 +405,7 @@ if __name__ == "__main__":
 
     # 如果上面已重命名并删除，理论上只有空的或剩余collection
     # 为了测试懒加载，再新建并保存一次
-    cnew = manager2.create_collection("lazy_test", backend_type="VDB")
+    cnew = manager2.create_collection("lazy_test", backend_type="VDB")  # type: ignore
     manager2.store_collection()
     del manager2.collections["lazy_test"]
     manager2.collection_status["lazy_test"] = "on_disk"

@@ -779,22 +779,22 @@ if __name__ == "__main__":
 
             # 用存在的文本进行检索（不带metadata）
             results = collection.retrieve(texts[1], "default_index", topk=2)
-            print(f"用存在文本检索结果数量: {len(results)}")
+            print(f"用存在文本检索结果数量: {len(results) if results else 0}")  # type: ignore
 
             # 用存在的文本进行检索（带metadata）
             results_with_metadata = collection.retrieve(
                 texts[1], "default_index", topk=2, with_metadata=True
             )
-            print(f"带metadata的检索结果数量: {len(results_with_metadata)}")
+            print(f"带metadata的检索结果数量: {len(results_with_metadata) if results_with_metadata else 0}")  # type: ignore
 
             # 检索自定义索引
             custom_results = collection.retrieve(texts[2], "custom_index", topk=1)
-            print(f"自定义索引检索结果数量: {len(custom_results)}")
+            print(f"自定义索引检索结果数量: {len(custom_results) if custom_results else 0}")  # type: ignore
 
             # 确保找到了带有high priority的结果
             found_high_priority = False
             print(f"带metadata的检索结果: {results_with_metadata}")
-            for i, result in enumerate(results_with_metadata):
+            for i, result in enumerate(results_with_metadata or []):  # type: ignore
                 print(f"结果 {i}: {result}")
                 if (
                     isinstance(result, dict)
@@ -805,10 +805,10 @@ if __name__ == "__main__":
                     break
 
             # 检查是否有结果
-            if len(results) > 0:
+            if results and len(results) > 0:  # type: ignore
                 print(colored("✓ 检索到了结果", "green"))
             else:
-                assert len(results) > 0, "检索失败，没有找到任何结果"
+                assert results and len(results) > 0, "检索失败，没有找到任何结果"  # type: ignore
 
             # 检查是否找到了带有high priority的结果
             if found_high_priority:
@@ -852,7 +852,7 @@ if __name__ == "__main__":
             loaded_collection = VDBMemoryCollection.load(test_name, collection_dir)
             # 使用更新后的文本进行检索
             results = loaded_collection.retrieve(new_text, "default_index", topk=1)
-            assert len(results) > 0, "持久化后检索失败"
+            assert results and len(results) > 0, "持久化后检索失败"  # type: ignore
 
             print(colored("✓ 持久化功能测试通过", "green"))
 
@@ -874,10 +874,10 @@ if __name__ == "__main__":
             corpus_results = collection_with_corpus.retrieve(
                 "第一条文本", "corpus_index", topk=3
             )
-            print(f"从batch_insert_data的集合检索结果数量: {len(corpus_results)}")
+            print(f"从 batch_insert_data 的集合检索结果数量: {len(corpus_results) if corpus_results else 0}")  # type: ignore
 
             # 如果有结果，说明batch_insert_data功能正常
-            if len(corpus_results) > 0:
+            if corpus_results and len(corpus_results) > 0:  # type: ignore
                 print(colored("✓ batch_insert_data功能测试通过", "green"))
                 print(f"检索到的结果: {corpus_results}")
             else:
