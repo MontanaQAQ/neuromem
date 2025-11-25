@@ -89,9 +89,7 @@ class MemoryManager:
         if name in self.collections:
             return self.collections[name]
         elif name in self.collection_metadata:
-            self.logger.warning(
-                f"Collection '{name}' not in memory, loading from disk."
-            )
+            self.logger.warning(f"Collection '{name}' not in memory, loading from disk.")
             return self._load_collection(name)
         else:
             self.logger.warning(f"Collection '{name}' not found.")
@@ -132,19 +130,13 @@ class MemoryManager:
                 try:
                     if os.path.isdir(path):
                         shutil.rmtree(path)
-                        self.logger.info(
-                            f"Successfully deleted disk collection directory: {path}"
-                        )
+                        self.logger.info(f"Successfully deleted disk collection directory: {path}")
                     else:
                         os.remove(path)
-                        self.logger.info(
-                            f"Successfully deleted disk collection file: {path}"
-                        )
+                        self.logger.info(f"Successfully deleted disk collection file: {path}")
                     existed = True
                 except Exception as e:
-                    self.logger.warning(
-                        f"Failed to delete disk collection '{name}' at {path}: {e}"
-                    )
+                    self.logger.warning(f"Failed to delete disk collection '{name}' at {path}: {e}")
 
         if not existed:
             self.logger.warning(f"Collection '{name}' not found.")
@@ -159,9 +151,7 @@ class MemoryManager:
         collections_to_save = (
             [name]
             if name
-            else [
-                n for n, status in self.collection_status.items() if status == "loaded"
-            ]
+            else [n for n, status in self.collection_status.items() if status == "loaded"]
         )
         for cname in collections_to_save:
             if cname not in self.collections:
@@ -212,9 +202,7 @@ class MemoryManager:
         self.collection_status[name] = "loaded"
         return collection
 
-    def list_collection(
-        self, name: str | None = None
-    ) -> dict[str, Any] | list[dict[str, Any]]:
+    def list_collection(self, name: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
         """
         列出一个或所有 collection 的基本信息。
         List basic info of one or all collections.
@@ -234,9 +222,7 @@ class MemoryManager:
                 for n, meta in self.collection_metadata.items()
             ]
 
-    def rename(
-        self, former_name: str, new_name: str, new_description: str | None = None
-    ):
+    def rename(self, former_name: str, new_name: str, new_description: str | None = None):
         """重命名 collection 并更新描述"""
         if former_name not in self.collection_metadata:
             self.logger.warning(f"Collection '{former_name}' not found.")
@@ -332,9 +318,7 @@ if __name__ == "__main__":
     manager.store_collection()
     path = os.path.join(manager.data_dir, "vdb_collection", "test_vdb")
     passed = os.path.exists(path)
-    print_result(
-        "store_collection后磁盘应有数据目录", str(os.path.exists(path)), passed
-    )
+    print_result("store_collection后磁盘应有数据目录", str(os.path.exists(path)), passed)
 
     # 测试6: 模拟“只在磁盘不在内存”的懒加载
     del manager.collections["test_vdb"]
@@ -376,9 +360,7 @@ if __name__ == "__main__":
         "renamed_vdb" in manager2.collection_metadata
         and manager2.collection_status.get("renamed_vdb") == "on_disk"
     )
-    print_result(
-        "新manager能从磁盘加载管理信息（collection未自动加载）", str(loaded), loaded
-    )
+    print_result("新manager能从磁盘加载管理信息（collection未自动加载）", str(loaded), loaded)
 
     # 测试10: list_collection（全部）
     all_info = manager.list_collection()
@@ -397,12 +379,9 @@ if __name__ == "__main__":
     # 测试11: 用新manager对象从磁盘懒加载
     manager2 = MemoryManager(manager.data_dir)
     loaded = (
-        "test_vdb" in manager2.collection_metadata
-        or "renamed_vdb" in manager2.collection_metadata
+        "test_vdb" in manager2.collection_metadata or "renamed_vdb" in manager2.collection_metadata
     )
-    print_result(
-        "新manager能从磁盘加载管理信息（collection未自动加载）", str(loaded), loaded
-    )
+    print_result("新manager能从磁盘加载管理信息（collection未自动加载）", str(loaded), loaded)
 
     # 如果上面已重命名并删除，理论上只有空的或剩余collection
     # 为了测试懒加载，再新建并保存一次
@@ -412,9 +391,7 @@ if __name__ == "__main__":
     manager2.collection_status["lazy_test"] = "on_disk"
     c5 = manager2.get_collection("lazy_test")
     passed = c5 is not None and manager2.collection_status["lazy_test"] == "loaded"
-    print_result(
-        "新manager懒加载on_disk collection后状态变为loaded", str(passed), passed
-    )
+    print_result("新manager懒加载on_disk collection后状态变为loaded", str(passed), passed)
 
     # 清理所有
     clear_all_data(manager)

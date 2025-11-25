@@ -47,9 +47,7 @@ class BaseVDBIndex(ABC):
         pass
 
     @abstractmethod
-    def search(
-        self, query_vector: np.ndarray, topk: int = 10
-    ) -> tuple[list[str], list[float]]:
+    def search(self, query_vector: np.ndarray, topk: int = 10) -> tuple[list[str], list[float]]:
         """向量检索，返回 (string_id, 距离) 列表"""
         pass
 

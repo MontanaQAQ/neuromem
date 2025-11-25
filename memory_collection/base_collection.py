@@ -84,7 +84,7 @@ class BaseMemoryCollection:
 
         if metadata:
             # 自动注册所有未知的元数据字段
-            for field_name in metadata.keys():
+            for field_name in metadata:
                 if not self.metadata_storage.has_field(field_name):
                     self.metadata_storage.add_field(field_name)
 
@@ -103,9 +103,7 @@ class BaseMemoryCollection:
         根据元数据（条件或函数）检索原始文本。
         """
         all_ids = self.get_all_ids()
-        matched_ids = self.filter_ids(
-            all_ids, metadata_filter_func, **metadata_conditions
-        )
+        matched_ids = self.filter_ids(all_ids, metadata_filter_func, **metadata_conditions)
         # return [self.text_storage.get(i) for i in matched_ids]
         if with_metadata:
             return [
@@ -159,9 +157,7 @@ if __name__ == "__main__":
             print(r)
 
         print("\n=== Filter by custom rag (language) ===")
-        res2 = col.retrieve(
-            metadata_filter_func=lambda m: m.get("lang") in {"zh", "fr"}
-        )
+        res2 = col.retrieve(metadata_filter_func=lambda m: m.get("lang") in {"zh", "fr"})
         for r in res2:
             print(r)
 
@@ -185,9 +181,7 @@ if __name__ == "__main__":
         end_time = current_time - 1800  # 30分钟前
         matched_ids = col.filter_ids(
             col.get_all_ids(),
-            metadata_filter_func=lambda m: start_time
-            <= m.get("timestamp", 0)
-            <= end_time,
+            metadata_filter_func=lambda m: start_time <= m.get("timestamp", 0) <= end_time,
         )
         for item_id in matched_ids:
             text = col.text_storage.get(item_id)

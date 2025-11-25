@@ -5,7 +5,6 @@ from typing import Any
 
 import faiss
 import numpy as np
-
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from .base_vdb_index import BaseVDBIndex
@@ -114,9 +113,7 @@ class FaissIndex(BaseVDBIndex):
             qtype = getattr(faiss.ScalarQuantizer, qtype_str)
             metric = self._get_metric(config.get("IVF_METRIC", "L2"))
             quantizer = faiss.IndexFlatL2(self.dim)
-            index = faiss.IndexIVFScalarQuantizer(
-                quantizer, self.dim, nlist, qtype, metric
-            )
+            index = faiss.IndexIVFScalarQuantizer(quantizer, self.dim, nlist, qtype, metric)
             index.nprobe = nprobe
             return index, True
 
@@ -233,9 +230,7 @@ class FaissIndex(BaseVDBIndex):
 
             # 批量添加有效向量
             np_vectors = np.vstack(valid_vectors).astype("float32")
-            int_ids_np = np.array(
-                [new_rev_map[sid] for sid in valid_ids], dtype=np.int64
-            )
+            int_ids_np = np.array([new_rev_map[sid] for sid in valid_ids], dtype=np.int64)
             self.index.add_with_ids(np_vectors, int_ids_np)  # type: ignore
         else:
             # 如果没有有效向量，创建空索引
@@ -476,9 +471,7 @@ class FaissIndex(BaseVDBIndex):
                 break
 
         # 检查结果数量并给出警告
-        available_count = len(
-            [sid for sid in self.id_map.values() if sid not in self.tombstones]
-        )
+        available_count = len([sid for sid in self.id_map.values() if sid not in self.tombstones])
         if len(results) < topk and len(results) < available_count:
             self.logger.warning(f"期望返回{topk}个结果，实际只找到{len(results)}个结果")
 
@@ -506,9 +499,7 @@ class FaissIndex(BaseVDBIndex):
         if vector_hash in self.vector_hashes:
             existing_id = self.vector_hashes[vector_hash]
             if existing_id not in self.tombstones:  # 确保现有ID未被删除
-                self.logger.warning(
-                    f"向量重复: 尝试插入的向量与已存在的ID {existing_id} 相同"
-                )
+                self.logger.warning(f"向量重复: 尝试插入的向量与已存在的ID {existing_id} 相同")
                 return 0
 
         # 如果是墓碑状态的ID，复用其int_id
@@ -708,9 +699,7 @@ if __name__ == "__main__":
         }
         return colors.get(color, "") + text + colors["reset"]
 
-    def print_test_case(
-        desc, expected_ids, expected_dists, actual_ids, actual_dists, digits=4
-    ):
+    def print_test_case(desc, expected_ids, expected_dists, actual_ids, actual_dists, digits=4):
         ids_pass = list(expected_ids) == list(actual_ids)
         dists_pass = all(
             abs(e - a) < 10**-digits for e, a in zip(expected_dists, actual_dists, strict=False)
@@ -785,9 +774,7 @@ if __name__ == "__main__":
     print(f"删除结果: {result} (期望: 1)")
     q4 = np.array([1.0, 0.0, 0.0, 0.0])
     r_ids, r_dists = index.search(q4, 4)
-    print_test_case(
-        "删除后检索", ["id1", "id3", "id4"], [0.5, 2.0, 2.0], r_ids, r_dists
-    )
+    print_test_case("删除后检索", ["id1", "id3", "id4"], [0.5, 2.0, 2.0], r_ids, r_dists)
 
     # 6. 测试阈值检索
     r_ids, r_dists = index.search(q4, 4, threshold=1.0)
@@ -831,9 +818,7 @@ if __name__ == "__main__":
 
         # 注意：id3和id4已被删除并保存为墓碑，所以恢复后不会出现在结果中
         r_ids, r_dists = index2.search(np.array([0.1, 0.1, 0.1, 0.1]), 5)
-        print_test_case(
-            "恢复后检索", ["id5", "id6", "id1"], [0.0, 0.04, 0.34], r_ids, r_dists, 2
-        )
+        print_test_case("恢复后检索", ["id5", "id6", "id1"], [0.0, 0.04, 0.34], r_ids, r_dists, 2)
 
         # 验证墓碑状态
         print(f"当前墓碑数量: {len(index2.tombstones)}")

@@ -1,13 +1,14 @@
+import contextlib
 import hashlib
 import inspect
 import json
 import os
 import shutil
+import time
 from collections.abc import Callable
 from typing import Any
 
 import numpy as np
-
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.vdb_index import index_factory
@@ -39,11 +40,14 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # index_name -> dict: { index, dim, description, backend_type, config, is_init }
         self.index_info = {}
 
+        # Initialize statistics tracking
+        self._init_statistics()
+
     # 创建某个索引（不插入数据）
     def create_index(self, config: dict | None = None):
         """
         创建新的向量索引。
-        
+
         Args:
             config: 索引配置，必须包含:
                 - name: 索引名称
@@ -67,9 +71,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         dim = config.get("dim")
         if not isinstance(dim, int) or dim <= 0:
-            self.logger.warning(
-                "The config must contain valid 'dim' (positive int)."
-            )
+            self.logger.warning("The config must contain valid 'dim' (positive int).")
             return None
 
         try:
@@ -99,13 +101,21 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 f"Successfully created index '{index_name}', backend type: {backend_type}, dim: {dim}"
             )
 
+            # Track statistics
+            self.statistics["index_create_count"] += 1
+            self.statistics["index_stats"][index_name] = {
+                "vector_count": 0,
+                "created_time": time.time(),
+                "last_rebuild_time": None,
+            }
+
         except Exception as e:
             self.logger.error(
                 f"Failed to create index {index_name} with backend {backend_type}: {e}"
             )
             raise ValueError(
                 f"Failed to create index {index_name} with backend {backend_type}: {e}"
-            )
+            ) from e
 
         return True
 
@@ -154,12 +164,12 @@ class VDBMemoryCollection(BaseMemoryCollection):
     ):
         """
         更新指定索引：删除当前索引，保留config，重新创建索引并批量插入数据
-        
+
         Args:
             index_name: 索引名称
             vectors: 向量列表，每个向量应为 numpy.ndarray
             item_ids: 对应的数据 ID 列表
-            
+
         Returns:
             插入的向量数量，失败返回 None
         """
@@ -181,8 +191,21 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # 利用delete_index删除
         self.delete_index(index_name)
 
+        # Preserve original created_time before create_index
+        original_created_time = (
+            self.statistics["index_stats"].get(index_name, {}).get("created_time")
+        )
+
         # 利用create_index重新创建
         self.create_index(config)
+
+        # Track rebuild statistics
+        self.statistics["index_rebuild_count"] += 1
+        if index_name in self.statistics["index_stats"]:
+            self.statistics["index_stats"][index_name]["last_rebuild_time"] = time.time()
+            # Restore original created_time
+            if original_created_time is not None:
+                self.statistics["index_stats"][index_name]["created_time"] = original_created_time
 
         # 利用init_index插入数据
         return self.init_index(index_name, vectors, item_ids)
@@ -196,20 +219,18 @@ class VDBMemoryCollection(BaseMemoryCollection):
     ):
         """
         使用预先生成的向量批量初始化索引。
-        
+
         Args:
             index_name: 索引名称
             vectors: 向量列表，每个向量应为 numpy.ndarray
             item_ids: 对应的数据 ID 列表
-            
+
         Returns:
             插入的向量数量，失败返回 None
         """
         # 检查 init_index 条件
         if index_name not in self.index_info:
-            self.logger.warning(
-                f"Index '{index_name}' does not exist, cannot initialize"
-            )
+            self.logger.warning(f"Index '{index_name}' does not exist, cannot initialize")
             return None
         if self.index_info[index_name].get("is_init", False):
             self.logger.warning(
@@ -224,9 +245,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
             return None
 
         if not vectors:
-            self.logger.warning(
-                f"No vectors provided for index '{index_name}' initialization"
-            )
+            self.logger.warning(f"No vectors provided for index '{index_name}' initialization")
             return None
 
         expected_dim = self.index_info[index_name]["dim"]
@@ -265,13 +284,14 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # 标记索引已初始化
         self.index_info[index_name]["is_init"] = True
 
+        # Update statistics
+        self._update_total_vectors()
+
         self.logger.info(f"Index '{index_name}' initialized with {result} data items")
         return result
 
     # 批量数据插入（仅存入collection，不创建索引）
-    def batch_insert_data(
-        self, data: list[str], metadatas: list[dict[str, Any]] | None = None
-    ):
+    def batch_insert_data(self, data: list[str], metadatas: list[dict[str, Any]] | None = None):
         """
         批量插入数据到collection中（仅存储，不创建索引）
         """
@@ -290,7 +310,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
             if metadata:
                 # 自动注册所有未知的元数据字段
-                for field_name in metadata.keys():
+                for field_name in metadata:
                     if not self.metadata_storage.has_field(field_name):
                         self.metadata_storage.add_field(field_name)
                 self.metadata_storage.store(stable_id, metadata)
@@ -305,13 +325,13 @@ class VDBMemoryCollection(BaseMemoryCollection):
     ):
         """
         插入单条数据到指定索引。
-        
+
         Args:
             index_name: 索引名称
             raw_data: 原始文本数据（用于存储）
             vector: 预先生成的向量
             metadata: 元数据（可选）
-            
+
         Returns:
             插入数据的 ID，失败返回 None
         """
@@ -330,7 +350,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         # 自动注册所有未知的元数据字段
         if metadata:
-            for field_name in metadata.keys():
+            for field_name in metadata:
                 if not self.metadata_storage.has_field(field_name):
                     self.metadata_storage.add_field(field_name)
             self.metadata_storage.store(stable_id, metadata)
@@ -357,35 +377,40 @@ class VDBMemoryCollection(BaseMemoryCollection):
             return None
 
         index.insert(vector, stable_id)
+
+        # Track statistics
+        self.statistics["insert_count"] += 1
+        self._update_total_vectors()
+
         return stable_id
 
     # 单条文本删除（全索引删除）
     def delete(self, raw_text: str):
         """
         删除指定的文本条目
-        
+
         Args:
             raw_text: 要删除的原始文本
-            
+
         Returns:
             bool: 删除是否成功
         """
         try:
             stable_id = self._get_stable_id(raw_text)
-            
+
             # 检查是否存在
             if not self.text_storage.has(stable_id):
                 self.logger.warning(
                     f"Text not found for deletion: excerpt='{raw_text[:50]}', stable_id='{stable_id}'"
                 )
                 return False
-            
+
             self.text_storage.delete(stable_id)
             self.metadata_storage.delete(stable_id)
 
             for index_info in self.index_info.values():
                 index_info["index"].delete(stable_id)
-            
+
             return True
         except Exception as e:
             self.logger.error(f"Failed to delete: {e}")
@@ -404,7 +429,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
     ):
         """
         使用查询向量检索相似数据。
-        
+
         Args:
             query_vector: 查询向量（应已归一化）
             index_name: 索引名称
@@ -413,10 +438,13 @@ class VDBMemoryCollection(BaseMemoryCollection):
             with_metadata: 是否返回元数据
             metadata_filter_func: 元数据过滤函数
             **metadata_conditions: 元数据过滤条件
-            
+
         Returns:
             检索结果列表，失败返回 None
         """
+        # Track start time for statistics
+        start_time = time.time()
+
         if index_name not in self.index_info:
             self.logger.warning(f"The index '{index_name}' does not exist")
             return None
@@ -451,9 +479,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         index = self.index_info.get(index_name).get("index")
 
-        top_k_ids, distances = index.search(
-            query_vector, topk=topk, threshold=threshold
-        )
+        top_k_ids, distances = index.search(query_vector, topk=topk, threshold=threshold)
 
         if top_k_ids and isinstance(top_k_ids[0], (list, np.ndarray)):
             top_k_ids = top_k_ids[0]
@@ -463,9 +489,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         # 应用元数据过滤
         if metadata_filter_func or metadata_conditions:
-            filtered_ids = self.filter_ids(
-                top_k_ids, metadata_filter_func, **metadata_conditions
-            )
+            filtered_ids = self.filter_ids(top_k_ids, metadata_filter_func, **metadata_conditions)
         else:
             filtered_ids = top_k_ids
 
@@ -475,6 +499,23 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # 如果检索结果少于请求数量，记录信息但不警告
         if len(final_ids) < topk:
             self.logger.info(f"Retrieved {len(final_ids)} results (requested {topk})")
+
+        # Track statistics
+        duration = time.time() - start_time
+        self.statistics["retrieve_count"] += 1
+        self.statistics["retrieve_stats"].append(
+            {
+                "timestamp": start_time,
+                "duration": duration,
+                "result_count": len(final_ids),
+                "index_name": index_name,
+                "requested_topk": topk if topk is not None else 5,
+            }
+        )
+        # Limit retrieve_stats to prevent unbounded growth
+        max_retrieve_stats = 1000
+        if len(self.statistics["retrieve_stats"]) > max_retrieve_stats:
+            self.statistics["retrieve_stats"].pop(0)
 
         if with_metadata:
             return [
@@ -498,14 +539,14 @@ class VDBMemoryCollection(BaseMemoryCollection):
     ):
         """
         更新指定数据。
-        
+
         Args:
             index_name: 索引名称
             old_data: 原始文本
             new_data: 新文本
             new_vector: 新向量
             new_metadata: 新元数据（可选）
-        
+
         Returns:
             新插入数据的ID（如字符串），如果插入失败则为 None。
         """
@@ -552,23 +593,15 @@ class VDBMemoryCollection(BaseMemoryCollection):
     def store(self, store_path: str | None = None):
         self.logger.debug("VDBMemoryCollection: store called")
 
-        if store_path is None:
-            # 使用默认数据目录
-            base_dir = get_default_data_dir()
-        else:
-            # 使用传入的数据目录（通常来自MemoryManager）
-            base_dir = store_path
+        # 使用默认数据目录或传入的数据目录（通常来自MemoryManager）
+        base_dir = get_default_data_dir() if store_path is None else store_path
 
         collection_dir = os.path.join(base_dir, "vdb_collection", self.name)
         os.makedirs(collection_dir, exist_ok=True)
 
         # 1. 存储text和metadata
-        self.text_storage.store_to_disk(
-            os.path.join(collection_dir, "text_storage.json")
-        )
-        self.metadata_storage.store_to_disk(
-            os.path.join(collection_dir, "metadata_storage.json")
-        )
+        self.text_storage.store_to_disk(os.path.join(collection_dir, "text_storage.json"))
+        self.metadata_storage.store_to_disk(os.path.join(collection_dir, "metadata_storage.json"))
 
         # 2. 索引和index_info
         indexes_dir = os.path.join(collection_dir, "indexes")
@@ -592,10 +625,9 @@ class VDBMemoryCollection(BaseMemoryCollection):
         config = {
             "name": self.name,
             "indexes": saved_index_info,
+            "statistics": self.statistics,  # Save statistics
         }
-        with open(
-            os.path.join(collection_dir, "config.json"), "w", encoding="utf-8"
-        ) as f:
+        with open(os.path.join(collection_dir, "config.json"), "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
         return {"collection_path": collection_dir}
@@ -628,12 +660,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
         instance = cls(config={"name": name})
 
         # 加载storages
-        instance.text_storage.load_from_disk(
-            os.path.join(load_path, "text_storage.json")
-        )
-        instance.metadata_storage.load_from_disk(
-            os.path.join(load_path, "metadata_storage.json")
-        )
+        instance.text_storage.load_from_disk(os.path.join(load_path, "text_storage.json"))
+        instance.metadata_storage.load_from_disk(os.path.join(load_path, "metadata_storage.json"))
 
         # 清空在初始化时创建的默认索引
         instance.index_info.clear()
@@ -660,7 +688,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
                         raise ValueError(f"Unknown backend type: {backend_type}")
 
             except Exception as e:
-                raise NotImplementedError(f"Unknown index_type {idx_type}: {e}")
+                raise NotImplementedError(f"Unknown index_type {idx_type}: {e}") from e
 
             # 恢复 index_info
             instance.index_info[index_name] = {
@@ -671,6 +699,13 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 "config": idx_info.get("config"),
                 "is_init": idx_info.get("is_init", False),
             }
+
+        # Restore statistics (backwards compatible)
+        if "statistics" in config:
+            instance.statistics = config["statistics"]
+        else:
+            # Initialize statistics if not present (for old collections)
+            instance._init_statistics()
 
         return instance
 
@@ -687,12 +722,167 @@ class VDBMemoryCollection(BaseMemoryCollection):
         except Exception as e:
             print(f"Failed to clear: {e}")
 
+    # ==================== Statistics Methods ====================
+
+    def _init_statistics(self):
+        """Initialize statistics tracking structure."""
+        self.statistics = {
+            "insert_count": 0,
+            "retrieve_count": 0,
+            "index_create_count": 0,
+            "index_rebuild_count": 0,
+            "total_vectors_stored": 0,
+            "retrieve_stats": [],
+            "index_stats": {},
+        }
+
+    def _update_total_vectors(self):
+        """Recalculate total vectors stored across all indexes."""
+        total = 0
+        for index_name, info in self.index_info.items():
+            if "index" in info and hasattr(info["index"], "index"):
+                vector_count = (
+                    info["index"].index.ntotal if hasattr(info["index"].index, "ntotal") else 0
+                )
+                # Update index stats
+                if index_name in self.statistics["index_stats"]:
+                    self.statistics["index_stats"][index_name]["vector_count"] = vector_count
+                total += vector_count
+        self.statistics["total_vectors_stored"] = total
+
+    def get_statistics(self) -> dict[str, Any]:
+        """
+        Get all statistics.
+
+        Returns:
+            Dictionary containing all tracked statistics
+        """
+        self._update_total_vectors()
+        return self.statistics.copy()
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """
+        Get memory usage statistics.
+
+        Returns:
+            Dictionary with memory usage information including estimated memory size
+        """
+        self._update_total_vectors()
+
+        # Calculate estimated memory usage
+        # Assumption: each vector is dim * 4 bytes (float32) with 20% overhead for metadata
+        estimated_memory_bytes = 0
+        index_stats = {}
+
+        for index_name, info in self.index_info.items():
+            dim = info.get("dim", 128)
+            vector_count = 0
+
+            if "index" in info and hasattr(info["index"], "index"):
+                vector_count = (
+                    info["index"].index.ntotal if hasattr(info["index"].index, "ntotal") else 0
+                )
+
+            # Memory per vector: dim * 4 bytes (float32) * 1.2 (overhead)
+            bytes_per_vector = dim * 4 * 1.2
+            estimated_memory_bytes += vector_count * bytes_per_vector
+
+            index_stats[index_name] = {
+                "vector_count": vector_count,
+                "created_time": self.statistics["index_stats"]
+                .get(index_name, {})
+                .get("created_time"),
+            }
+
+        estimated_memory_mb = estimated_memory_bytes / (1024 * 1024)
+
+        return {
+            "total_vectors": self.statistics["total_vectors_stored"],
+            "estimated_memory_mb": round(estimated_memory_mb, 2),
+            "index_stats": index_stats,
+        }
+
+    def get_retrieve_stats(self, last_n: int | None = None) -> dict[str, Any]:
+        """
+        Get retrieval performance statistics.
+
+        Args:
+            last_n: If specified, only return the last N retrieval operations
+
+        Returns:
+            Dictionary with retrieval statistics including average duration
+        """
+        retrieve_stats = self.statistics["retrieve_stats"]
+
+        if last_n is not None:
+            retrieve_stats = retrieve_stats[-last_n:]
+
+        # Calculate average duration
+        avg_duration = 0.0
+        if retrieve_stats:
+            avg_duration = sum(stat["duration"] for stat in retrieve_stats) / len(retrieve_stats)
+
+        return {
+            "total_retrieve_count": self.statistics["retrieve_count"],
+            "sample_size": len(retrieve_stats),
+            "avg_duration": round(avg_duration, 4),
+            "recent_stats": retrieve_stats,
+        }
+
+    def get_index_rebuild_stats(self) -> dict[str, Any]:
+        """
+        Get index rebuild frequency statistics.
+
+        Returns:
+            Dictionary with rebuild statistics and index details
+        """
+        self._update_total_vectors()
+
+        index_details = {}
+        for index_name, stats in self.statistics["index_stats"].items():
+            index_details[index_name] = {
+                "vector_count": stats.get("vector_count", 0),
+                "last_rebuild_time": stats.get("last_rebuild_time"),
+                "created_time": stats.get("created_time"),
+            }
+
+        return {
+            "total_rebuild_count": self.statistics["index_rebuild_count"],
+            "index_details": index_details,
+        }
+
+    def reset_statistics(self):
+        """Reset all statistics counters while preserving index structure."""
+        # Preserve index_stats keys but reset their values
+        index_stats = {}
+        for index_name in self.statistics["index_stats"]:
+            index_stats[index_name] = {
+                "vector_count": 0,
+                "created_time": self.statistics["index_stats"][index_name].get("created_time"),
+                "last_rebuild_time": None,
+            }
+
+        self.statistics = {
+            "insert_count": 0,
+            "retrieve_count": 0,
+            "index_create_count": 0,
+            "index_rebuild_count": 0,
+            "total_vectors_stored": 0,
+            "retrieve_stats": [],
+            "index_stats": index_stats,
+        }
+
+        # Update vector counts to reflect actual state
+        self._update_total_vectors()
+
 
 if __name__ == "__main__":
     # CustomLogger.disable_global_console_debug()
     import shutil
     import tempfile
     
+    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
+
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 
     def colored(text, color):
@@ -703,7 +893,7 @@ if __name__ == "__main__":
             "reset": "\033[0m",
         }
         return colors.get(color, "") + str(text) + colors["reset"]
-    
+
     def normalize_vector(vector):
         """对向量进行 L2 归一化"""
         # 统一处理不同格式的向量
@@ -714,7 +904,7 @@ if __name__ == "__main__":
         if not isinstance(vector, np.ndarray):
             vector = np.array(vector)
         vector = vector.astype(np.float32)
-        
+
         # L2 归一化
         norm = np.linalg.norm(vector)
         if norm == 0:
@@ -730,6 +920,10 @@ if __name__ == "__main__":
         test_name = "test_collection"
         test_dir = tempfile.mkdtemp()
         
+        # 在外部创建 embedding 模型
+        embedding_model = apply_embedding_model("mockembedder")
+        print(colored("✓ 在外部创建 embedding 模型", "green"))
+
         # 在外部创建 embedding 模型
         embedding_model = apply_embedding_model("mockembedder")
         print(colored("✓ 在外部创建 embedding 模型", "green"))
@@ -779,12 +973,12 @@ if __name__ == "__main__":
 
             # 3. 测试 init_index 批量初始化
             print(colored("\n3. 测试 init_index（批量初始化）", "yellow"))
-            
+
             # 创建第二个集合用于测试 batch init
             corpus = ["第一条文本", "第二条文本", "第三条文本"]
             corpus_collection = VDBMemoryCollection(config={"name": f"{test_name}_corpus"})
             corpus_collection.batch_insert_data(corpus)
-            
+
             # 创建索引
             corpus_index_config = {
                 "name": "corpus_index",
@@ -794,23 +988,23 @@ if __name__ == "__main__":
                 "index_parameter": {},
             }
             corpus_collection.create_index(config=corpus_index_config)
-            
+
             # 在外部批量生成向量
             corpus_vectors = [normalize_vector(embedding_model.encode(text)) for text in corpus]
             corpus_ids = corpus_collection.get_all_ids()
             print(colored(f"✓ 外部批量生成 {len(corpus_vectors)} 个向量", "green"))
-            
+
             # 批量初始化索引
             result = corpus_collection.init_index("corpus_index", corpus_vectors, corpus_ids)
             print(colored(f"✓ 批量初始化索引成功，插入 {result} 条数据", "green"))
 
             # 4. 测试检索功能（使用查询向量）
             print(colored("\n4. 测试检索功能（使用查询向量）", "yellow"))
-            
+
             # 在外部生成查询向量
             query_vector = normalize_vector(embedding_model.encode(texts[1]))
             print(colored("✓ 在外部生成查询向量", "green"))
-            
+
             # 使用向量检索（不带metadata）
             results = collection.retrieve(query_vector, "default_index", topk=2)
             print(f"检索结果数量: {len(results) if results else 0}")  # type: ignore
@@ -819,13 +1013,13 @@ if __name__ == "__main__":
             results_with_metadata = collection.retrieve(
                 query_vector, "default_index", topk=2, with_metadata=True
             )
-            print(f"带metadata的检索结果数量: {len(results_with_metadata) if results_with_metadata else 0}")  # type: ignore
+            print(
+                f"带metadata的检索结果数量: {len(results_with_metadata) if results_with_metadata else 0}"
+            )  # type: ignore
 
             # 检索corpus集合
             corpus_query_vector = normalize_vector(embedding_model.encode("第一条文本"))
-            corpus_results = corpus_collection.retrieve(
-                corpus_query_vector, "corpus_index", topk=3
-            )
+            corpus_results = corpus_collection.retrieve(corpus_query_vector, "corpus_index", topk=3)
             print(f"corpus集合检索结果数量: {len(corpus_results) if corpus_results else 0}")  # type: ignore
 
             # 验证结果
@@ -843,7 +1037,7 @@ if __name__ == "__main__":
                     ):
                         print(colored("✓ 找到了带有 high priority 的结果", "green"))
                         break
-            
+
             if corpus_results and len(corpus_results) > 0:  # type: ignore
                 print(colored("✓ corpus 集合检索成功", "green"))
 
@@ -882,11 +1076,11 @@ if __name__ == "__main__":
             # 测试加载
             collection_dir = os.path.join(save_path, "vdb_collection", test_name)
             loaded_collection = VDBMemoryCollection.load(test_name, collection_dir)
-            
+
             # 使用更新后的文本向量进行检索
             query_vec = normalize_vector(embedding_model.encode(new_text))
             results = loaded_collection.retrieve(query_vec, "default_index", topk=1)
-            
+
             if results and len(results) > 0:  # type: ignore
                 print(colored("✓ 持久化后检索成功", "green"))
             else:
@@ -902,7 +1096,9 @@ if __name__ == "__main__":
             print("✓ 5. 更新和删除功能正常")
             print("✓ 6. 持久化功能正常")
             print(colored("\n✨ VDBMemoryCollection 重构成功！", "green"))
-            print(colored("核心改进：embedding 生成在外部，collection 只负责向量存储和检索", "green"))
+            print(
+                colored("核心改进：embedding 生成在外部，collection 只负责向量存储和检索", "green")
+            )
 
         except Exception as e:
             print(colored(f"\n测试失败: {str(e)}", "red"))
@@ -912,9 +1108,7 @@ if __name__ == "__main__":
             raise
         finally:
             # 清理测试数据
-            try:
+            with contextlib.suppress(Exception):
                 shutil.rmtree(test_dir)
-            except Exception:
-                pass
 
     run_test()

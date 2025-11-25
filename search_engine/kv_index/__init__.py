@@ -1,6 +1,6 @@
 # file sage/middleware/services/neuromem/search_engine/kv_index/__init__.py
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .base_kv_index import BaseKVIndex
 from .bm25s_index import BM25sIndex

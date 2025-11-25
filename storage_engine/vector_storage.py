@@ -39,7 +39,10 @@ class VectorStorage:
 
     def store_to_disk(self, path: str):
         # type: ignore for IDE/static checker
-        save_dict = {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in self.backend._store.items()}  # type: ignore
+        save_dict = {
+            k: v.tolist() if isinstance(v, np.ndarray) else v
+            for k, v in self.backend._store.items()
+        }  # type: ignore
         with open(path, "w", encoding="utf-8") as f:
             json.dump(save_dict, f, ensure_ascii=False, indent=2)
 

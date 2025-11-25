@@ -6,7 +6,6 @@ from collections.abc import Callable
 from typing import Any
 
 import yaml
-
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.kv_index import KVIndexFactory
@@ -53,17 +52,13 @@ class KVMemoryCollection(BaseMemoryCollection):
         self.default_topk = config.get("default_topk", 5)
         self.default_index_type = config.get("default_index_type", "bm25s")
 
-        self.indexes = (
-            {}
-        )  # index_name -> {index_type, description, metadata_filter_func, metadata_conditions}
+        self.indexes = {}  # index_name -> {index_type, description, metadata_filter_func, metadata_conditions}
 
         # 如果config中指定了config_path，加载外部配置
         config_path = config.get("config_path")
         if config_path is not None:
             external_config = load_config(config_path)
-            self.default_topk = external_config.get(
-                "kv_default_topk", self.default_topk
-            )
+            self.default_topk = external_config.get("kv_default_topk", self.default_topk)
             self.default_index_type = external_config.get(
                 "kv_default_index_type", self.default_index_type
             )
@@ -157,9 +152,7 @@ class KVMemoryCollection(BaseMemoryCollection):
             index_info[index_name] = {
                 "index_type": idx_type,
                 "description": info.get("description", ""),
-                "metadata_filter_func": self._serialize_func(
-                    info.get("metadata_filter_func")
-                ),
+                "metadata_filter_func": self._serialize_func(info.get("metadata_filter_func")),
                 "metadata_conditions": info.get("metadata_conditions", {}),
             }
 
@@ -201,7 +194,7 @@ class KVMemoryCollection(BaseMemoryCollection):
             try:
                 idx = KVIndexFactory.load_index(idx_type, index_name, idx_path)
             except ValueError as e:
-                raise NotImplementedError(f"Index type {idx_type} not supported: {e}")
+                raise NotImplementedError(f"Index type {idx_type} not supported: {e}") from e
 
             self.indexes[index_name] = {
                 "index": idx,
@@ -259,7 +252,7 @@ class KVMemoryCollection(BaseMemoryCollection):
 
         if metadata:
             # 自动注册所有未知的元数据字段
-            for field_name in metadata.keys():
+            for field_name in metadata:
                 if not self.metadata_storage.has_field(field_name):
                     self.metadata_storage.add_field(field_name)
             self.metadata_storage.store(stable_id, metadata)
@@ -355,9 +348,7 @@ class KVMemoryCollection(BaseMemoryCollection):
 
         index = self.indexes[index_name]["index"]
         topk_ids = index.search(raw_text, topk=topk)
-        filtered_ids = self.filter_ids(
-            topk_ids, metadata_filter_func, **metadata_conditions
-        )
+        filtered_ids = self.filter_ids(topk_ids, metadata_filter_func, **metadata_conditions)
 
         self.logger.debug(f"检索到 {len(filtered_ids)} 条结果（请求 {topk} 条）")
 
@@ -407,9 +398,7 @@ class KVMemoryCollection(BaseMemoryCollection):
         description = config.get("description", f"Index for {index_name}")
 
         all_ids = self.get_all_ids()
-        filtered_ids = self.filter_ids(
-            all_ids, metadata_filter_func, **metadata_conditions
-        )
+        filtered_ids = self.filter_ids(all_ids, metadata_filter_func, **metadata_conditions)
         texts = [self.text_storage.get(i) for i in filtered_ids]
 
         try:
@@ -421,7 +410,7 @@ class KVMemoryCollection(BaseMemoryCollection):
             )
         except ValueError as e:
             self.logger.error(f"Index type {index_type} not supported: {e}")
-            raise NotImplementedError(f"Index type {index_type} not supported: {e}")
+            raise NotImplementedError(f"Index type {index_type} not supported: {e}") from e
 
         self.indexes[index_name] = {
             "index": index,
@@ -644,7 +633,8 @@ if __name__ == "__main__":
                 "description": "AI相关文档索引",
             }
             collection.create_index(
-                config=ai_index_config, category="AI"  # 只包含AI类别的文档
+                config=ai_index_config,
+                category="AI",  # 只包含AI类别的文档
             )
 
             # 重新插入AI文档到新索引
@@ -696,9 +686,7 @@ if __name__ == "__main__":
         print("\n9. 错误处理测试...")
         try:
             # 测试不存在的索引
-            results = collection.retrieve(
-                raw_text="测试", index_name="nonexistent_index", topk=1
-            )
+            results = collection.retrieve(raw_text="测试", index_name="nonexistent_index", topk=1)
             print(f"✓ 不存在索引处理: 返回 {len(results)} 条结果（预期为0）")
 
             # 测试删除不存在的索引
@@ -733,6 +721,4 @@ if __name__ == "__main__":
 
     print("\n=== 测试完成 ===")
     print("✓ 所有主要功能测试通过")
-    print(
-        "注意: 某些测试可能由于依赖项（如KVIndexFactory）未完全加载而失败，这是正常的。"
-    )
+    print("注意: 某些测试可能由于依赖项（如KVIndexFactory）未完全加载而失败，这是正常的。")

@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main-dev, feat/*]
+  pull_request:
+    branches: [main-dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Pre-commit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit
+
+      - name: Run Pre-commit Checks
+        run: |
+          pre-commit run --all-files --show-diff-on-failure || {
+            echo ""
+            echo "❌ 代码质量检查失败！"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "💡 本地复现和修复方法："
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "1️⃣ 安装 pre-commit（一次性）："
+            echo "   pip install pre-commit"
+            echo "   pre-commit install  # 安装 git hooks"
+            echo ""
+            echo "2️⃣ 运行检查（与CI完全一致）："
+            echo "   pre-commit run --all-files"
+            echo ""
+            echo "3️⃣ 自动修复大多数问题："
+            echo "   pre-commit run --all-files  # 会自动修复格式问题"
+            echo ""
+            echo "4️⃣ 手动修复特定问题："
+            echo "   ruff check --fix .          # 修复linting问题"
+            echo "   ruff format .                # 格式化代码"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📝 注意：安装 pre-commit hooks 后，每次提交时会自动检查"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            exit 1
+          }
+
+  validate:
+    name: Validate Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate pyproject.toml
+        run: |
+          python -m pip install --upgrade pip
+          pip install validate-pyproject
+          validate-pyproject pyproject.toml
+
+      - name: Check imports (syntax check)
+        run: |
+          python -c "import py_compile, pathlib; [py_compile.compile(f, doraise=True) for f in pathlib.Path('.').rglob('*.py') if 'build' not in str(f)]"
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint, validate]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Build Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build Package
+        run: |
+          python -m build
+
+      - name: Check Package
+        run: |
+          pip install twine
+          twine check dist/*
+
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install only test dependencies, not the package itself
+          pip install pytest
+
+      - name: Run Standalone Tests
+        run: |
+          # Copy test file to temp location to avoid importing the package __init__.py
+          cp tests/test_neuromem_standalone.py /tmp/test_neuromem_standalone.py
+          # Run tests from /tmp, pointing back to repo for file checks
+          cd /tmp && NEUROMEM_ROOT=$GITHUB_WORKSPACE pytest test_neuromem_standalone.py -v --tb=short
+        continue-on-error: false
+
+      - name: Check VDB Statistics Tests Exist
+        run: |
+          # Verify that VDB statistics tests exist (will run in SAGE CI)
+          test -f tests/test_vdb_statistics.py && echo "✅ VDB statistics tests present (run in SAGE CI)" || exit 1
