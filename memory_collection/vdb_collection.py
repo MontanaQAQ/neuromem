@@ -880,7 +880,7 @@ if __name__ == "__main__":
     # CustomLogger.disable_global_console_debug()
     import shutil
     import tempfile
-    
+
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
@@ -919,7 +919,7 @@ if __name__ == "__main__":
         # 准备测试环境
         test_name = "test_collection"
         test_dir = tempfile.mkdtemp()
-        
+
         # 在外部创建 embedding 模型
         embedding_model = apply_embedding_model("mockembedder")
         print(colored("✓ 在外部创建 embedding 模型", "green"))
