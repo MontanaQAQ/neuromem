@@ -8,7 +8,6 @@ from typing import Any
 
 import numpy as np
 
-from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.vdb_index import index_factory
@@ -21,9 +20,13 @@ class VDBMemoryCollection(BaseMemoryCollection):
     Memory collection with vector database support.
     支持向量数据库功能的内存集合类。
 
-    支持两种初始化方式：
-    1. 通过声明VDBMemoryCollection(config, corpus)创建
-    2. 通过VDBMemoryCollection.load(name, vdb_path)恢复式创建
+    职责：
+    - 存储和管理向量索引
+    - 接收外部生成的 embedding 向量
+    - 验证向量维度
+    - 执行向量检索
+
+    注意：embedding 的生成应在外部完成，此类仅负责向量的存储和检索。
     """
 
     def __init__(self, config: dict[str, Any]):
@@ -33,18 +36,21 @@ class VDBMemoryCollection(BaseMemoryCollection):
         self.logger = CustomLogger()
 
         # 存储index的参数
-        # index_name -> dict: { index, embedding_model_name, dim,
-        #   description, metadata_filter_func, metadata_conditions,
-        #   backend_type}
+        # index_name -> dict: { index, dim, description, backend_type, config, is_init }
         self.index_info = {}
-
-        # embedding_model_name -> embedding_model
-        self.embedding_model_factory = {}
 
     # 创建某个索引（不插入数据）
     def create_index(self, config: dict | None = None):
         """
         创建新的向量索引。
+        
+        Args:
+            config: 索引配置，必须包含:
+                - name: 索引名称
+                - dim: 向量维度
+                - backend_type: 索引后端类型 (如 "FAISS")
+                - description: 索引描述 (可选)
+                - index_parameter: 索引参数 (可选)
         """
         # 检查创建条件
         index_name = config.get("name")
@@ -60,10 +66,9 @@ class VDBMemoryCollection(BaseMemoryCollection):
             return None
 
         dim = config.get("dim")
-        embedding_model_name = config.get("embedding_model")
-        if not isinstance(embedding_model_name, str) or not isinstance(dim, int):
+        if not isinstance(dim, int) or dim <= 0:
             self.logger.warning(
-                "The config must contain valid 'embedding_model' (str) and 'dim' (int)."
+                "The config must contain valid 'dim' (positive int)."
             )
             return None
 
@@ -82,7 +87,6 @@ class VDBMemoryCollection(BaseMemoryCollection):
             index = index_factory.create_index(config=index_config)
 
             self.index_info[index_name] = {
-                "embedding_model_name": embedding_model_name,
                 "dim": dim,
                 "index": index,
                 "backend_type": backend_type,
@@ -92,7 +96,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
             }
 
             self.logger.info(
-                f"Successfully created index '{index_name}', backend type: {backend_type}"
+                f"Successfully created index '{index_name}', backend type: {backend_type}, dim: {dim}"
             )
 
         except Exception as e:
@@ -101,11 +105,6 @@ class VDBMemoryCollection(BaseMemoryCollection):
             )
             raise ValueError(
                 f"Failed to create index {index_name} with backend {backend_type}: {e}"
-            )
-
-        if embedding_model_name not in self.embedding_model_factory:
-            self.embedding_model_factory[embedding_model_name] = apply_embedding_model(
-                embedding_model_name
             )
 
         return True
@@ -150,11 +149,19 @@ class VDBMemoryCollection(BaseMemoryCollection):
     def update_index(
         self,
         index_name: str,
-        metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
+        vectors: list[np.ndarray],
+        item_ids: list[str],
     ):
         """
         更新指定索引：删除当前索引，保留config，重新创建索引并批量插入数据
+        
+        Args:
+            index_name: 索引名称
+            vectors: 向量列表，每个向量应为 numpy.ndarray
+            item_ids: 对应的数据 ID 列表
+            
+        Returns:
+            插入的向量数量，失败返回 None
         """
         # 首先完成必要的检查
         if index_name not in self.index_info:
@@ -165,7 +172,6 @@ class VDBMemoryCollection(BaseMemoryCollection):
         old_info = self.index_info[index_name].copy()
         config = {
             "name": index_name,
-            "embedding_model": old_info["embedding_model_name"],
             "dim": old_info["dim"],
             "backend_type": old_info["backend_type"],
             "description": old_info["description"],
@@ -179,19 +185,27 @@ class VDBMemoryCollection(BaseMemoryCollection):
         self.create_index(config)
 
         # 利用init_index插入数据
-        return self.init_index(index_name, metadata_filter_func, **metadata_conditions)
+        return self.init_index(index_name, vectors, item_ids)
 
-    # （利用筛选条件，可选）初始化索引
+    # 批量插入向量初始化索引
     def init_index(
         self,
         index_name: str,
-        metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
+        vectors: list[np.ndarray],
+        item_ids: list[str],
     ):
         """
-        （利用筛选条件，可选）初始化索引数据
+        使用预先生成的向量批量初始化索引。
+        
+        Args:
+            index_name: 索引名称
+            vectors: 向量列表，每个向量应为 numpy.ndarray
+            item_ids: 对应的数据 ID 列表
+            
+        Returns:
+            插入的向量数量，失败返回 None
         """
-        # 检查init__index条件
+        # 检查 init_index 条件
         if index_name not in self.index_info:
             self.logger.warning(
                 f"Index '{index_name}' does not exist, cannot initialize"
@@ -203,67 +217,53 @@ class VDBMemoryCollection(BaseMemoryCollection):
             )
             return None
 
-        # 根据筛选条件metadata_filter_func或者metadata_conditions筛选数据插入数据
-        # 调用底层的batch_insert接口插入
-
-        # 获取所有符合条件的ID
-        all_ids = self.get_all_ids()
-        filtered_ids = self.filter_ids(
-            all_ids, metadata_filter_func, **metadata_conditions
-        )
-
-        if not filtered_ids:
+        if len(vectors) != len(item_ids):
             self.logger.warning(
-                f"No data matches the filter conditions for index '{index_name}'"
+                f"vectors length ({len(vectors)}) must match item_ids length ({len(item_ids)})"
             )
             return None
 
-        # 获取符合条件的文本数据
-        texts = [self.text_storage.get(item_id) for item_id in filtered_ids]
+        if not vectors:
+            self.logger.warning(
+                f"No vectors provided for index '{index_name}' initialization"
+            )
+            return None
 
-        # 获取embedding模型和生成向量
-        embedding_model_name = self.index_info[index_name]["embedding_model_name"]
-        embedding_model = self.embedding_model_factory[embedding_model_name]
-
-        vectors = []
         expected_dim = self.index_info[index_name]["dim"]
+        processed_vectors = []
+        valid_ids = []
 
-        for text in texts:
-            embedding = embedding_model.encode(text)
+        # 验证和处理每个向量
+        for i, (vector, item_id) in enumerate(zip(vectors, item_ids)):
+            # 统一处理不同格式的 embedding 结果
+            if hasattr(vector, "detach") and hasattr(vector, "cpu"):
+                vector = vector.detach().cpu().numpy()
+            if isinstance(vector, list):
+                vector = np.array(vector)
+            if not isinstance(vector, np.ndarray):
+                vector = np.array(vector)
+            vector = vector.astype(np.float32)
 
-            # 统一处理不同格式的embedding结果
-            if hasattr(embedding, "detach") and hasattr(embedding, "cpu"):
-                # PyTorch tensor
-                embedding = embedding.detach().cpu().numpy()
-            if isinstance(embedding, list):
-                # Python list
-                embedding = np.array(embedding)
-            if not isinstance(embedding, np.ndarray):
-                # 其他类型，尝试转换为numpy数组
-                embedding = np.array(embedding)
-            # 确保数据类型是float32
-            embedding = embedding.astype(np.float32)
-
-            # 对向量进行L2归一化，使相似度在[0,1]之间
-            norm = np.linalg.norm(embedding)
-            if norm > 0:
-                embedding = embedding / norm
-
-            # 检查embedding维度是否与索引要求一致
-            if embedding.shape[-1] != expected_dim:
+            # 检查维度
+            if vector.shape[-1] != expected_dim:
                 self.logger.warning(
-                    f"Index '{index_name}' requires dimension {expected_dim}, but embedding dimension is {embedding.shape[-1]}, skipping this item"
+                    f"Vector {i} has dimension {vector.shape[-1]}, expected {expected_dim}, skipping"
                 )
                 continue
 
-            vectors.append(embedding)
+            processed_vectors.append(vector)
+            valid_ids.append(item_id)
 
-        # 使用batch_insert插入数据到索引
+        if not processed_vectors:
+            self.logger.warning(f"No valid vectors for index '{index_name}'")
+            return None
+
+        # 使用 batch_insert 插入数据到索引
         index = self.index_info[index_name]["index"]
-        result = index.batch_insert(vectors, filtered_ids)
+        result = index.batch_insert(processed_vectors, valid_ids)
 
-        # 插入后，将信息追加保存到index_info中
-        self.index_info[index_name].update({"is_init": True})
+        # 标记索引已初始化
+        self.index_info[index_name]["is_init"] = True
 
         self.logger.info(f"Index '{index_name}' initialized with {result} data items")
         return result
@@ -297,18 +297,31 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
     # 单条数据插入（必须指定索引插入）
     def insert(
-        self, index_name: str, raw_data: str, metadata: dict[str, Any] | None = None
+        self,
+        index_name: str,
+        raw_data: str,
+        vector: np.ndarray,
+        metadata: dict[str, Any] | None = None,
     ):
+        """
+        插入单条数据到指定索引。
+        
+        Args:
+            index_name: 索引名称
+            raw_data: 原始文本数据（用于存储）
+            vector: 预先生成的向量
+            metadata: 元数据（可选）
+            
+        Returns:
+            插入数据的 ID，失败返回 None
+        """
         # 检查索引是否存在
         if index_name not in self.index_info:
             self.logger.warning(f"The index '{index_name}' does not exist")
             return None
         index = self.index_info.get(index_name).get("index")
-        embedding_model = self.embedding_model_factory.get(
-            self.index_info.get(index_name).get("embedding_model_name")
-        )
 
-        # 首先存储数据到storage
+        # 首先存储数据到 storage
         key = raw_data
         if metadata:
             key += json.dumps(metadata, sort_keys=True)
@@ -322,50 +335,66 @@ class VDBMemoryCollection(BaseMemoryCollection):
                     self.metadata_storage.add_field(field_name)
             self.metadata_storage.store(stable_id, metadata)
 
-        embedding = embedding_model.encode(raw_data)
-
-        # 统一处理不同格式的embedding结果
-        if hasattr(embedding, "detach") and hasattr(embedding, "cpu"):
-            # PyTorch tensor
-            embedding = embedding.detach().cpu().numpy()
-        if isinstance(embedding, list):
-            # Python list
-            embedding = np.array(embedding)
-        if not isinstance(embedding, np.ndarray):
-            # 其他类型，尝试转换为numpy数组
-            embedding = np.array(embedding)
-        # 确保数据类型是float32
-        embedding = embedding.astype(np.float32)
-
-        # 对向量进行L2归一化，使相似度在[0,1]之间
-        norm = np.linalg.norm(embedding)
+        # 统一处理不同格式的向量
+        if hasattr(vector, "detach") and hasattr(vector, "cpu"):
+            vector = vector.detach().cpu().numpy()
+        if isinstance(vector, list):
+            vector = np.array(vector)
+        if not isinstance(vector, np.ndarray):
+            vector = np.array(vector)
+        vector = vector.astype(np.float32)
+        # L2 normalization
+        norm = np.linalg.norm(vector)
         if norm > 0:
-            embedding = embedding / norm
+            vector = vector / norm
 
-        # 检查embedding维度是否与索引要求一致
+        # 检查向量维度是否与索引要求一致
         expected_dim = self.index_info[index_name]["dim"]
-        if embedding.shape[-1] != expected_dim:
+        if vector.shape[-1] != expected_dim:
             self.logger.warning(
-                f"Index '{index_name}' requires dimension {expected_dim}, but embedding dimension is {embedding.shape[-1]}, skipping insertion"
+                f"Index '{index_name}' requires dimension {expected_dim}, but vector dimension is {vector.shape[-1]}, skipping insertion"
             )
             return None
 
-        index.insert(embedding, stable_id)
+        index.insert(vector, stable_id)
         return stable_id
 
     # 单条文本删除（全索引删除）
     def delete(self, raw_text: str):
-        stable_id = self._get_stable_id(raw_text)
-        self.text_storage.delete(stable_id)
-        self.metadata_storage.delete(stable_id)
+        """
+        删除指定的文本条目
+        
+        Args:
+            raw_text: 要删除的原始文本
+            
+        Returns:
+            bool: 删除是否成功
+        """
+        try:
+            stable_id = self._get_stable_id(raw_text)
+            
+            # 检查是否存在
+            if not self.text_storage.has(stable_id):
+                self.logger.warning(
+                    f"Text not found for deletion: excerpt='{raw_text[:50]}', stable_id='{stable_id}'"
+                )
+                return False
+            
+            self.text_storage.delete(stable_id)
+            self.metadata_storage.delete(stable_id)
 
-        for index_info in self.index_info.values():
-            index_info["index"].delete(stable_id)
+            for index_info in self.index_info.values():
+                index_info["index"].delete(stable_id)
+            
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to delete: {e}")
+            return False
 
     # 检索文本（指定索引检索）
     def retrieve(
         self,
-        raw_data: str,
+        query_vector: np.ndarray,
         index_name: str,
         topk: int | None = None,
         threshold: float | None = None,
@@ -373,41 +402,57 @@ class VDBMemoryCollection(BaseMemoryCollection):
         metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
         **metadata_conditions,
     ):
+        """
+        使用查询向量检索相似数据。
+        
+        Args:
+            query_vector: 查询向量（应已归一化）
+            index_name: 索引名称
+            topk: 返回的最大结果数（默认 5）
+            threshold: 相似度阈值（默认 0.7）
+            with_metadata: 是否返回元数据
+            metadata_filter_func: 元数据过滤函数
+            **metadata_conditions: 元数据过滤条件
+            
+        Returns:
+            检索结果列表，失败返回 None
+        """
         if index_name not in self.index_info:
             self.logger.warning(f"The index '{index_name}' does not exist")
             return None
-        embedding_model = self.embedding_model_factory.get(
-            self.index_info.get(index_name).get("embedding_model_name")
-        )
+
         if topk is None:
             topk = 5
         if threshold is None:
-            threshold = 0.7  # 默认相似度阈值0.7，适用于归一化向量和Inner Product
+            threshold = 0.7
 
-        query_embedding = embedding_model.encode(raw_data)
+        # 统一处理不同格式的查询向量
+        if hasattr(query_vector, "detach") and hasattr(query_vector, "cpu"):
+            query_vector = query_vector.detach().cpu().numpy()
+        if isinstance(query_vector, list):
+            query_vector = np.array(query_vector)
+        if not isinstance(query_vector, np.ndarray):
+            query_vector = np.array(query_vector)
+        query_vector = query_vector.astype(np.float32)
+        # 归一化查询向量
+        norm = np.linalg.norm(query_vector)
+        if norm == 0:
+            self.logger.warning("Query vector has zero norm and cannot be normalized.")
+            return None
+        query_vector = query_vector / norm
 
-        # 统一处理不同格式的embedding结果
-        if hasattr(query_embedding, "detach") and hasattr(query_embedding, "cpu"):
-            # PyTorch tensor
-            query_embedding = query_embedding.detach().cpu().numpy()
-        if isinstance(query_embedding, list):
-            # Python list
-            query_embedding = np.array(query_embedding)
-        if not isinstance(query_embedding, np.ndarray):
-            # 其他类型，尝试转换为numpy数组
-            query_embedding = np.array(query_embedding)
-        # 确保数据类型是float32
-        query_embedding = query_embedding.astype(np.float32)
+        # 检查维度
+        expected_dim = self.index_info[index_name]["dim"]
+        if query_vector.shape[-1] != expected_dim:
+            self.logger.warning(
+                f"Query vector dimension {query_vector.shape[-1]} does not match index dimension {expected_dim}"
+            )
+            return None
 
-        # 对查询向量进行L2归一化，使相似度在[0,1]之间
-        norm = np.linalg.norm(query_embedding)
-        if norm > 0:
-            query_embedding = query_embedding / norm
-
-        index = index = self.index_info.get(index_name).get("index")
+        index = self.index_info.get(index_name).get("index")
 
         top_k_ids, distances = index.search(
-            query_embedding, topk=topk, threshold=threshold
+            query_vector, topk=topk, threshold=threshold
         )
 
         if top_k_ids and isinstance(top_k_ids[0], (list, np.ndarray)):
@@ -448,8 +493,22 @@ class VDBMemoryCollection(BaseMemoryCollection):
         index_name: str,
         old_data: str,
         new_data: str,
+        new_vector: np.ndarray,
         new_metadata: dict[str, Any] | None = None,
     ):
+        """
+        更新指定数据。
+        
+        Args:
+            index_name: 索引名称
+            old_data: 原始文本
+            new_data: 新文本
+            new_vector: 新向量
+            new_metadata: 新元数据（可选）
+        
+        Returns:
+            新插入数据的ID（如字符串），如果插入失败则为 None。
+        """
         old_id = self._get_stable_id(old_data)
         if not self.text_storage.has(old_id):
             raise ValueError("Original data not found.")
@@ -460,7 +519,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
         for index_info in self.index_info.values():
             index_info["index"].delete(old_id)
 
-        return self.insert(index_name, new_data, new_metadata)
+        return self.insert(index_name, new_data, new_vector, new_metadata)
 
     def _serialize_func(self, func):
         """
@@ -521,9 +580,6 @@ class VDBMemoryCollection(BaseMemoryCollection):
             os.makedirs(idx_path, exist_ok=True)
             idx.store(idx_path)
             saved_index_info[index_name] = {
-                "embedding_model_name": info.get(
-                    "embedding_model_name", "mockembedder"
-                ),
                 "dim": info.get("dim", 128),
                 "backend_type": info.get("backend_type", "FAISS"),
                 "description": info.get("description", ""),
@@ -606,11 +662,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
             except Exception as e:
                 raise NotImplementedError(f"Unknown index_type {idx_type}: {e}")
 
-            # 恢复index_info
+            # 恢复 index_info
             instance.index_info[index_name] = {
-                "embedding_model_name": idx_info.get(
-                    "embedding_model_name", "mockembedder"
-                ),
                 "dim": idx_info.get("dim", 128),
                 "index": idx,
                 "backend_type": idx_info.get("backend_type", "FAISS"),
@@ -618,12 +671,6 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 "config": idx_info.get("config"),
                 "is_init": idx_info.get("is_init", False),
             }
-
-            # 恢复embedding模型
-            embedding_model_name = idx_info.get("embedding_model_name", "mockembedder")
-            instance.embedding_model_factory[embedding_model_name] = (
-                apply_embedding_model(embedding_model_name)
-            )
 
         return instance
 
@@ -645,6 +692,8 @@ if __name__ == "__main__":
     # CustomLogger.disable_global_console_debug()
     import shutil
     import tempfile
+    
+    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 
     def colored(text, color):
         colors = {
@@ -654,86 +703,58 @@ if __name__ == "__main__":
             "reset": "\033[0m",
         }
         return colors.get(color, "") + str(text) + colors["reset"]
-
-    class MockEmbeddingModel:
-        def encode(self, text):
-            # 使用和 mockembedder 相同的逻辑
-            import hashlib
-
-            import torch
-
-            # 固定维度和种子设置，匹配 mockembedder 的实现
-            fixed_dim = 128
-            seed = int(hashlib.sha256(b"mock-model").hexdigest()[:8], 16)
-
-            if not text.strip():
-                return torch.zeros(fixed_dim)
-
-            # 根据文本内容生成确定性随机数
-            text_seed = seed + int(hashlib.sha256(text.encode()).hexdigest()[:8], 16)
-            torch.manual_seed(text_seed)
-
-            # 生成随机向量（与 mockembedder 相同的逻辑）
-            embedding = torch.randn(384)  # 模拟原始模型的中间维度
-
-            # 维度调整
-            if embedding.size(0) > fixed_dim:
-                embedding = embedding[:fixed_dim]
-            elif embedding.size(0) < fixed_dim:
-                padding = torch.zeros(fixed_dim - embedding.size(0))
-                embedding = torch.cat((embedding, padding))
-
-            return embedding
+    
+    def normalize_vector(vector):
+        """对向量进行 L2 归一化"""
+        # 统一处理不同格式的向量
+        if hasattr(vector, "detach") and hasattr(vector, "cpu"):
+            vector = vector.detach().cpu().numpy()
+        if isinstance(vector, list):
+            vector = np.array(vector)
+        if not isinstance(vector, np.ndarray):
+            vector = np.array(vector)
+        vector = vector.astype(np.float32)
+        
+        # L2 归一化
+        norm = np.linalg.norm(vector)
+        if norm == 0:
+            raise ValueError("Cannot normalize a zero vector: input vector has zero norm.")
+        vector = vector / norm
+        return vector
 
     def run_test():
-        print(colored("\n=== 开始VDBMemoryCollection测试 ===", "yellow"))
+        print(colored("\n=== 开始VDBMemoryCollection重构后测试 ===", "yellow"))
+        print(colored("测试重点：embedding 在外部生成，collection 只负责向量存储", "yellow"))
 
         # 准备测试环境
         test_name = "test_collection"
         test_dir = tempfile.mkdtemp()
+        
+        # 在外部创建 embedding 模型
+        embedding_model = apply_embedding_model("mockembedder")
+        print(colored("✓ 在外部创建 embedding 模型", "green"))
 
         try:
-            # 1. 测试新的初始化方式
-            print(colored("\n1. 测试新的初始化方式", "yellow"))
+            # 1. 测试新的初始化方式（不需要 embedding_model）
+            print(colored("\n1. 测试初始化（不依赖 embedding_model）", "yellow"))
 
-            # 方式1：通过config创建
             config = {"name": test_name}
             collection = VDBMemoryCollection(config=config)
-            print(colored("✓ 通过config初始化成功", "green"))
+            print(colored("✓ 通过 config 初始化成功，无需 embedding_model", "green"))
 
-            # 创建索引配置
+            # 创建索引配置（不需要 embedding_model 参数）
             index_config = {
                 "name": "default_index",
-                "embedding_model": "mockembedder",
-                "dim": 128,
+                "dim": 128,  # 只需要指定维度
                 "backend_type": "FAISS",
                 "description": "默认测试索引",
                 "index_parameter": {},
             }
             collection.create_index(config=index_config)
-            print(colored("✓ 创建默认索引成功", "green"))
+            print(colored("✓ 创建索引成功，只需要指定维度", "green"))
 
-            # 方式2：测试batch_insert_data（创建独立的collection）
-            corpus = ["第一条文本", "第二条文本", "第三条文本"]
-            config_with_corpus = {"name": f"{test_name}_corpus"}
-            collection_with_corpus = VDBMemoryCollection(config=config_with_corpus)
-            collection_with_corpus.batch_insert_data(corpus)
-
-            # 创建索引（注意：需要使用不同的索引配置避免重复创建已初始化的索引）
-            corpus_index_config = {
-                "name": "corpus_index",  # 使用不同的索引名称
-                "embedding_model": "mockembedder",
-                "dim": 128,
-                "backend_type": "FAISS",
-                "description": "corpus测试索引",
-                "index_parameter": {},
-            }
-            collection_with_corpus.create_index(config=corpus_index_config)
-            collection_with_corpus.init_index("corpus_index")
-            print(colored("✓ 通过batch_insert_data成功", "green"))
-
-            # 2. 测试数据插入
-            print(colored("\n2. 测试数据插入", "yellow"))
+            # 2. 测试数据插入（在外部生成 embedding）
+            print(colored("\n2. 测试数据插入（embedding 外部生成）", "yellow"))
             texts = [
                 "这是第一条测试文本",
                 "这是第二条测试文本，带有metadata",
@@ -741,168 +762,147 @@ if __name__ == "__main__":
             ]
             metadata = {"type": "test", "priority": "high"}
 
-            # 插入文本到默认索引
-            collection.insert("default_index", texts[0])
-            # 插入文本，带metadata
-            collection.insert("default_index", texts[1], metadata=metadata)
+            # 在外部生成 embedding 向量
+            vector1 = normalize_vector(embedding_model.encode(texts[0]))
+            vector2 = normalize_vector(embedding_model.encode(texts[1]))
+            _ = normalize_vector(embedding_model.encode(texts[2]))  # vector3 not used in test
+            print(colored("✓ 在外部生成 embedding 向量", "green"))
 
-            # 创建自定义索引并插入文本
-            custom_index_config = {
-                "name": "custom_index",
-                "embedding_model": "mockembedder",
+            # 先存储数据
+            collection.batch_insert_data([texts[0], texts[1]])
+            print(colored("✓ 批量存储文本数据", "green"))
+
+            # 插入向量到索引
+            id1 = collection.insert("default_index", texts[0], vector1)
+            id2 = collection.insert("default_index", texts[1], vector2, metadata=metadata)
+            print(colored(f"✓ 插入向量成功: {id1[:8]}, {id2[:8]}", "green"))
+
+            # 3. 测试 init_index 批量初始化
+            print(colored("\n3. 测试 init_index（批量初始化）", "yellow"))
+            
+            # 创建第二个集合用于测试 batch init
+            corpus = ["第一条文本", "第二条文本", "第三条文本"]
+            corpus_collection = VDBMemoryCollection(config={"name": f"{test_name}_corpus"})
+            corpus_collection.batch_insert_data(corpus)
+            
+            # 创建索引
+            corpus_index_config = {
+                "name": "corpus_index",
                 "dim": 128,
                 "backend_type": "FAISS",
-                "description": "自定义测试索引",
+                "description": "corpus测试索引",
                 "index_parameter": {},
             }
-            collection.create_index(config=custom_index_config)
-            collection.init_index("custom_index")
-            collection.insert("custom_index", texts[2], metadata=metadata)
+            corpus_collection.create_index(config=corpus_index_config)
+            
+            # 在外部批量生成向量
+            corpus_vectors = [normalize_vector(embedding_model.encode(text)) for text in corpus]
+            corpus_ids = corpus_collection.get_all_ids()
+            print(colored(f"✓ 外部批量生成 {len(corpus_vectors)} 个向量", "green"))
+            
+            # 批量初始化索引
+            result = corpus_collection.init_index("corpus_index", corpus_vectors, corpus_ids)
+            print(colored(f"✓ 批量初始化索引成功，插入 {result} 条数据", "green"))
 
-            print(colored("✓ 数据插入成功", "green"))
+            # 4. 测试检索功能（使用查询向量）
+            print(colored("\n4. 测试检索功能（使用查询向量）", "yellow"))
+            
+            # 在外部生成查询向量
+            query_vector = normalize_vector(embedding_model.encode(texts[1]))
+            print(colored("✓ 在外部生成查询向量", "green"))
+            
+            # 使用向量检索（不带metadata）
+            results = collection.retrieve(query_vector, "default_index", topk=2)
+            print(f"检索结果数量: {len(results) if results else 0}")  # type: ignore
 
-            # 3. 测试检索功能
-            print(colored("\n3. 测试检索功能", "yellow"))
-            # 检查索引状态
-            default_index_info = collection.index_info.get("default_index")
-            if default_index_info:
-                default_index = default_index_info.get("index")
-                vector_count = (
-                    default_index.index.ntotal
-                    if hasattr(default_index, "index")
-                    and hasattr(default_index.index, "ntotal")
-                    else 0
-                )
-                print(f"默认索引中的向量数量: {vector_count}")
-                id_mapping = getattr(default_index, "id_mapping", {})
-                print(f"默认索引ID映射: {list(id_mapping.keys())}")
-
-            # 用存在的文本进行检索（不带metadata）
-            results = collection.retrieve(texts[1], "default_index", topk=2)
-            print(f"用存在文本检索结果数量: {len(results) if results else 0}")  # type: ignore
-
-            # 用存在的文本进行检索（带metadata）
+            # 使用向量检索（带metadata）
             results_with_metadata = collection.retrieve(
-                texts[1], "default_index", topk=2, with_metadata=True
+                query_vector, "default_index", topk=2, with_metadata=True
             )
             print(f"带metadata的检索结果数量: {len(results_with_metadata) if results_with_metadata else 0}")  # type: ignore
 
-            # 检索自定义索引
-            custom_results = collection.retrieve(texts[2], "custom_index", topk=1)
-            print(f"自定义索引检索结果数量: {len(custom_results) if custom_results else 0}")  # type: ignore
+            # 检索corpus集合
+            corpus_query_vector = normalize_vector(embedding_model.encode("第一条文本"))
+            corpus_results = corpus_collection.retrieve(
+                corpus_query_vector, "corpus_index", topk=3
+            )
+            print(f"corpus集合检索结果数量: {len(corpus_results) if corpus_results else 0}")  # type: ignore
 
-            # 确保找到了带有high priority的结果
-            found_high_priority = False
-            print(f"带metadata的检索结果: {results_with_metadata}")
-            for i, result in enumerate(results_with_metadata or []):  # type: ignore
-                print(f"结果 {i}: {result}")
-                if (
-                    isinstance(result, dict)
-                    and result.get("metadata", {}).get("priority") == "high"
-                ):
-                    found_high_priority = True
-                    print(f"找到high priority结果: {result}")
-                    break
-
-            # 检查是否有结果
+            # 验证结果
             if results and len(results) > 0:  # type: ignore
                 print(colored("✓ 检索到了结果", "green"))
             else:
-                assert results and len(results) > 0, "检索失败，没有找到任何结果"  # type: ignore
+                raise AssertionError("检索失败，没有找到任何结果")
 
-            # 检查是否找到了带有high priority的结果
-            if found_high_priority:
-                print(colored("✓ 找到了带有high priority的结果", "green"))
-            else:
-                print(
-                    colored("⚠ 没有找到high priority的结果，但检索功能正常", "yellow")
-                )
+            # 检查metadata
+            if results_with_metadata:
+                for result in results_with_metadata:  # type: ignore
+                    if (
+                        isinstance(result, dict)
+                        and result.get("metadata", {}).get("priority") == "high"
+                    ):
+                        print(colored("✓ 找到了带有 high priority 的结果", "green"))
+                        break
+            
+            if corpus_results and len(corpus_results) > 0:  # type: ignore
+                print(colored("✓ corpus 集合检索成功", "green"))
+
             print(colored("✓ 检索功能测试通过", "green"))
 
-            # 4. 测试更新和删除
-            print(colored("\n4. 测试更新和删除", "yellow"))
+            # 5. 测试更新和删除
+            print(colored("\n5. 测试更新和删除", "yellow"))
             new_text = "更新后的测试文本"
             new_metadata = {"type": "updated", "priority": "medium"}
+            new_vector = normalize_vector(embedding_model.encode(new_text))
 
             try:
-                # 更新数据 - 使用原始文本而不是ID
-                collection.update("default_index", texts[0], new_text, new_metadata)
-                print("成功更新第一条文本")
+                # 更新数据 - 需要提供新向量
+                collection.update("default_index", texts[0], new_text, new_vector, new_metadata)
+                print(colored("✓ 成功更新文本（提供新向量）", "green"))
             except Exception as e:
                 print(f"更新失败: {e}")
 
             try:
-                # 删除数据 - 使用原始文本而不是ID
+                # 删除数据
                 collection.delete(texts[1])
-                print("成功删除第二条文本")
+                print(colored("✓ 成功删除文本", "green"))
             except Exception as e:
                 print(f"删除失败: {e}")
 
             print(colored("✓ 更新和删除功能测试通过", "green"))
 
-            # 5. 测试持久化
-            print(colored("\n5. 测试持久化", "yellow"))
+            # 6. 测试持久化
+            print(colored("\n6. 测试持久化", "yellow"))
 
             # 保存
             save_path = os.path.join(test_dir, "save_test")
             collection.store(save_path)
+            corpus_collection.store(save_path)
 
-            # 测试新的load方式
+            # 测试加载
             collection_dir = os.path.join(save_path, "vdb_collection", test_name)
             loaded_collection = VDBMemoryCollection.load(test_name, collection_dir)
-            # 使用更新后的文本进行检索
-            results = loaded_collection.retrieve(new_text, "default_index", topk=1)
-            assert results and len(results) > 0, "持久化后检索失败"  # type: ignore
+            
+            # 使用更新后的文本向量进行检索
+            query_vec = normalize_vector(embedding_model.encode(new_text))
+            results = loaded_collection.retrieve(query_vec, "default_index", topk=1)
+            
+            if results and len(results) > 0:  # type: ignore
+                print(colored("✓ 持久化后检索成功", "green"))
+            else:
+                raise AssertionError("持久化后检索失败")
 
             print(colored("✓ 持久化功能测试通过", "green"))
 
-            # 6. 测试batch_insert_data功能
-            print(colored("\n6. 测试batch_insert_data功能", "yellow"))
-
-            # 检查collection_with_corpus的状态
-            corpus_index_info = collection_with_corpus.index_info.get("corpus_index")
-            if corpus_index_info:
-                corpus_index = corpus_index_info.get("index")
-                vector_count = (
-                    corpus_index.index.ntotal
-                    if hasattr(corpus_index, "index")
-                    and hasattr(corpus_index.index, "ntotal")
-                    else 0
-                )
-                print(f"corpus集合中的向量数量: {vector_count}")
-
-            corpus_results = collection_with_corpus.retrieve(
-                "第一条文本", "corpus_index", topk=3
-            )
-            print(f"从 batch_insert_data 的集合检索结果数量: {len(corpus_results) if corpus_results else 0}")  # type: ignore
-
-            # 如果有结果，说明batch_insert_data功能正常
-            if corpus_results and len(corpus_results) > 0:  # type: ignore
-                print(colored("✓ batch_insert_data功能测试通过", "green"))
-                print(f"检索到的结果: {corpus_results}")
-            else:
-                # 检查存储中是否有数据
-                all_ids = collection_with_corpus.get_all_ids()
-                print(f"存储中的数据ID数量: {len(all_ids)}")
-                if len(all_ids) > 0:
-                    print("数据已存储但索引可能有问题")
-                    print(
-                        colored(
-                            "⚠ batch_insert_data数据存储成功，但索引初始化可能有问题",
-                            "yellow",
-                        )
-                    )
-                else:
-                    print(colored("⚠ batch_insert_data功能需要进一步调试", "yellow"))
-
-            print(colored("\n=== 主要功能测试通过! ===", "green"))
-            print("✓ 1. 初始化功能正常")
-            print("✓ 2. 数据插入功能正常")
-            print("✓ 3. 检索功能正常")
-            print("✓ 4. 更新和删除功能正常")
-            print("✓ 5. 持久化功能正常")
-            print("✓ 6. batch_insert_data功能正常")
-            print(colored("\n测试代码已成功更新到最新版本API!", "green"))
+            print(colored("\n=== 所有功能测试通过! ===", "green"))
+            print("✓ 1. 初始化功能正常（不依赖 embedding_model）")
+            print("✓ 2. 数据插入功能正常（接收外部向量）")
+            print("✓ 3. 批量初始化索引功能正常")
+            print("✓ 4. 检索功能正常（使用查询向量）")
+            print("✓ 5. 更新和删除功能正常")
+            print("✓ 6. 持久化功能正常")
+            print(colored("\n✨ VDBMemoryCollection 重构成功！", "green"))
+            print(colored("核心改进：embedding 生成在外部，collection 只负责向量存储和检索", "green"))
 
         except Exception as e:
             print(colored(f"\n测试失败: {str(e)}", "red"))

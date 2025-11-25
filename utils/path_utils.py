@@ -21,6 +21,6 @@ import os
 def get_default_data_dir():
     # 获取当前执行程序的工作目录
     cur_dir = os.getcwd()
-    data_dir = os.path.join(cur_dir, "data", "neuromem_data")
+    data_dir = os.path.join(cur_dir, ".sage", "cache", "neuromem_data")
     os.makedirs(data_dir, exist_ok=True)
     return data_dir

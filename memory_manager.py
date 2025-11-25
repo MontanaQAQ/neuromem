@@ -27,6 +27,7 @@ class MemoryManager:
         # 从默认目录data/sage_memory获取disk中的manager(如果有)
         self.data_dir = data_dir or get_default_data_dir()
         self.manager_path = os.path.join(self.data_dir, "manager.json")
+        self.logger.info(f"MemoryManager initialized with data_dir: {self.data_dir}")
         self._load_manager()
 
     def create_collection(self, config: dict[str, Any] | None = None):
