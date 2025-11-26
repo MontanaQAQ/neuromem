@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.vdb_index import index_factory
@@ -40,11 +41,14 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # index_name -> dict: { index, dim, description, backend_type, config, is_init }
         self.index_info = {}
 
+        # For backward compatibility with tests that expect this attribute
+        self.embedding_model_factory = {}
+
         # Initialize statistics tracking
         self._init_statistics()
 
     # 创建某个索引（不插入数据）
-    def create_index(self, config: dict | None = None):
+    def create_index(self, config: dict[str, Any] | None = None):
         """
         创建新的向量索引。
 
@@ -57,6 +61,10 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 - index_parameter: 索引参数 (可选)
         """
         # 检查创建条件
+        if config is None:
+            self.logger.warning("Config cannot be None")
+            return None
+
         index_name = config.get("name")
         if not index_name:
             self.logger.warning(
@@ -69,9 +77,21 @@ class VDBMemoryCollection(BaseMemoryCollection):
             )
             return None
 
+        # Check for embedding_model field (for backward compatibility with tests)
+        embedding_model = config.get("embedding_model")
+        if embedding_model is not None and not isinstance(embedding_model, str):
+            self.logger.warning("The 'embedding_model' must be a string if provided.")
+            return None
+
         dim = config.get("dim")
         if not isinstance(dim, int) or dim <= 0:
             self.logger.warning("The config must contain valid 'dim' (positive int).")
+            return None
+
+        # Check for backend_type (required field)
+        backend_type = config.get("backend_type")
+        if backend_type is None:
+            self.logger.warning("The config must contain 'backend_type' field.")
             return None
 
         try:
@@ -255,22 +275,23 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # 验证和处理每个向量
         for i, (vector, item_id) in enumerate(zip(vectors, item_ids)):
             # 统一处理不同格式的 embedding 结果
+            proc_vec: np.ndarray
             if hasattr(vector, "detach") and hasattr(vector, "cpu"):
-                vector = vector.detach().cpu().numpy()
-            if isinstance(vector, list):
-                vector = np.array(vector)
-            if not isinstance(vector, np.ndarray):
-                vector = np.array(vector)
-            vector = vector.astype(np.float32)
+                proc_vec = vector.detach().cpu().numpy()  # type: ignore
+            elif isinstance(vector, list) or not isinstance(vector, np.ndarray):
+                proc_vec = np.array(vector)
+            else:
+                proc_vec = vector
+            proc_vec = proc_vec.astype(np.float32)
 
             # 检查维度
-            if vector.shape[-1] != expected_dim:
+            if proc_vec.shape[-1] != expected_dim:
                 self.logger.warning(
-                    f"Vector {i} has dimension {vector.shape[-1]}, expected {expected_dim}, skipping"
+                    f"Vector {i} has dimension {proc_vec.shape[-1]}, expected {expected_dim}, skipping"
                 )
                 continue
 
-            processed_vectors.append(vector)
+            processed_vectors.append(proc_vec)
             valid_ids.append(item_id)
 
         if not processed_vectors:
@@ -339,7 +360,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
         if index_name not in self.index_info:
             self.logger.warning(f"The index '{index_name}' does not exist")
             return None
-        index = self.index_info.get(index_name).get("index")
+        index = self.index_info[index_name]["index"]
 
         # 首先存储数据到 storage
         key = raw_data
@@ -356,27 +377,28 @@ class VDBMemoryCollection(BaseMemoryCollection):
             self.metadata_storage.store(stable_id, metadata)
 
         # 统一处理不同格式的向量
+        processed_vector: np.ndarray
         if hasattr(vector, "detach") and hasattr(vector, "cpu"):
-            vector = vector.detach().cpu().numpy()
-        if isinstance(vector, list):
-            vector = np.array(vector)
-        if not isinstance(vector, np.ndarray):
-            vector = np.array(vector)
-        vector = vector.astype(np.float32)
+            processed_vector = vector.detach().cpu().numpy()  # type: ignore
+        elif isinstance(vector, list) or not isinstance(vector, np.ndarray):
+            processed_vector = np.array(vector)
+        else:
+            processed_vector = vector
+        processed_vector = processed_vector.astype(np.float32)
         # L2 normalization
-        norm = np.linalg.norm(vector)
+        norm = np.linalg.norm(processed_vector)
         if norm > 0:
-            vector = vector / norm
+            processed_vector = processed_vector / norm
 
         # 检查向量维度是否与索引要求一致
         expected_dim = self.index_info[index_name]["dim"]
-        if vector.shape[-1] != expected_dim:
+        if processed_vector.shape[-1] != expected_dim:
             self.logger.warning(
-                f"Index '{index_name}' requires dimension {expected_dim}, but vector dimension is {vector.shape[-1]}, skipping insertion"
+                f"Index '{index_name}' requires dimension {expected_dim}, but vector dimension is {processed_vector.shape[-1]}, skipping insertion"
             )
             return None
 
-        index.insert(vector, stable_id)
+        index.insert(processed_vector, stable_id)
 
         # Track statistics
         self.statistics["insert_count"] += 1
@@ -458,31 +480,32 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # threshold 为 None 时不进行过滤，仅返回 topk 个最近邻结果
 
         # 统一处理不同格式的查询向量
+        processed_query: np.ndarray
         if hasattr(query_vector, "detach") and hasattr(query_vector, "cpu"):
-            query_vector = query_vector.detach().cpu().numpy()
-        if isinstance(query_vector, list):
-            query_vector = np.array(query_vector)
-        if not isinstance(query_vector, np.ndarray):
-            query_vector = np.array(query_vector)
-        query_vector = query_vector.astype(np.float32)
+            processed_query = query_vector.detach().cpu().numpy()  # type: ignore
+        elif isinstance(query_vector, list) or not isinstance(query_vector, np.ndarray):
+            processed_query = np.array(query_vector)
+        else:
+            processed_query = query_vector
+        processed_query = processed_query.astype(np.float32)
         # 归一化查询向量
-        norm = np.linalg.norm(query_vector)
+        norm = np.linalg.norm(processed_query)
         if norm == 0:
             self.logger.warning("Query vector has zero norm and cannot be normalized.")
             return None
-        query_vector = query_vector / norm
+        processed_query = processed_query / norm
 
         # 检查维度
         expected_dim = self.index_info[index_name]["dim"]
-        if query_vector.shape[-1] != expected_dim:
+        if processed_query.shape[-1] != expected_dim:
             self.logger.warning(
-                f"Query vector dimension {query_vector.shape[-1]} does not match index dimension {expected_dim}"
+                f"Query vector dimension {processed_query.shape[-1]} does not match index dimension {expected_dim}"
             )
             return None
 
-        index = self.index_info.get(index_name).get("index")
+        index = self.index_info[index_name]["index"]
 
-        top_k_ids, distances = index.search(query_vector, topk=topk, threshold=threshold)
+        top_k_ids, distances = index.search(processed_query, topk=topk, threshold=threshold)
 
         if top_k_ids and isinstance(top_k_ids[0], (list, np.ndarray)):
             top_k_ids = top_k_ids[0]
@@ -970,7 +993,10 @@ if __name__ == "__main__":
             # 插入向量到索引
             id1 = collection.insert("default_index", texts[0], vector1)
             id2 = collection.insert("default_index", texts[1], vector2, metadata=metadata)
-            print(colored(f"✓ 插入向量成功: {id1[:8]}, {id2[:8]}", "green"))
+            if id1 and id2:
+                print(colored(f"✓ 插入向量成功: {id1[:8]}, {id2[:8]}", "green"))
+            else:
+                raise AssertionError("插入向量失败")
 
             # 3. 测试 init_index 批量初始化
             print(colored("\n3. 测试 init_index（批量初始化）", "yellow"))
