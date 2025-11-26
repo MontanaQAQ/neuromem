@@ -434,7 +434,10 @@ class VDBMemoryCollection(BaseMemoryCollection):
             query_vector: 查询向量（应已归一化）
             index_name: 索引名称
             topk: 返回的最大结果数（默认 5）
-            threshold: 相似度阈值（默认 0.7）
+            threshold: 相似度/距离阈值，None 表示不进行阈值过滤。
+                      对于不同索引类型，阈值含义不同：
+                      - IndexFlatIP（内积）: 阈值表示最小相似度，保留 >= threshold 的结果
+                      - IndexFlatL2/IndexLSH: 阈值表示最大距离，保留 <= threshold 的结果
             with_metadata: 是否返回元数据
             metadata_filter_func: 元数据过滤函数
             **metadata_conditions: 元数据过滤条件
@@ -451,8 +454,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         if topk is None:
             topk = 5
-        if threshold is None:
-            threshold = 0.7
+        # 不再为 threshold 设置默认值，让底层 index.search 决定是否进行阈值过滤
+        # threshold 为 None 时不进行过滤，仅返回 topk 个最近邻结果
 
         # 统一处理不同格式的查询向量
         if hasattr(query_vector, "detach") and hasattr(query_vector, "cpu"):
@@ -880,8 +883,6 @@ if __name__ == "__main__":
     # CustomLogger.disable_global_console_debug()
     import shutil
     import tempfile
-
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 

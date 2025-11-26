@@ -26,6 +26,11 @@ class FaissIndex(BaseVDBIndex):
 
         if config is None:
             raise ValueError("Config cannot be None for FaissIndex initialization")
+
+        # 合并嵌套的 config 参数（VDBMemoryCollection 会把 index_parameter 放到 "config" 键下）
+        nested_config = config.get("config")
+        if nested_config and isinstance(nested_config, dict):
+            config = {**config, **nested_config}
         self.config = config
 
         # 从config中获取必要参数
@@ -195,7 +200,7 @@ class FaissIndex(BaseVDBIndex):
         if len(self.tombstones) < self.tombstone_threshold:
             return
 
-        self.logger.warning(
+        self.logger.info(
             f"墓碑数量({len(self.tombstones)})达到阈值({self.tombstone_threshold})，开始重建索引"
         )
 
@@ -446,6 +451,7 @@ class FaissIndex(BaseVDBIndex):
 
         results = []
         filtered_distances = []
+        index_type = self.config.get("index_type", "IndexFlatIP")
 
         for i, dist in zip(int_ids[0], distances[0], strict=False):
             if i == -1:  # FAISS 空槽位标记
@@ -457,13 +463,13 @@ class FaissIndex(BaseVDBIndex):
                 if threshold is not None:
                     # 对于IndexFlatIP（内积），距离越大表示越相似，应该保留距离大于阈值的结果
                     # 对于IndexFlatL2（L2距离），距离越小表示越相似，应该保留距离小于阈值的结果
-                    index_type = self.config.get("index_type", "IndexFlatIP")
                     if "IP" in index_type:  # Inner Product类型索引
                         if dist < threshold:  # 内积小于阈值，相似度低，过滤
                             should_filter = True
-                    else:  # L2距离类型索引
+                    else:  # L2距离类型索引 (包括LSH的Hamming距离)
                         if dist > threshold:  # L2距离大于阈值，相似度低，过滤
                             should_filter = True
+
                 if not should_filter:
                     results.append(string_id)
                     filtered_distances.append(float(dist))  # 显式转为Python float
@@ -473,10 +479,10 @@ class FaissIndex(BaseVDBIndex):
         # 检查结果数量并给出警告
         available_count = len([sid for sid in self.id_map.values() if sid not in self.tombstones])
         if len(results) < topk and len(results) < available_count:
-            self.logger.warning(f"期望返回{topk}个结果，实际只找到{len(results)}个结果")
+            self.logger.info(f"期望返回{topk}个结果，实际只找到{len(results)}个结果")
 
         if threshold is not None and len(results) == 0:
-            self.logger.warning(f"在阈值{threshold}限制下，未找到任何结果")
+            self.logger.info(f"在阈值{threshold}限制下，未找到任何结果")
 
         return results, filtered_distances
 
@@ -491,7 +497,7 @@ class FaissIndex(BaseVDBIndex):
         """
         # 检查ID是否已存在且不在墓碑中
         if string_id in self.rev_map and string_id not in self.tombstones:
-            self.logger.warning(f"ID {string_id} 已存在，无法插入")
+            self.logger.warning(f"\nID {string_id} 已存在，无法插入")
             return 0
 
         # 检查向量是否重复
