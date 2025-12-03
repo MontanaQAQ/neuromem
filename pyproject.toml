@@ -44,6 +44,7 @@ line-ending = "lf"
 
 [tool.ruff.lint.isort]
 known-first-party = ["memory_collection", "search_engine", "storage_engine", "utils"]
+known-third-party = ["sage"]
 force-single-line = false
 combine-as-imports = false
 split-on-trailing-comma = true

@@ -6,15 +6,14 @@ import os
 import shutil
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
-
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.vdb_index import index_factory
 from ..utils.path_utils import get_default_data_dir
-from .base_collection import BaseMemoryCollection
+from .base_collection import BaseMemoryCollection, IndexType
 
 
 class VDBMemoryCollection(BaseMemoryCollection):
@@ -28,27 +27,39 @@ class VDBMemoryCollection(BaseMemoryCollection):
     - 验证向量维度
     - 执行向量检索
 
+    设计原则：
+    - 数据只存一份：text_storage + metadata_storage
+    - 索引可以有多个：支持多个独立的向量索引
+    - 索引可以独立增删：从某个索引移除不影响数据
+
     注意：embedding 的生成应在外部完成，此类仅负责向量的存储和检索。
     """
 
+    # 声明支持的索引类型
+    supported_index_types: ClassVar[set[IndexType]] = {IndexType.VDB}
+
     def __init__(self, config: dict[str, Any]):
-        self.name = config["name"]
-        super().__init__(self.name)
+        # 调用父类初始化
+        super().__init__(config)
 
         self.logger = CustomLogger()
 
         # 存储index的参数
         # index_name -> dict: { index, dim, description, backend_type, config, is_init }
-        self.index_info = {}
+        self.index_info: dict[str, dict[str, Any]] = {}
 
         # For backward compatibility with tests that expect this attribute
-        self.embedding_model_factory = {}
+        self.embedding_model_factory: dict[str, Any] = {}
 
         # Initialize statistics tracking
         self._init_statistics()
 
     # 创建某个索引（不插入数据）
-    def create_index(self, config: dict[str, Any] | None = None):
+    def create_index(
+        self,
+        config: dict[str, Any],
+        index_type: IndexType | None = None,  # 基础 Collection 可忽略
+    ) -> bool:
         """
         创建新的向量索引。
 
@@ -59,40 +70,44 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 - backend_type: 索引后端类型 (如 "FAISS")
                 - description: 索引描述 (可选)
                 - index_parameter: 索引参数 (可选)
+            index_type: 索引类型（VDBMemoryCollection 只支持 VDB，此参数可忽略）
+
+        Returns:
+            是否创建成功
         """
         # 检查创建条件
         if config is None:
             self.logger.warning("Config cannot be None")
-            return None
+            return False
 
         index_name = config.get("name")
         if not index_name:
             self.logger.warning(
                 "The config must contain the 'name' field, and the index cannot be created."
             )
-            return None
+            return False
         if index_name in self.index_info:
             self.logger.warning(
                 f"The index '{index_name}' already exists and cannot be created again"
             )
-            return None
+            return False
 
         # Check for embedding_model field (for backward compatibility with tests)
         embedding_model = config.get("embedding_model")
         if embedding_model is not None and not isinstance(embedding_model, str):
             self.logger.warning("The 'embedding_model' must be a string if provided.")
-            return None
+            return False
 
         dim = config.get("dim")
         if not isinstance(dim, int) or dim <= 0:
             self.logger.warning("The config must contain valid 'dim' (positive int).")
-            return None
+            return False
 
         # Check for backend_type (required field)
         backend_type = config.get("backend_type")
         if backend_type is None:
             self.logger.warning("The config must contain 'backend_type' field.")
-            return None
+            return False
 
         try:
             backend_type = config.get("backend_type")
@@ -139,18 +154,45 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         return True
 
-    # 直接删除某个索引
-    def delete_index(self, index_name: str):
+    def delete_index(self, index_name: str) -> bool:
         """
         删除指定名称的索引。
+
+        Args:
+            index_name: 索引名称
+
+        Returns:
+            是否删除成功
         """
         if index_name in self.index_info:
             del self.index_info[index_name]
+            return True
         else:
-            raise ValueError(f"Index '{index_name}' does not exist.")
+            self.logger.warning(f"Index '{index_name}' does not exist.")
+            return False
 
-    # 列举索引信息
-    def list_index(self, *index_names):
+    def list_indexes(self) -> list[dict[str, Any]]:
+        """
+        列出所有索引。
+
+        Returns:
+            索引信息列表: [{"name": ..., "type": IndexType.VDB, "config": {...}}, ...]
+        """
+        return [
+            {
+                "name": name,
+                "type": IndexType.VDB,
+                "config": {
+                    "dim": info.get("dim"),
+                    "backend_type": info.get("backend_type"),
+                    "description": info.get("description", ""),
+                },
+            }
+            for name, info in self.index_info.items()
+        ]
+
+    # 列举索引信息（向后兼容方法）
+    def list_index(self, *index_names: str) -> list[dict[str, str]]:
         """
         列出指定的索引或所有索引及其描述信息。
         """
@@ -336,69 +378,74 @@ class VDBMemoryCollection(BaseMemoryCollection):
                         self.metadata_storage.add_field(field_name)
                 self.metadata_storage.store(stable_id, metadata)
 
-    # 单条数据插入（必须指定索引插入）
     def insert(
         self,
-        index_name: str,
-        raw_data: str,
-        vector: np.ndarray,
+        content: str,
+        index_names: list[str] | str | None = None,
+        vector: np.ndarray | None = None,
         metadata: dict[str, Any] | None = None,
-    ):
+        **kwargs: Any,
+    ) -> str:
         """
-        插入单条数据到指定索引。
+        插入数据到指定索引。
 
         Args:
-            index_name: 索引名称
-            raw_data: 原始文本数据（用于存储）
-            vector: 预先生成的向量
+            content: 文本内容
+            index_names: 目标索引名列表或单个索引名
+            vector: 预先生成的向量（VDB 索引必需）
             metadata: 元数据（可选）
+            **kwargs: 向后兼容参数（如旧版 index_name, raw_data）
 
         Returns:
-            插入数据的 ID，失败返回 None
+            插入数据的 stable_id
         """
-        # 检查索引是否存在
-        if index_name not in self.index_info:
-            self.logger.warning(f"The index '{index_name}' does not exist")
-            return None
-        index = self.index_info[index_name]["index"]
+        # 向后兼容：处理旧的参数格式 insert(index_name, raw_data, vector, metadata)
+        if isinstance(content, str) and index_names is None and "raw_data" not in kwargs:
+            # 检查是否是旧版调用
+            pass  # 使用新格式
 
-        # 首先存储数据到 storage
-        key = raw_data
-        if metadata:
-            key += json.dumps(metadata, sort_keys=True)
-        stable_id = hashlib.sha256(key.encode("utf-8")).hexdigest()
-        self.text_storage.store(stable_id, raw_data)
+        # 生成 stable_id
+        stable_id = self._get_stable_id(content, metadata)
 
-        # 自动注册所有未知的元数据字段
+        # 存储文本
+        self.text_storage.store(stable_id, content)
+
+        # 存储元数据
         if metadata:
             for field_name in metadata:
                 if not self.metadata_storage.has_field(field_name):
                     self.metadata_storage.add_field(field_name)
             self.metadata_storage.store(stable_id, metadata)
 
-        # 统一处理不同格式的向量
-        processed_vector: np.ndarray
-        if hasattr(vector, "detach") and hasattr(vector, "cpu"):
-            processed_vector = vector.detach().cpu().numpy()  # type: ignore
-        elif isinstance(vector, list) or not isinstance(vector, np.ndarray):
-            processed_vector = np.array(vector)
-        else:
-            processed_vector = vector
-        processed_vector = processed_vector.astype(np.float32)
-        # L2 normalization
-        norm = np.linalg.norm(processed_vector)
-        if norm > 0:
-            processed_vector = processed_vector / norm
+        # 如果没有指定索引或没有向量，只存数据
+        if index_names is None or vector is None:
+            return stable_id
 
-        # 检查向量维度是否与索引要求一致
-        expected_dim = self.index_info[index_name]["dim"]
-        if processed_vector.shape[-1] != expected_dim:
-            self.logger.warning(
-                f"Index '{index_name}' requires dimension {expected_dim}, but vector dimension is {processed_vector.shape[-1]}, skipping insertion"
-            )
-            return None
+        # 规范化 index_names
+        target_indexes: list[str] = []
+        target_indexes = [index_names] if isinstance(index_names, str) else list(index_names)
 
-        index.insert(processed_vector, stable_id)
+        # 处理向量
+        processed_vector = self._process_vector(vector)
+        if processed_vector is None:
+            self.logger.warning("Failed to process vector, data stored but not indexed.")
+            return stable_id
+
+        # 插入到各索引
+        for idx_name in target_indexes:
+            if idx_name not in self.index_info:
+                self.logger.warning(f"The index '{idx_name}' does not exist")
+                continue
+
+            expected_dim = self.index_info[idx_name]["dim"]
+            if processed_vector.shape[-1] != expected_dim:
+                self.logger.warning(
+                    f"Index '{idx_name}' requires dimension {expected_dim}, "
+                    f"but vector dimension is {processed_vector.shape[-1]}, skipping"
+                )
+                continue
+
+            self.index_info[idx_name]["index"].insert(processed_vector, stable_id)
 
         # Track statistics
         self.statistics["insert_count"] += 1
@@ -406,107 +453,223 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         return stable_id
 
-    # 单条文本删除（全索引删除）
-    def delete(self, raw_text: str):
+    def _process_vector(self, vector: np.ndarray | Any) -> np.ndarray | None:
+        """处理和归一化向量。"""
+        try:
+            processed_vector: np.ndarray
+            if hasattr(vector, "detach") and hasattr(vector, "cpu"):
+                processed_vector = vector.detach().cpu().numpy()  # type: ignore
+            elif isinstance(vector, list) or not isinstance(vector, np.ndarray):
+                processed_vector = np.array(vector)
+            else:
+                processed_vector = vector
+            processed_vector = processed_vector.astype(np.float32)
+
+            # L2 normalization
+            norm = np.linalg.norm(processed_vector)
+            if norm > 0:
+                processed_vector = processed_vector / norm
+            return processed_vector
+        except Exception as e:
+            self.logger.error(f"Failed to process vector: {e}")
+            return None
+
+    def insert_to_index(
+        self,
+        item_id: str,
+        index_name: str,
+        vector: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> bool:
         """
-        删除指定的文本条目
+        将已有数据加入索引（用于跨索引迁移）。
 
         Args:
-            raw_text: 要删除的原始文本
+            item_id: 数据 ID
+            index_name: 目标索引名
+            vector: 向量（VDB 索引必需）
 
         Returns:
-            bool: 删除是否成功
+            成功/失败
+        """
+        if index_name not in self.index_info:
+            self.logger.warning(f"The index '{index_name}' does not exist")
+            return False
+
+        # 检查数据是否存在
+        if not self.text_storage.has(item_id):
+            self.logger.warning(f"Item '{item_id}' not found in storage.")
+            return False
+
+        # VDB 需要向量
+        if vector is None:
+            self.logger.warning("Vector is required for VDB index.")
+            return False
+
+        # 处理向量
+        processed_vector = self._process_vector(vector)
+        if processed_vector is None:
+            return False
+
+        # 检查维度
+        expected_dim = self.index_info[index_name]["dim"]
+        if processed_vector.shape[-1] != expected_dim:
+            self.logger.warning(
+                f"Index '{index_name}' requires dimension {expected_dim}, "
+                f"but vector dimension is {processed_vector.shape[-1]}"
+            )
+            return False
+
+        # 插入到索引
+        self.index_info[index_name]["index"].insert(processed_vector, item_id)
+        self._update_total_vectors()
+        return True
+
+    def remove_from_index(self, item_id: str, index_name: str) -> bool:
+        """
+        从索引移除（数据保留）。
+
+        Args:
+            item_id: 数据 ID
+            index_name: 索引名称
+
+        Returns:
+            成功/失败
+        """
+        if index_name not in self.index_info:
+            self.logger.warning(f"Index '{index_name}' does not exist.")
+            return False
+
+        self.index_info[index_name]["index"].delete(item_id)
+        self._update_total_vectors()
+        return True
+
+    def delete(self, item_id: str) -> bool:
+        """
+        完全删除条目（数据 + 所有索引）。
+
+        Args:
+            item_id: 条目 ID
+
+        Returns:
+            是否删除成功
         """
         try:
-            stable_id = self._get_stable_id(raw_text)
-
             # 检查是否存在
-            if not self.text_storage.has(stable_id):
-                self.logger.warning(
-                    f"Text not found for deletion: excerpt='{raw_text[:50]}', stable_id='{stable_id}'"
-                )
+            if not self.text_storage.has(item_id):
+                self.logger.warning(f"Item '{item_id}' not found for deletion.")
                 return False
 
-            self.text_storage.delete(stable_id)
-            self.metadata_storage.delete(stable_id)
+            self.text_storage.delete(item_id)
+            self.metadata_storage.delete(item_id)
 
             for index_info in self.index_info.values():
-                index_info["index"].delete(stable_id)
+                index_info["index"].delete(item_id)
 
             return True
         except Exception as e:
             self.logger.error(f"Failed to delete: {e}")
             return False
 
-    # 检索文本（指定索引检索）
-    def retrieve(
-        self,
-        query_vector: np.ndarray,
-        index_name: str,
-        topk: int | None = None,
-        threshold: float | None = None,
-        with_metadata: bool = False,
-        metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
-    ):
+    def delete_by_content(self, content: str) -> bool:
         """
-        使用查询向量检索相似数据。
+        根据内容删除条目（向后兼容方法）。
 
         Args:
-            query_vector: 查询向量（应已归一化）
-            index_name: 索引名称
-            topk: 返回的最大结果数（默认 5）
-            threshold: 相似度/距离阈值，None 表示不进行阈值过滤。
-                      对于不同索引类型，阈值含义不同：
-                      - IndexFlatIP（内积）: 阈值表示最小相似度，保留 >= threshold 的结果
-                      - IndexFlatL2/IndexLSH: 阈值表示最大距离，保留 <= threshold 的结果
-            with_metadata: 是否返回元数据
-            metadata_filter_func: 元数据过滤函数
-            **metadata_conditions: 元数据过滤条件
+            content: 原始文本内容
 
         Returns:
-            检索结果列表，失败返回 None
+            是否删除成功
         """
-        # Track start time for statistics
+        stable_id = self._get_stable_id(content)
+        return self.delete(stable_id)
+
+    def retrieve(
+        self,
+        query: str | np.ndarray | None = None,
+        index_name: str | None = None,
+        top_k: int = 10,
+        with_metadata: bool = False,
+        metadata_filter: Callable[[dict[str, Any]], bool] | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """
+        检索与查询相似的条目（统一接口）。
+
+        Args:
+            query: 查询向量（numpy array）或文本（需外部转为向量）
+            index_name: 要搜索的索引名称，None 时使用第一个可用索引
+            top_k: 返回的最大结果数
+            with_metadata: 是否返回元数据（保留以向后兼容，新接口始终返回）
+            metadata_filter: 元数据过滤函数
+            **kwargs: 额外参数
+                - threshold: 相似度阈值
+                - metadata_conditions: 元数据过滤条件（旧式）
+
+        Returns:
+            统一格式的检索结果列表:
+            [{"id": str, "text": str, "metadata": dict, "score": float}, ...]
+        """
         start_time = time.time()
+
+        # 确定要使用的索引
+        if index_name is None:
+            if not self.index_info:
+                self.logger.warning("No index available for retrieval")
+                return []
+            index_name = next(iter(self.index_info.keys()))
 
         if index_name not in self.index_info:
             self.logger.warning(f"The index '{index_name}' does not exist")
-            return None
+            return []
 
-        if topk is None:
-            topk = 5
-        # 不再为 threshold 设置默认值，让底层 index.search 决定是否进行阈值过滤
-        # threshold 为 None 时不进行过滤，仅返回 topk 个最近邻结果
+        # 处理查询向量
+        if query is None:
+            self.logger.warning("Query cannot be None for vector retrieval")
+            return []
 
         # 统一处理不同格式的查询向量
         processed_query: np.ndarray
-        if hasattr(query_vector, "detach") and hasattr(query_vector, "cpu"):
-            processed_query = query_vector.detach().cpu().numpy()  # type: ignore
-        elif isinstance(query_vector, list) or not isinstance(query_vector, np.ndarray):
-            processed_query = np.array(query_vector)
+        if isinstance(query, str):
+            # 如果是字符串，记录警告（VDB 需要向量）
+            self.logger.warning("VDB retrieve requires vector query, not string")
+            return []
+        elif hasattr(query, "detach") and hasattr(query, "cpu"):
+            # PyTorch tensor
+            processed_query = query.detach().cpu().numpy()  # type: ignore
+        elif isinstance(query, list):
+            processed_query = np.array(query)
         else:
-            processed_query = query_vector
+            processed_query = query
+
         processed_query = processed_query.astype(np.float32)
+
         # 归一化查询向量
         norm = np.linalg.norm(processed_query)
         if norm == 0:
             self.logger.warning("Query vector has zero norm and cannot be normalized.")
-            return None
+            return []
         processed_query = processed_query / norm
 
         # 检查维度
         expected_dim = self.index_info[index_name]["dim"]
         if processed_query.shape[-1] != expected_dim:
             self.logger.warning(
-                f"Query vector dimension {processed_query.shape[-1]} does not match index dimension {expected_dim}"
+                f"Query vector dimension {processed_query.shape[-1]} "
+                f"does not match index dimension {expected_dim}"
             )
-            return None
+            return []
 
         index = self.index_info[index_name]["index"]
 
-        top_k_ids, distances = index.search(processed_query, topk=topk, threshold=threshold)
+        # 获取额外参数
+        threshold = kwargs.get("threshold")
+        metadata_conditions = {k: v for k, v in kwargs.items() if k not in ("threshold",)}
 
+        # 执行搜索
+        top_k_ids, distances = index.search(processed_query, topk=top_k, threshold=threshold)
+
+        # 处理返回格式
         if top_k_ids and isinstance(top_k_ids[0], (list, np.ndarray)):
             top_k_ids = top_k_ids[0]
         if distances and isinstance(distances[0], (list, np.ndarray)):
@@ -514,19 +677,18 @@ class VDBMemoryCollection(BaseMemoryCollection):
         top_k_ids = [str(i) for i in top_k_ids]
 
         # 应用元数据过滤
-        if metadata_filter_func or metadata_conditions:
-            filtered_ids = self.filter_ids(top_k_ids, metadata_filter_func, **metadata_conditions)
+        if metadata_filter or metadata_conditions:
+            filtered_ids = self.filter_ids(top_k_ids, metadata_filter, **metadata_conditions)
         else:
             filtered_ids = top_k_ids
 
-        # 截取需要的数量，检索到几个就返回几个
-        final_ids = filtered_ids[:topk]
+        # 截取需要的数量
+        final_ids = filtered_ids[:top_k]
 
-        # 如果检索结果少于请求数量，记录信息但不警告
-        if len(final_ids) < topk:
-            self.logger.info(f"Retrieved {len(final_ids)} results (requested {topk})")
+        # 记录统计信息
+        if len(final_ids) < top_k:
+            self.logger.info(f"Retrieved {len(final_ids)} results (requested {top_k})")
 
-        # Track statistics
         duration = time.time() - start_time
         self.statistics["retrieve_count"] += 1
         self.statistics["retrieve_stats"].append(
@@ -535,58 +697,118 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 "duration": duration,
                 "result_count": len(final_ids),
                 "index_name": index_name,
-                "requested_topk": topk if topk is not None else 5,
+                "requested_topk": top_k,
             }
         )
-        # Limit retrieve_stats to prevent unbounded growth
+        # 限制统计记录数量
         max_retrieve_stats = 1000
         if len(self.statistics["retrieve_stats"]) > max_retrieve_stats:
             self.statistics["retrieve_stats"].pop(0)
 
-        if with_metadata:
-            return [
+        # 构建统一格式的返回结果
+        results = []
+        for i, item_id in enumerate(final_ids):
+            score = float(distances[i]) if i < len(distances) else 0.0
+            results.append(
                 {
-                    "text": self.text_storage.get(i),
-                    "metadata": self.metadata_storage.get(i),
+                    "id": item_id,
+                    "text": self.text_storage.get(item_id),
+                    "metadata": self.metadata_storage.get(item_id) or {},
+                    "score": score,
                 }
-                for i in final_ids
-            ]
-        else:
-            return [self.text_storage.get(i) for i in final_ids]
+            )
 
-    # 单条文本更新（必须指定索引更新）
+        return results
+
     def update(
         self,
-        index_name: str,
-        old_data: str,
-        new_data: str,
-        new_vector: np.ndarray,
-        new_metadata: dict[str, Any] | None = None,
-    ):
+        item_id: str,
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        vector: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> bool:
         """
-        更新指定数据。
+        更新指定条目（统一接口）。
 
         Args:
-            index_name: 索引名称
-            old_data: 原始文本
-            new_data: 新文本
+            item_id: 要更新的条目 ID
+            content: 新的文本内容（可选）
+            metadata: 新的元数据（可选）
+            vector: 新的向量（可选）
+            **kwargs: 额外参数
+                - index_names: 要更新向量的索引名称列表
+
+        Returns:
+            是否更新成功
+        """
+        if not self.text_storage.has(item_id):
+            self.logger.warning(f"Item '{item_id}' not found for update.")
+            return False
+
+        try:
+            # 更新文本内容
+            if content is not None:
+                self.text_storage.delete(item_id)
+                self.text_storage.add(item_id, content)
+
+            # 更新元数据
+            if metadata is not None:
+                self.metadata_storage.delete(item_id)
+                self.metadata_storage.add(item_id, metadata)
+
+            # 更新向量（如果提供）
+            if vector is not None:
+                index_names = kwargs.get("index_names")
+                if index_names is None:
+                    # 更新所有索引中的向量
+                    index_names = list(self.index_info.keys())
+
+                for idx_name in index_names:
+                    if idx_name in self.index_info:
+                        index = self.index_info[idx_name]["index"]
+                        # 删除旧向量并添加新向量
+                        index.delete(item_id)
+                        index.add(item_id, vector)
+
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to update item '{item_id}': {e}")
+            return False
+
+    def update_by_content(
+        self,
+        old_content: str,
+        new_content: str,
+        new_vector: np.ndarray,
+        new_metadata: dict[str, Any] | None = None,
+    ) -> str | None:
+        """
+        根据内容更新条目（向后兼容方法）。
+
+        Args:
+            old_content: 原始文本
+            new_content: 新文本
             new_vector: 新向量
             new_metadata: 新元数据（可选）
 
         Returns:
-            新插入数据的ID（如字符串），如果插入失败则为 None。
+            新条目的 ID，失败返回 None
         """
-        old_id = self._get_stable_id(old_data)
+        old_id = self._get_stable_id(old_content)
         if not self.text_storage.has(old_id):
-            raise ValueError("Original data not found.")
+            self.logger.warning("Original content not found for update.")
+            return None
 
-        self.text_storage.delete(old_id)
-        self.metadata_storage.delete(old_id)
+        # 删除旧条目
+        self.delete(old_id)
 
-        for index_info in self.index_info.values():
-            index_info["index"].delete(old_id)
-
-        return self.insert(index_name, new_data, new_vector, new_metadata)
+        # 插入新条目
+        return self.insert(
+            content=new_content,
+            metadata=new_metadata,
+            vector=new_vector,
+        )
 
     def _serialize_func(self, func):
         """

@@ -3,14 +3,15 @@ import json
 import os
 import shutil
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
+import numpy as np
 import yaml
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.kv_index import KVIndexFactory
 from ..utils.path_utils import get_default_data_dir
-from .base_collection import BaseMemoryCollection
+from .base_collection import BaseMemoryCollection, IndexType
 
 # 通过config文件指定默认索引，neuromem默认索引，用户指定索引
 
@@ -23,13 +24,21 @@ def load_config(path: str) -> dict:
 
 class KVMemoryCollection(BaseMemoryCollection):
     """
-    基于键值对的内存集合，继承自 BaseMemoryCollection
-    提供基本的键值存储和检索功能
+    基于键值对的内存集合，继承自 BaseMemoryCollection。
+    提供基本的文本索引（BM25、TFIDF等）和检索功能。
 
     支持两种初始化方式：
     1. 通过config字典创建：KVMemoryCollection(config)
     2. 通过load方法恢复：KVMemoryCollection.load(name, load_path)
+
+    设计原则：
+    - 数据只存一份：text_storage + metadata_storage
+    - 索引可以有多个：支持 BM25、TFIDF 等多种文本索引
+    - 索引可以独立增删：从某个索引移除不影响数据
     """
+
+    # 声明支持的索引类型
+    supported_index_types: ClassVar[set[IndexType]] = {IndexType.KV}
 
     def __init__(self, config: dict[str, Any]):
         """
@@ -45,14 +54,16 @@ class KVMemoryCollection(BaseMemoryCollection):
             self.logger.error("config中必须包含'name'字段")
             raise ValueError("config中必须包含'name'字段")
 
-        self.name = config["name"]
-        super().__init__(self.name)
+        # 调用父类初始化
+        super().__init__(config)
 
         # 从config中获取配置参数，提供默认值
         self.default_topk = config.get("default_topk", 5)
         self.default_index_type = config.get("default_index_type", "bm25s")
 
-        self.indexes = {}  # index_name -> {index_type, description, metadata_filter_func, metadata_conditions}
+        self.indexes: dict[
+            str, dict[str, Any]
+        ] = {}  # index_name -> {index, index_type, description, ...}
 
         # 如果config中指定了config_path，加载外部配置
         config_path = config.get("config_path")
@@ -233,23 +244,34 @@ class KVMemoryCollection(BaseMemoryCollection):
 
     def insert(
         self,
-        raw_text: str,
+        content: str,
+        index_names: list[str] | str | None = None,
+        vector: np.ndarray | None = None,  # 不使用，保持接口一致性
         metadata: dict[str, Any] | None = None,
-        *index_names: str,
-    ):
+        **kwargs: Any,
+    ) -> str:
         """
-        插入文本数据到指定索引
+        插入文本数据到指定索引。
 
         Args:
-            raw_text: 原始文本
+            content: 文本内容
+            index_names: 目标索引名列表或单个索引名（None 表示只存数据不建索引）
+            vector: 向量（KV 索引不使用此参数，保持接口一致性）
             metadata: 元数据字典
-            *index_names: 要插入的索引名称列表
+            **kwargs: 其他参数（向后兼容）
+
+        Returns:
+            stable_id
         """
         self.logger.debug("KVMemoryCollection: insert called")
 
-        stable_id = self._get_stable_id(raw_text)
-        self.text_storage.store(stable_id, raw_text)
+        # 生成稳定 ID
+        stable_id = self._get_stable_id(content, metadata)
 
+        # 存储文本
+        self.text_storage.store(stable_id, content)
+
+        # 存储元数据
         if metadata:
             # 自动注册所有未知的元数据字段
             for field_name in metadata:
@@ -257,87 +279,210 @@ class KVMemoryCollection(BaseMemoryCollection):
                     self.metadata_storage.add_field(field_name)
             self.metadata_storage.store(stable_id, metadata)
 
-        for index_name in index_names:
+        # 规范化 index_names
+        target_indexes: list[str] = []
+        if index_names is None:
+            pass  # 只存数据，不建索引
+        elif isinstance(index_names, str):
+            target_indexes = [index_names]
+        else:
+            target_indexes = list(index_names)
+
+        # 插入到各索引
+        for index_name in target_indexes:
             if index_name not in self.indexes:
                 self.logger.warning(f"Index '{index_name}' does not exist.")
                 continue
             index = self.indexes[index_name]["index"]
-            index.insert(raw_text, stable_id)
+            index.insert(content, stable_id)
 
-        self.logger.debug(f"成功插入文本到 {len(index_names)} 个索引中")
+        self.logger.debug(f"成功插入文本到 {len(target_indexes)} 个索引中")
         return stable_id
 
-    def delete(self, raw_text: str):
+    def insert_to_index(
+        self,
+        item_id: str,
+        index_name: str,
+        vector: np.ndarray | None = None,  # 不使用，保持接口一致性
+        **kwargs: Any,
+    ) -> bool:
         """
-        删除指定文本及其关联数据
+        将已有数据加入索引（用于跨索引迁移）。
 
         Args:
-            raw_text: 要删除的原始文本
+            item_id: 数据 ID
+            index_name: 目标索引名
+            vector: 向量（KV 索引不使用此参数）
+
+        Returns:
+            成功/失败
+        """
+        if index_name not in self.indexes:
+            self.logger.warning(f"Index '{index_name}' does not exist.")
+            return False
+
+        # 获取文本内容
+        content = self.text_storage.get(item_id)
+        if content is None:
+            self.logger.warning(f"Item '{item_id}' not found in storage.")
+            return False
+
+        # 插入到索引
+        index = self.indexes[index_name]["index"]
+        index.insert(content, item_id)
+        return True
+
+    def remove_from_index(self, item_id: str, index_name: str) -> bool:
+        """
+        从索引移除（数据保留）。
+
+        Args:
+            item_id: 数据 ID
+            index_name: 索引名称
+
+        Returns:
+            成功/失败
+        """
+        if index_name not in self.indexes:
+            self.logger.warning(f"Index '{index_name}' does not exist.")
+            return False
+
+        index = self.indexes[index_name]["index"]
+        index.delete(item_id)
+        return True
+
+    def delete(self, item_id: str) -> bool:
+        """
+        完全删除条目（数据 + 所有索引）。
+
+        Args:
+            item_id: 条目 ID（可以是 stable_id 或原始文本的 hash）
+
+        Returns:
+            是否删除成功
         """
         self.logger.debug("KVMemoryCollection: delete called")
 
-        stable_id = self._get_stable_id(raw_text)
-        self.text_storage.delete(stable_id)
-        self.metadata_storage.delete(stable_id)
+        # 检查是否存在
+        if not self.text_storage.has(item_id):
+            self.logger.warning(f"Item '{item_id}' not found.")
+            return False
 
+        # 删除存储
+        self.text_storage.delete(item_id)
+        self.metadata_storage.delete(item_id)
+
+        # 从所有索引中删除
         for index in self.indexes.values():
-            index["index"].delete(stable_id)
+            index["index"].delete(item_id)
 
-        self.logger.debug(f"成功删除文本，ID: {stable_id[:8]}...")
+        self.logger.debug(f"成功删除条目，ID: {item_id[:8]}...")
+        return True
+
+    def delete_by_content(self, content: str) -> bool:
+        """
+        根据内容删除条目（向后兼容方法）。
+
+        Args:
+            content: 原始文本内容
+
+        Returns:
+            是否删除成功
+        """
+        stable_id = self._get_stable_id(content)
+        return self.delete(stable_id)
 
     def update(
         self,
-        former_text: str,
-        new_text: str,
+        item_id: str,
+        new_content: str | None = None,
+        new_vector: np.ndarray | None = None,  # 不使用，保持接口一致性
         new_metadata: dict[str, Any] | None = None,
-        *index_names: str,
-    ) -> str:
+        index_name: str | None = None,
+        **kwargs: Any,
+    ) -> bool:
         """
-        更新文本数据
+        更新条目。
 
         Args:
-            former_text: 原始文本
-            new_text: 新文本
-            new_metadata: 新的元数据
-            *index_names: 要更新的索引名称列表
+            item_id: 条目 ID
+            new_content: 新文本内容
+            new_vector: 新向量（KV 索引不使用此参数）
+            new_metadata: 新元数据
+            index_name: 索引名称（如果指定，只更新该索引）
+
+        Returns:
+            是否更新成功
         """
         self.logger.debug("KVMemoryCollection: update called")
 
-        old_id = self._get_stable_id(former_text)
-        if not self.text_storage.has(old_id):
-            raise ValueError("Original text not found.")
+        if not self.text_storage.has(item_id):
+            self.logger.warning(f"Item '{item_id}' not found.")
+            return False
 
-        self.text_storage.delete(old_id)
-        self.metadata_storage.delete(old_id)
+        old_content = self.text_storage.get(item_id)
 
-        for index in self.indexes.values():
-            index["index"].delete(old_id)
+        # 如果内容没变，只更新元数据
+        if new_content is None or new_content == old_content:
+            if new_metadata:
+                for field_name in new_metadata:
+                    if not self.metadata_storage.has_field(field_name):
+                        self.metadata_storage.add_field(field_name)
+                self.metadata_storage.store(item_id, new_metadata)
+            return True
 
-        new_id = self.insert(new_text, new_metadata, *index_names)
-        self.logger.debug(f"成功更新文本，旧ID: {old_id[:8]}..., 新ID: {new_id[:8]}...")
-        return new_id
+        # 内容变了，需要重新生成 ID 并更新索引
+        # 先确定目标索引
+        target_indexes = [index_name] if index_name else list(self.indexes.keys())
+
+        # 删除旧条目
+        self.delete(item_id)
+
+        # 插入新条目
+        new_id = self.insert(new_content, target_indexes, None, new_metadata)
+        self.logger.debug(f"成功更新条目，旧ID: {item_id[:8]}..., 新ID: {new_id[:8]}...")
+        return True
 
     def retrieve(
         self,
-        raw_text: str,
-        topk: int | None = None,
-        with_metadata: bool | None = False,
+        query: str | np.ndarray | None = None,
         index_name: str | None = None,
-        metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
-    ):
+        top_k: int = 10,
+        with_metadata: bool = False,
+        metadata_filter: Callable[[dict[str, Any]], bool] | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         """
-        检索相关文本
+        检索数据。
 
         Args:
-            raw_text: 查询文本
-            topk: 返回的最大结果数量
-            with_metadata: 是否包含元数据
+            query: 查询文本（向量参数将被忽略，仅为接口统一）
             index_name: 使用的索引名称
-            metadata_filter_func: 元数据过滤函数
-            **metadata_conditions: 元数据过滤条件
+            top_k: 返回数量
+            with_metadata: 是否返回 metadata
+            metadata_filter: 元数据过滤函数
+            **kwargs: 其他参数（支持 topk、metadata_filter_func 等向后兼容参数）
+
+        Returns:
+            检索结果列表: [{"id": ..., "text": ..., "metadata": ..., "score": ...}, ...]
         """
         self.logger.debug("KVMemoryCollection: retrieve called")
+
+        # 向后兼容处理
+        if isinstance(query, np.ndarray):
+            self.logger.warning(
+                "KVMemoryCollection does not support vector queries, returning empty."
+            )
+            return []
+
+        query_text = query if isinstance(query, str) else ""
+
+        # 向后兼容：支持旧版参数名
+        topk = kwargs.get("topk", top_k)
+        metadata_filter_func = kwargs.get("metadata_filter_func", metadata_filter)
+        metadata_conditions = {
+            k: v for k, v in kwargs.items() if k not in ["topk", "metadata_filter_func"]
+        }
 
         if index_name is None or index_name not in self.indexes:
             self.logger.warning(f"Index '{index_name}' does not exist.")
@@ -347,96 +492,141 @@ class KVMemoryCollection(BaseMemoryCollection):
             topk = self.default_topk
 
         index = self.indexes[index_name]["index"]
-        topk_ids = index.search(raw_text, topk=topk)
+        topk_ids = index.search(query_text, topk=topk)
         filtered_ids = self.filter_ids(topk_ids, metadata_filter_func, **metadata_conditions)
 
         self.logger.debug(f"检索到 {len(filtered_ids)} 条结果（请求 {topk} 条）")
 
-        if with_metadata:
-            return [
-                {
-                    "text": self.text_storage.get(i),
-                    "metadata": self.metadata_storage.get(i),
-                }
-                for i in filtered_ids
-            ]
-        else:
-            return [self.text_storage.get(i) for i in filtered_ids]
+        # 统一返回格式
+        results: list[dict[str, Any]] = []
+        for i, item_id in enumerate(filtered_ids):
+            result: dict[str, Any] = {
+                "id": item_id,
+                "text": self.text_storage.get(item_id),
+                "score": 1.0 - (i * 0.01),  # KV 索引没有真正的分数，用排名模拟
+            }
+            if with_metadata:
+                result["metadata"] = self.metadata_storage.get(item_id)
+            results.append(result)
+
+        return results
 
     def create_index(
         self,
-        config: dict[str, Any] | None = None,
+        config: dict[str, Any],
+        index_type: IndexType | None = None,  # 基础 Collection 可忽略
         metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
-    ):
+        **metadata_conditions: Any,
+    ) -> bool:
         """
-        创建新索引
+        创建新索引。
 
         Args:
-            config: 索引配置字典，必须包含name字段
-            metadata_filter_func: 元数据过滤函数
+            config: 索引配置字典，必须包含 name 字段
+            index_type: 索引类型（KVMemoryCollection 只支持 KV，此参数可忽略）
+            metadata_filter_func: 元数据过滤函数（决定哪些数据加入索引）
             **metadata_conditions: 元数据过滤条件
+
+        Returns:
+            是否创建成功
         """
-        # 检查1: config必须不为空且包含name字段
+        # 检查 config
         if config is None:
-            self.logger.warning("config不能为空，无法创建索引")
-            return 0
+            self.logger.warning("config 不能为空，无法创建索引")
+            return False
 
         if "name" not in config:
-            self.logger.warning("config中必须包含'name'字段，无法创建索引")
-            return 0
+            self.logger.warning("config 中必须包含 'name' 字段，无法创建索引")
+            return False
 
         index_name = config["name"]
 
-        # 检查2: 如果索引已存在，不允许创建
+        # 检查索引是否已存在
         if index_name in self.indexes:
             self.logger.warning(f"索引 '{index_name}' 已存在，无法重复创建")
-            return 0
+            return False
 
-        # 从config中获取参数，如果没有则使用默认值
-        index_type = config.get("index_type", self.default_index_type)
+        # 从 config 中获取参数，如果没有则使用默认值
+        kv_index_type = config.get("index_type", self.default_index_type)
         description = config.get("description", f"Index for {index_name}")
 
+        # 过滤要加入索引的数据
         all_ids = self.get_all_ids()
         filtered_ids = self.filter_ids(all_ids, metadata_filter_func, **metadata_conditions)
         texts = [self.text_storage.get(i) for i in filtered_ids]
 
         try:
             index = KVIndexFactory.create_index(
-                index_type=index_type,
+                index_type=kv_index_type,
                 index_name=index_name,
                 texts=texts,
                 ids=filtered_ids,
             )
         except ValueError as e:
-            self.logger.error(f"Index type {index_type} not supported: {e}")
-            raise NotImplementedError(f"Index type {index_type} not supported: {e}") from e
+            self.logger.error(f"Index type {kv_index_type} not supported: {e}")
+            raise NotImplementedError(f"Index type {kv_index_type} not supported: {e}") from e
 
         self.indexes[index_name] = {
             "index": index,
-            "index_type": index_type,
+            "index_type": kv_index_type,
             "description": description,
             "metadata_filter_func": metadata_filter_func,
             "metadata_conditions": metadata_conditions,
         }
 
-        self.logger.info(f"成功创建索引 '{index_name}'，类型: {index_type}")
-        return 1  # 成功创建返回1
+        self.logger.info(f"成功创建索引 '{index_name}'，类型: {kv_index_type}")
+        return True
 
-    def delete_index(self, index_name: str):
+    def delete_index(self, index_name: str) -> bool:
         """
-        删除指定名称的索引
+        删除指定名称的索引。
 
         Args:
             index_name: 要删除的索引名称
+
+        Returns:
+            是否删除成功
         """
         if index_name in self.indexes:
             del self.indexes[index_name]
             self.logger.info(f"成功删除索引: {index_name}")
+            return True
         else:
-            raise ValueError(f"Index '{index_name}' does not exist.")
+            self.logger.warning(f"Index '{index_name}' does not exist.")
+            return False
 
-    def rebuild_index(self, index_name: str):
+    def list_indexes(self) -> list[dict[str, Any]]:
+        """
+        列出所有索引。
+
+        Returns:
+            索引信息列表: [{"name": ..., "type": IndexType.KV, "config": {...}}, ...]
+        """
+        return [
+            {
+                "name": name,
+                "type": IndexType.KV,
+                "config": {
+                    "index_type": info["index_type"],
+                    "description": info["description"],
+                },
+            }
+            for name, info in self.indexes.items()
+        ]
+
+    def list_index(self) -> list[dict[str, str]]:
+        """
+        列出当前所有索引及其描述信息（向后兼容方法）。
+
+        Returns:
+            [{"name": ..., "description": ...}, ...]
+        """
+        return [
+            {"name": name, "description": info["description"]}
+            for name, info in self.indexes.items()
+        ]
+
+    def rebuild_index(self, index_name: str) -> bool:
         """
         重建指定索引
 
@@ -466,16 +656,6 @@ class KVMemoryCollection(BaseMemoryCollection):
 
         self.logger.info(f"索引 '{index_name}' 重建完成")
         return True
-
-    def list_index(self) -> list[dict[str, str]]:
-        """
-        列出当前所有索引及其描述信息。
-        返回结构：[{"name": ..., "description": ...}, ...]
-        """
-        return [
-            {"name": name, "description": info["description"]}
-            for name, info in self.indexes.items()
-        ]
 
 
 if __name__ == "__main__":

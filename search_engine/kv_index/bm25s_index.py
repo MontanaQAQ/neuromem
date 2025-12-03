@@ -1,9 +1,8 @@
-# file sage/core/sage.middleware.services.neuromem./search_engine/kv_index/bm25s_index.py
-# python -m sage.core.sage.middleware.services.neuromem..search_engine.kv_index.bm25s_index
+# file sage/middleware/services/neuromem/search_engine/kv_index/bm25s_index.py
 
 import os
 import shutil
-from typing import Any
+from typing import Any, Literal
 
 import bm25s
 import Stemmer
@@ -129,8 +128,11 @@ class BM25sIndex(BaseKVIndex):
 
     def update(self, id: str, new_text: str) -> None:
         """
-        更新指定id的文本内容，并重建索引。
         Update the text of the given id, then rebuild the index.
+
+        Args:
+            id: Identifier of entry to update
+            new_text: New text content
         """
         if id not in self.ids:
             return
@@ -140,8 +142,14 @@ class BM25sIndex(BaseKVIndex):
 
     def search(self, text: str, topk: int = 5) -> list[str]:
         """
-        对输入文本进行检索，返回最相关的topk个id。
         Search for the most relevant texts and return the top-k ids.
+
+        Args:
+            text: Search query text
+            topk: Maximum number of results
+
+        Returns:
+            List of matching IDs sorted by relevance
         """
         if self.bm25 is None or len(self.ids) == 0:
             return []
@@ -149,6 +157,137 @@ class BM25sIndex(BaseKVIndex):
         scores = self.bm25.get_scores(query_token)  # type: ignore
         topk_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:topk]
         return [self.ids[i] for i in topk_idx]
+
+    def search_with_scores(self, query: str, topk: int = 10) -> list[tuple[str, float]]:
+        """
+        Search for relevant entries with scores.
+
+        Args:
+            query: Search query text
+            topk: Maximum number of results
+
+        Returns:
+            List of (id, score) tuples sorted by score descending
+        """
+        if self.bm25 is None or len(self.ids) == 0:
+            return []
+        query_token = self.tokenizer.tokenize([query])[0]  # type: ignore
+        scores = self.bm25.get_scores(query_token)  # type: ignore
+        topk_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:topk]
+        return [(self.ids[i], float(scores[i])) for i in topk_idx]
+
+    def search_with_sort(
+        self,
+        query: str,
+        topk: int = 10,
+        sort_by: str | None = None,
+        sort_order: Literal["asc", "desc"] = "desc",
+        metadata_getter: Any = None,
+    ) -> list[str]:
+        """
+        Search with optional sorting by metadata field.
+
+        First finds relevant documents via BM25, then optionally re-sorts
+        by a metadata field (e.g., timestamp).
+
+        Args:
+            query: Search query text
+            topk: Maximum number of results
+            sort_by: Metadata field name to sort by (e.g., "timestamp")
+            sort_order: Sort order ("asc" or "desc")
+            metadata_getter: Callable to get metadata for an ID
+                            Should accept (id: str) -> dict
+
+        Returns:
+            List of matching IDs sorted by the specified field
+        """
+        if self.bm25 is None or len(self.ids) == 0:
+            return []
+
+        # First, get more candidates than needed for re-sorting
+        candidate_count = min(topk * 3, len(self.ids))
+        query_token = self.tokenizer.tokenize([query])[0]  # type: ignore
+        scores = self.bm25.get_scores(query_token)  # type: ignore
+        candidate_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:candidate_count]
+        candidates = [self.ids[i] for i in candidate_idx]
+
+        # If no sort_by specified, return BM25-ordered results
+        if sort_by is None or metadata_getter is None:
+            return candidates[:topk]
+
+        # Re-sort by metadata field
+        def get_sort_key(doc_id: str) -> Any:
+            try:
+                metadata = metadata_getter(doc_id)
+                if metadata and sort_by in metadata:
+                    return metadata[sort_by]
+            except Exception:
+                pass
+            # Default: put items without the field at the end
+            return float("-inf") if sort_order == "desc" else float("inf")
+
+        reverse = sort_order == "desc"
+        sorted_candidates = sorted(candidates, key=get_sort_key, reverse=reverse)
+        return sorted_candidates[:topk]
+
+    def search_range(
+        self,
+        field: str,
+        min_value: Any,
+        max_value: Any,
+        topk: int = 10,
+        metadata_getter: Any = None,
+    ) -> list[str]:
+        """
+        Range query on a metadata field.
+
+        Returns IDs where the metadata field value is within [min_value, max_value].
+
+        Args:
+            field: Metadata field name to query
+            min_value: Minimum value (inclusive)
+            max_value: Maximum value (inclusive)
+            topk: Maximum number of results
+            metadata_getter: Callable to get metadata for an ID
+
+        Returns:
+            List of matching IDs within the range
+        """
+        if metadata_getter is None:
+            return []
+
+        results: list[str] = []
+        for doc_id in self.ids:
+            if len(results) >= topk:
+                break
+            try:
+                metadata = metadata_getter(doc_id)
+                if metadata and field in metadata:
+                    value = metadata[field]
+                    if min_value <= value <= max_value:
+                        results.append(doc_id)
+            except Exception:
+                continue
+
+        return results
+
+    def count(self) -> int:
+        """
+        Get the number of entries in the index.
+
+        Returns:
+            Number of entries
+        """
+        return len(self.ids)
+
+    def get_all_ids(self) -> list[str]:
+        """
+        Get all IDs in the index.
+
+        Returns:
+            List of all IDs
+        """
+        return list(self.ids)
 
     def store(self, dir_path: str) -> dict[str, Any]:
         """

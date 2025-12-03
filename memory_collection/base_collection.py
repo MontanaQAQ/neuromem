@@ -1,49 +1,108 @@
 # file: sage.middleware.services.neuromem./memory_collection/base_collection.py
 # python -m sage.core.sage.middleware.services.neuromem.memory_collection.base_collection
+"""
+NeuroMem Collection 基类定义。
+
+设计原则：
+- Collection 持有数据（text_storage + metadata_storage）
+- Collection 可以在数据上建立多种类型的索引（VDB、KV、Graph）
+- 每种 Collection 类型支持不同的 IndexType
+- Service : Collection = 1 : 1
+"""
+
+from __future__ import annotations
 
 import hashlib
+from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any
+from enum import Enum
+from typing import TYPE_CHECKING, Any, ClassVar
+
+import numpy as np
 
 from ..storage_engine.metadata_storage import MetadataStorage
 from ..storage_engine.text_storage import TextStorage
 
-# from sage.middleware.services.neuromem..storage_engine.text_storage import TextStorage
-# from sage.middleware.services.neuromem..storage_engine.metadata_storage import MetadataStorage
+if TYPE_CHECKING:
+    pass
 
 
-# 加载工程根目录下 sage/.env 配置
-# Load configuration from .env file under the sage directory
-# load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../../.env'))
-
-
-class BaseMemoryCollection:
+class IndexType(Enum):
     """
-    Base memory collection with support for raw text and metadata management.
-    支持原始文本和元数据管理的基础内存集合类。
+    索引类型枚举。
+
+    VDB: 向量索引（FAISS 等）
+    KV: 文本/KV 索引（BM25、FIFO、排序等）
+    GRAPH: 图索引（邻接表、知识图谱等）
     """
 
-    def __init__(self, name: str):
-        self.name = name
+    VDB = "vdb"
+    KV = "kv"
+    GRAPH = "graph"
+
+
+class BaseMemoryCollection(ABC):
+    """
+    NeuroMem Collection 基类。
+
+    设计原则：
+    - Collection 持有数据（text + metadata）
+    - Collection 可以在数据上建立多个索引
+    - 每种 Collection 类型可支持不同的 IndexType
+
+    子类必须实现所有抽象方法，并声明 supported_index_types。
+    """
+
+    # 子类声明支持的索引类型
+    supported_index_types: ClassVar[set[IndexType]] = set()
+
+    def __init__(self, config: dict[str, Any]):
+        """
+        统一使用 dict 配置初始化。
+
+        Args:
+            config: 配置字典，必须包含 "name" 字段
+        """
+        self.name = config["name"]
         self.text_storage = TextStorage()
         self.metadata_storage = MetadataStorage()
 
-    def _get_stable_id(self, raw_text: str) -> str:
+    def _get_stable_id(self, raw_text: str, metadata: dict[str, Any] | None = None) -> str:
         """
-        Generate stable ID from raw text using SHA256.
+        Generate stable ID from raw text and optional metadata using SHA256.
         使用 SHA256 生成稳定的文本 ID。
+
+        Args:
+            raw_text: 原始文本内容
+            metadata: 可选的元数据（用于区分相同文本不同元数据的情况）
+
+        Returns:
+            稳定的 ID 字符串
         """
-        return hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+        import json
+
+        key = raw_text
+        if metadata:
+            key += json.dumps(metadata, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
     def filter_ids(
         self,
         ids: list[str],
         metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
+        **metadata_conditions: Any,
     ) -> list[str]:
         """
-        Filter given IDs based on metadata filter rag or exact match conditions.
+        Filter given IDs based on metadata filter function or exact match conditions.
         基于元数据过滤函数或条件筛选给定ID列表中的条目。
+
+        Args:
+            ids: 要过滤的 ID 列表
+            metadata_filter_func: 元数据过滤函数，接收 metadata dict，返回 bool
+            **metadata_conditions: 精确匹配条件
+
+        Returns:
+            匹配的 ID 列表
         """
         matched_ids = []
 
@@ -65,127 +124,239 @@ class BaseMemoryCollection:
         获取所有存储的条目ID。
         """
         return self.text_storage.get_all_ids()
-        # return list(self.text_storage._store.keys())
 
-    def add_metadata_field(self, field_name: str):
+    def add_metadata_field(self, field_name: str) -> None:
         """
         Register a metadata field.
         注册一个元数据字段。
         """
         self.metadata_storage.add_field(field_name)
 
-    def insert(self, raw_text: str, metadata: dict[str, Any] | None = None) -> str:
+    def get_text(self, item_id: str) -> str | None:
         """
-        Store raw text with optional metadata.
-        存储原始文本与可选的元数据。自动注册未知的元数据字段。
+        Get text content by ID.
+        根据 ID 获取文本内容。
         """
-        stable_id = self._get_stable_id(raw_text)
-        self.text_storage.store(stable_id, raw_text)
+        return self.text_storage.get(item_id)
 
-        if metadata:
-            # 自动注册所有未知的元数据字段
-            for field_name in metadata:
-                if not self.metadata_storage.has_field(field_name):
-                    self.metadata_storage.add_field(field_name)
+    def get_metadata(self, item_id: str) -> dict[str, Any] | None:
+        """
+        Get metadata by ID.
+        根据 ID 获取元数据。
+        """
+        return self.metadata_storage.get(item_id)
 
-            self.metadata_storage.store(stable_id, metadata)
+    def has_item(self, item_id: str) -> bool:
+        """
+        Check if an item exists.
+        检查条目是否存在。
+        """
+        return self.text_storage.has(item_id)
 
-        return stable_id
+    # ==================== 抽象方法：索引管理 ====================
 
+    @abstractmethod
+    def create_index(
+        self,
+        config: dict[str, Any],
+        index_type: IndexType | None = None,
+    ) -> bool:
+        """
+        创建索引。
+
+        Args:
+            config: 索引配置，必须包含 "name" 字段
+            index_type: 索引类型（基础 Collection 可忽略，HybridCollection 必需）
+
+        Returns:
+            是否创建成功
+        """
+        ...
+
+    @abstractmethod
+    def delete_index(self, index_name: str) -> bool:
+        """
+        删除索引。
+
+        Args:
+            index_name: 索引名称
+
+        Returns:
+            是否删除成功
+        """
+        ...
+
+    @abstractmethod
+    def list_indexes(self) -> list[dict[str, Any]]:
+        """
+        列出所有索引。
+
+        Returns:
+            索引信息列表: [{"name": ..., "type": IndexType, "config": {...}}, ...]
+        """
+        ...
+
+    # ==================== 抽象方法：数据操作 ====================
+
+    @abstractmethod
+    def insert(
+        self,
+        content: str,
+        index_names: list[str] | str | None = None,
+        vector: np.ndarray | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> str:
+        """
+        插入数据。
+
+        Args:
+            content: 文本内容
+            index_names: 目标索引名列表或单个索引名（None 表示只存数据不建索引）
+            vector: 向量（VDB 索引需要）
+            metadata: 元数据
+
+        Returns:
+            stable_id
+        """
+        ...
+
+    @abstractmethod
+    def insert_to_index(
+        self,
+        item_id: str,
+        index_name: str,
+        vector: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """
+        将已有数据加入索引（用于跨索引迁移）。
+
+        Args:
+            item_id: 数据 ID
+            index_name: 目标索引名
+            vector: 向量（VDB 索引需要，可以现场计算）
+
+        Returns:
+            成功/失败
+        """
+        ...
+
+    @abstractmethod
+    def remove_from_index(self, item_id: str, index_name: str) -> bool:
+        """
+        从索引移除（数据保留）。
+
+        用于 MemoryOS 场景：从 FIFO 索引移除，加入 Segment 索引。
+
+        Args:
+            item_id: 数据 ID
+            index_name: 索引名称
+
+        Returns:
+            成功/失败
+        """
+        ...
+
+    @abstractmethod
     def retrieve(
         self,
+        query: str | np.ndarray | None = None,
+        index_name: str | None = None,
+        top_k: int = 10,
         with_metadata: bool = False,
-        metadata_filter_func: Callable[[dict[str, Any]], bool] | None = None,
-        **metadata_conditions,
-    ):
+        metadata_filter: Callable[[dict[str, Any]], bool] | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         """
-        Retrieve raw texts optionally filtered by metadata.
-        根据元数据（条件或函数）检索原始文本。
-        """
-        all_ids = self.get_all_ids()
-        matched_ids = self.filter_ids(all_ids, metadata_filter_func, **metadata_conditions)
-        # return [self.text_storage.get(i) for i in matched_ids]
-        if with_metadata:
-            return [
-                {
-                    "text": self.text_storage.get(i),
-                    "metadata": self.metadata_storage.get(i),
-                }
-                for i in matched_ids
-            ]
-        else:
-            return [self.text_storage.get(i) for i in matched_ids]
+        检索数据。
 
-    def clear(self):
+        Args:
+            query: 查询（文本或向量）
+            index_name: 使用的索引
+            top_k: 返回数量
+            with_metadata: 是否返回 metadata
+            metadata_filter: 元数据过滤函数
+
+        Returns:
+            检索结果列表: [{"id": ..., "text": ..., "metadata": ..., "score": ...}, ...]
+        """
+        ...
+
+    @abstractmethod
+    def delete(self, item_id: str) -> bool:
+        """
+        完全删除（数据 + 所有索引）。
+
+        Args:
+            item_id: 条目 ID
+
+        Returns:
+            是否删除成功
+        """
+        ...
+
+    @abstractmethod
+    def update(
+        self,
+        item_id: str,
+        new_content: str | None = None,
+        new_vector: np.ndarray | None = None,
+        new_metadata: dict[str, Any] | None = None,
+        index_name: str | None = None,
+        **kwargs: Any,
+    ) -> bool:
+        """
+        更新条目。
+
+        Args:
+            item_id: 条目 ID
+            new_content: 新文本内容
+            new_vector: 新向量
+            new_metadata: 新元数据
+            index_name: 索引名称
+
+        Returns:
+            是否更新成功
+        """
+        ...
+
+    # ==================== 抽象方法：持久化 ====================
+
+    @abstractmethod
+    def store(self, path: str | None = None) -> dict[str, Any]:
+        """
+        持久化到磁盘。
+
+        Args:
+            path: 存储路径（None 使用默认路径）
+
+        Returns:
+            存储元信息
+        """
+        ...
+
+    @classmethod
+    @abstractmethod
+    def load(cls, name: str, path: str | None = None) -> BaseMemoryCollection:
+        """
+        从磁盘加载。
+
+        Args:
+            name: Collection 名称
+            path: 加载路径（None 使用默认路径）
+
+        Returns:
+            加载的 Collection 实例
+        """
+        ...
+
+    # ==================== 基础方法：清理 ====================
+
+    def clear(self) -> None:
         """
         Clear all stored text and metadata.
         清空所有存储的文本和元数据。
         """
         self.text_storage.clear()
         self.metadata_storage.clear()
-
-
-if __name__ == "__main__":
-
-    def basetest():
-        import time
-        from datetime import datetime
-
-        col = BaseMemoryCollection("demo")
-        col.add_metadata_field("source")
-        col.add_metadata_field("lang")
-        col.add_metadata_field("timestamp")  # 添加时间戳字段
-
-        # 添加带时间戳的数据
-        current_time = time.time()
-        col.insert(
-            "hello world",
-            {"source": "user", "lang": "en", "timestamp": current_time - 3600},
-        )  # 1小时前
-        col.insert(
-            "你好，世界",
-            {"source": "user", "lang": "zh", "timestamp": current_time - 1800},
-        )  # 30分钟前
-        col.insert(
-            "bonjour le monde",
-            {"source": "web", "lang": "fr", "timestamp": current_time},
-        )  # 现在
-
-        print("=== Filter by keyword ===")
-        res1 = col.retrieve(source="user")
-        for r in res1:
-            print(r)
-
-        print("\n=== Filter by custom rag (language) ===")
-        res2 = col.retrieve(metadata_filter_func=lambda m: m.get("lang") in {"zh", "fr"})
-        for r in res2:
-            print(r)
-
-        print(f"\nCurrent time: {datetime.fromtimestamp(current_time)}")
-
-        print("\n=== Filter by timestamp (last 45 minutes) ===")
-        time_threshold = current_time - 2700  # 45分钟前
-        matched_ids = col.filter_ids(
-            col.get_all_ids(),
-            metadata_filter_func=lambda m: m.get("timestamp", 0) > time_threshold,
-        )
-        for item_id in matched_ids:
-            text = col.text_storage.get(item_id)
-            metadata = col.metadata_storage.get(item_id)
-            print(
-                f"{text} (timestamp: {datetime.fromtimestamp(metadata['timestamp']).strftime('%Y-%m-%d %H:%M:%S')})"
-            )
-
-        print("\n=== Filter by timestamp range (30-60 minutes ago) ===")
-        start_time = current_time - 3600  # 1小时前
-        end_time = current_time - 1800  # 30分钟前
-        matched_ids = col.filter_ids(
-            col.get_all_ids(),
-            metadata_filter_func=lambda m: start_time <= m.get("timestamp", 0) <= end_time,
-        )
-        for item_id in matched_ids:
-            text = col.text_storage.get(item_id)
-            metadata = col.metadata_storage.get(item_id)
-            print(
-                f"{text} (timestamp: {datetime.fromtimestamp(metadata['timestamp']).strftime('%Y-%m-%d %H:%M:%S')})"
-            )

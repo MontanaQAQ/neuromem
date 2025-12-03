@@ -1,12 +1,47 @@
 """
-SAGE - Streaming-Augmented Generative Execution
+NeuroMem Search Engine module.
+
+Provides various types of indexes for memory retrieval:
+- VDB (Vector Database) indexes: FAISS, etc.
+- KV (Key-Value) indexes: BM25, etc.
+- Graph indexes: SimpleGraphIndex, etc.
+
+Unified factory for all index types:
+    from neuromem.search_engine import IndexFactory
+
+    vdb_index = IndexFactory.create_vdb_index({"name": "my_vdb", "dim": 768})
+    kv_index = IndexFactory.create_kv_index({"name": "my_kv"})
+    graph_index = IndexFactory.create_graph_index({"name": "my_graph"})
 """
 
-# 直接从本包的_version模块加载版本信息
-try:
-    from sage.middleware._version import __author__, __email__, __version__
-except ImportError:
-    # 备用硬编码版本
-    __version__ = "0.1.4"
-    __author__ = "IntelliStream Team"
-    __email__ = "shuhao_zhang@hust.edu.cn"
+# Import base classes
+from .graph_index import BaseGraphIndex, GraphIndexFactory, SimpleGraphIndex
+
+# Import unified factory
+from .index_factory import (
+    IndexFactory,
+    create_graph_index,
+    create_kv_index,
+    create_vdb_index,
+)
+from .kv_index import BaseKVIndex, BM25sIndex, KVIndexFactory
+from .vdb_index import BaseVDBIndex, VDBIndexFactory
+
+__all__ = [
+    # Unified factory
+    "IndexFactory",
+    "create_vdb_index",
+    "create_kv_index",
+    "create_graph_index",
+    # VDB
+    "BaseVDBIndex",
+    "VDBIndexFactory",
+    # KV
+    "BaseKVIndex",
+    "BM25sIndex",
+    "KVIndexFactory",
+    # Graph
+    "BaseGraphIndex",
+    "SimpleGraphIndex",
+    "GraphIndexFactory",
+]
