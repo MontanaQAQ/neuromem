@@ -1,5 +1,6 @@
 # file sage/middleware/services/neuromem/search_engine/kv_index/bm25s_index.py
 
+import logging
 import os
 import shutil
 from typing import Any, Literal
@@ -8,6 +9,9 @@ import bm25s
 import Stemmer
 
 from .base_kv_index import BaseKVIndex
+
+# 抑制 bm25s 的 DEBUG 日志和 tqdm 进度条（会干扰 benchmark 进度条显示）
+logging.getLogger("bm25s").setLevel(logging.WARNING)
 
 
 class BM25sIndex(BaseKVIndex):
@@ -73,9 +77,9 @@ class BM25sIndex(BaseKVIndex):
         self.ids = list(ids)
         self.texts = list(texts)
         self.tokenizer = self._get_tokenizer(self.texts)
-        self.tokens = self.tokenizer.tokenize(self.texts)  # type: ignore
+        self.tokens = self.tokenizer.tokenize(self.texts, show_progress=False)  # type: ignore
         self.bm25 = bm25s.BM25(corpus=self.texts, backend=self.backend)
-        self.bm25.index(self.tokens)
+        self.bm25.index(self.tokens, show_progress=False)
 
     def build_index(self, texts: list[str], ids: list[str]):
         """
@@ -94,9 +98,9 @@ class BM25sIndex(BaseKVIndex):
         if not self.texts:
             return
         self.tokenizer = self._get_tokenizer(self.texts)
-        self.tokens = self.tokenizer.tokenize(self.texts)  # type: ignore
+        self.tokens = self.tokenizer.tokenize(self.texts, show_progress=False)  # type: ignore
         self.bm25 = bm25s.BM25(corpus=self.texts, backend=self.backend)
-        self.bm25.index(self.tokens)
+        self.bm25.index(self.tokens, show_progress=False)
 
     def _is_chinese(self, text: str):
         """
@@ -153,7 +157,7 @@ class BM25sIndex(BaseKVIndex):
         """
         if self.bm25 is None or len(self.ids) == 0:
             return []
-        query_token = self.tokenizer.tokenize([text])[0]  # type: ignore
+        query_token = self.tokenizer.tokenize([text], show_progress=False)[0]  # type: ignore
         scores = self.bm25.get_scores(query_token)  # type: ignore
         topk_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:topk]
         return [self.ids[i] for i in topk_idx]
@@ -171,7 +175,7 @@ class BM25sIndex(BaseKVIndex):
         """
         if self.bm25 is None or len(self.ids) == 0:
             return []
-        query_token = self.tokenizer.tokenize([query])[0]  # type: ignore
+        query_token = self.tokenizer.tokenize([query], show_progress=False)[0]  # type: ignore
         scores = self.bm25.get_scores(query_token)  # type: ignore
         topk_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:topk]
         return [(self.ids[i], float(scores[i])) for i in topk_idx]
@@ -206,7 +210,7 @@ class BM25sIndex(BaseKVIndex):
 
         # First, get more candidates than needed for re-sorting
         candidate_count = min(topk * 3, len(self.ids))
-        query_token = self.tokenizer.tokenize([query])[0]  # type: ignore
+        query_token = self.tokenizer.tokenize([query], show_progress=False)[0]  # type: ignore
         scores = self.bm25.get_scores(query_token)  # type: ignore
         candidate_idx = sorted(range(len(scores)), key=lambda i: -scores[i])[:candidate_count]
         candidates = [self.ids[i] for i in candidate_idx]
@@ -360,8 +364,11 @@ class BM25sIndex(BaseKVIndex):
             self.texts = [line.strip() for line in f.readlines()]
 
         # 重建tokens
-        self.tokens = [self.tokenizer.tokenize([t], return_as="tuple")[0][0] for t in self.texts]  # type: ignore
-        self.bm25.index(self.tokens)
+        self.tokens = [
+            self.tokenizer.tokenize([t], return_as="tuple", show_progress=False)[0][0]
+            for t in self.texts
+        ]  # type: ignore
+        self.bm25.index(self.tokens, show_progress=False)
 
     @classmethod
     def load(cls, name: str, dir_path: str) -> "BM25sIndex":

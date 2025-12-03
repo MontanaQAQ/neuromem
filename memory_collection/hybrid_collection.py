@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import contextlib
 import json
-import logging
 import os
 import time
 from collections import defaultdict
@@ -37,6 +36,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar
 
 import numpy as np
+from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine import (
     BaseGraphIndex,
@@ -78,7 +78,7 @@ class HybridCollection(BaseMemoryCollection):
         """
         super().__init__(config)
 
-        self.logger = logging.getLogger(__name__)
+        self.logger = CustomLogger()
 
         # RRF 融合参数
         self.rrf_k = config.get("rrf_k", 60)
@@ -176,6 +176,7 @@ class HybridCollection(BaseMemoryCollection):
         }
 
         self.logger.info(f"Created VDB index: {index_name} (dim={dim}, backend={backend_type})")
+        self.logger.debug(f"vdb_indexes now contains: {list(self.vdb_indexes.keys())}")
         return True
 
     def _create_kv_index(self, index_name: str, config: dict[str, Any]) -> bool:
@@ -350,7 +351,11 @@ class HybridCollection(BaseMemoryCollection):
             if idx_type == IndexType.VDB:
                 vec = vectors_map.get(idx_name, vector)
                 if vec is not None:
-                    self._insert_to_vdb_index(idx_name, stable_id, vec)
+                    success = self._insert_to_vdb_index(idx_name, stable_id, vec)
+                    if not success:
+                        self.logger.warning(
+                            f"Failed to insert item '{stable_id}' to VDB index '{idx_name}'"
+                        )
                 else:
                     self.logger.warning(f"VDB index '{idx_name}' requires vector, skipping")
 
@@ -365,11 +370,13 @@ class HybridCollection(BaseMemoryCollection):
     def _insert_to_vdb_index(self, index_name: str, item_id: str, vector: np.ndarray) -> bool:
         """插入到 VDB 索引。"""
         if index_name not in self.vdb_indexes:
+            self.logger.warning(f"VDB index '{index_name}' not found")
             return False
 
         # 处理向量
         processed_vector = self._process_vector(vector)
         if processed_vector is None:
+            self.logger.warning(f"Failed to process vector for VDB index '{index_name}'")
             return False
 
         # 检查维度
@@ -722,6 +729,7 @@ class HybridCollection(BaseMemoryCollection):
         if distances and isinstance(distances[0], (list, np.ndarray)):
             distances = list(distances[0])
 
+        return [str(i) for i in ids], list(distances)
         return [str(i) for i in ids], list(distances)
 
     def _retrieve_from_kv(

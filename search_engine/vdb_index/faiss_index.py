@@ -300,7 +300,8 @@ class FaissIndex(BaseVDBIndex):
             0: 删除失败（ID不存在）
         """
         if string_id not in self.rev_map:
-            self.logger.warning(f"尝试删除不存在的ID: {string_id}")
+            # ID 可能只存储了文本而没有索引，这是正常情况，使用 debug 级别
+            self.logger.debug(f"ID not in index, skipping: {string_id}")
             return 0
 
         int_id = self.rev_map[string_id]
@@ -435,9 +436,8 @@ class FaissIndex(BaseVDBIndex):
         Returns:
             tuple: (结果IDs, 相似度列表)
         """
-        # 检查索引是否为空
+        # 检查索引是否为空 - 空索引是合法状态，静默返回空结果
         if self.index.ntotal == 0:
-            self.logger.warning("索引为空，无法进行检索")
             return [], []
 
         query_vector = np.expand_dims(query_vector.astype("float32"), axis=0)
