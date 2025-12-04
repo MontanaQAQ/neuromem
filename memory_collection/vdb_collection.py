@@ -59,7 +59,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
         self,
         config: dict[str, Any],
         index_type: IndexType | None = None,  # 基础 Collection 可忽略
-    ) -> bool:
+    ) -> bool | None:
         """
         创建新的向量索引。
 
@@ -78,36 +78,42 @@ class VDBMemoryCollection(BaseMemoryCollection):
         # 检查创建条件
         if config is None:
             self.logger.warning("Config cannot be None")
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
 
         index_name = config.get("name")
         if not index_name:
             self.logger.warning(
                 "The config must contain the 'name' field, and the index cannot be created."
             )
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
         if index_name in self.index_info:
             self.logger.warning(
                 f"The index '{index_name}' already exists and cannot be created again"
             )
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
 
         # Check for embedding_model field (for backward compatibility with tests)
         embedding_model = config.get("embedding_model")
         if embedding_model is not None and not isinstance(embedding_model, str):
             self.logger.warning("The 'embedding_model' must be a string if provided.")
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
 
         dim = config.get("dim")
         if not isinstance(dim, int) or dim <= 0:
             self.logger.warning("The config must contain valid 'dim' (positive int).")
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
 
         # Check for backend_type (required field)
         backend_type = config.get("backend_type")
         if backend_type is None:
             self.logger.warning("The config must contain 'backend_type' field.")
-            return False
+            # 向后兼容：验证失败时返回 None
+            return None
 
         try:
             backend_type = config.get("backend_type")
@@ -380,8 +386,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
     def insert(
         self,
+        index_names: list[str] | str | None,
         content: str,
-        index_names: list[str] | str | None = None,
         vector: np.ndarray | None = None,
         metadata: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -390,8 +396,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
         插入数据到指定索引。
 
         Args:
+            index_names: 目标索引名列表或单个索引名（旧版第一个参数）
             content: 文本内容
-            index_names: 目标索引名列表或单个索引名
             vector: 预先生成的向量（VDB 索引必需）
             metadata: 元数据（可选）
             **kwargs: 向后兼容参数（如旧版 index_name, raw_data）
@@ -399,10 +405,13 @@ class VDBMemoryCollection(BaseMemoryCollection):
         Returns:
             插入数据的 stable_id
         """
-        # 向后兼容：处理旧的参数格式 insert(index_name, raw_data, vector, metadata)
-        if isinstance(content, str) and index_names is None and "raw_data" not in kwargs:
-            # 检查是否是旧版调用
-            pass  # 使用新格式
+        # 向后兼容：支持两种调用方式
+        # 1) 新版：insert(index_names=[...], content=..., vector=..., metadata=...)
+        # 2) 旧版：insert("index_name", "text", vector, metadata)
+        # 如果通过关键字参数传入 index_name，则优先使用该值
+        index_name_kw = kwargs.pop("index_name", None)
+        if index_name_kw is not None:
+            index_names = index_name_kw
 
         # 生成 stable_id
         stable_id = self._get_stable_id(content, metadata)
@@ -599,7 +608,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
         Args:
             query: 查询向量（numpy array）或文本（需外部转为向量）
             index_name: 要搜索的索引名称，None 时使用第一个可用索引
-            top_k: 返回的最大结果数
+            top_k: 返回的最大结果数（也兼容 topk 关键字参数）
             with_metadata: 是否返回元数据（保留以向后兼容，新接口始终返回）
             metadata_filter: 元数据过滤函数
             **kwargs: 额外参数
@@ -611,6 +620,18 @@ class VDBMemoryCollection(BaseMemoryCollection):
             [{"id": str, "text": str, "metadata": dict, "score": float}, ...]
         """
         start_time = time.time()
+
+        # 向后兼容：测试和旧代码中有时使用 topk 参数
+        if "topk" in kwargs and "top_k" not in kwargs:
+            try:
+                top_k = int(kwargs.pop("topk"))
+            except (TypeError, ValueError):
+                # 无法解析时保持默认 top_k
+                kwargs.pop("topk", None)
+
+        # 向后兼容：测试和旧代码中有时使用 query_vector 参数
+        if query is None and "query_vector" in kwargs:
+            query = kwargs.pop("query_vector")
 
         # 确定要使用的索引
         if index_name is None:

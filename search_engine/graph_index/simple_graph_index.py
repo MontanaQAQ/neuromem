@@ -346,6 +346,17 @@ class SimpleGraphIndex(BaseGraphIndex):
         neighbors.sort(key=lambda x: x[1], reverse=True)
         return neighbors[:k]
 
+    def get_incoming_neighbors(self, node_id: str, k: int = 10) -> list[str]:
+        """Return IDs of incoming neighbors for a node.
+
+        This is a small convenience wrapper used in tests to directly
+        inspect the reverse adjacency list.
+        """
+        if node_id not in self.nodes:
+            return []
+
+        return [n for n, _, _ in self.reverse_adjacency.get(node_id, [])][:k]
+
     def get_edges_by_relation(
         self,
         node_id: str,

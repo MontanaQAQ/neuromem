@@ -42,13 +42,16 @@ class GraphMemoryCollection(BaseMemoryCollection):
     # 声明支持的索引类型
     supported_index_types: ClassVar[set[IndexType]] = {IndexType.GRAPH}
 
-    def __init__(self, config: dict[str, Any]):
-        """
-        Initialize graph memory collection.
+    def __init__(self, config: dict[str, Any] | str):
+        """Initialize graph memory collection.
 
         Args:
-            config: 配置字典，必须包含 "name" 字段
+            config: 配置字典，必须包含 "name" 字段；
+                为了向后兼容，也可以直接传入字符串 name。
         """
+        if isinstance(config, str):
+            config = {"name": config}
+
         # 调用父类初始化
         super().__init__(config)
 
@@ -277,13 +280,20 @@ class GraphMemoryCollection(BaseMemoryCollection):
 
         if start_node is None:
             # 如果没有指定起始节点，尝试根据 query 找到匹配的节点
-            if query is None:
-                self.logger.warning("No start_node or query provided for graph retrieval.")
-                return []
+            all_ids = self.text_storage.get_all_ids()
 
-            # 简单的文本匹配查找起始节点
-            if isinstance(query, str):
-                for node_id in self.text_storage.get_all_ids():
+            if query is None:
+                # 向后兼容：没有显式查询时，遍历整个图；为覆盖全部节点，
+                # 从一个已有节点开始，再依次从未访问过的节点继续 BFS。
+                if not all_ids:
+                    self.logger.warning(
+                        "No start_node or query provided for graph retrieval, and no nodes in storage."
+                    )
+                    return []
+                start_node = all_ids[0]
+            elif isinstance(query, str):
+                # 简单的文本匹配查找起始节点
+                for node_id in all_ids:
                     text = self.text_storage.get(node_id)
                     if text and query.lower() in text.lower():
                         start_node = node_id
@@ -300,38 +310,51 @@ class GraphMemoryCollection(BaseMemoryCollection):
         # BFS 遍历
         visited: set[str] = set()
         results: list[dict[str, Any]] = []
-        queue: deque[tuple[str, int]] = deque([(start_node, 0)])
 
-        while queue and len(results) < top_k:
-            node_id, depth = queue.popleft()
+        def bfs_from(start: str) -> None:
+            queue: deque[tuple[str, int]] = deque([(start, 0)])
 
-            if node_id in visited or depth > max_depth:
-                continue
+            while queue and len(results) < top_k:
+                node_id, depth = queue.popleft()
 
-            visited.add(node_id)
-
-            # 应用元数据过滤
-            if metadata_filter:
-                node_metadata = self.metadata_storage.get(node_id) or {}
-                if not metadata_filter(node_metadata):
+                if node_id in visited or depth > max_depth:
                     continue
 
-            result: dict[str, Any] = {
-                "id": node_id,
-                "text": self.text_storage.get(node_id),
-                "depth": depth,
-                "score": 1.0 / (depth + 1),  # 深度越浅，分数越高
-            }
-            if with_metadata:
-                result["metadata"] = self.metadata_storage.get(node_id)
+                visited.add(node_id)
 
-            results.append(result)
+                node_metadata = self.metadata_storage.get(node_id) or {}
+                # 应用元数据过滤
+                if metadata_filter and not metadata_filter(node_metadata):
+                    continue
 
-            if depth < max_depth:
-                neighbors = index.get_neighbors(node_id, k=100)
-                for neighbor_id, _ in neighbors:
-                    if neighbor_id not in visited:
-                        queue.append((neighbor_id, depth + 1))
+                result: dict[str, Any] = {
+                    "id": node_id,
+                    "text": self.text_storage.get(node_id),
+                    "depth": depth,
+                    "score": 1.0 / (depth + 1),  # 深度越浅，分数越高
+                }
+                if with_metadata:
+                    result["metadata"] = node_metadata
+
+                results.append(result)
+
+                if depth < max_depth:
+                    neighbors = index.get_neighbors(node_id, k=100)
+                    for neighbor_id, _ in neighbors:
+                        if neighbor_id not in visited:
+                            queue.append((neighbor_id, depth + 1))
+
+        # 先从起始节点遍历
+        bfs_from(start_node)
+
+        # 如果没有提供查询且还未覆盖所有节点，则从剩余未访问节点继续遍历，
+        # 以便在元数据检索场景下返回所有节点。
+        if query is None and len(results) < top_k:
+            for node_id in self.text_storage.get_all_ids():
+                if node_id not in visited:
+                    bfs_from(node_id)
+                    if len(results) >= top_k:
+                        break
 
         return results
 
@@ -482,8 +505,7 @@ class GraphMemoryCollection(BaseMemoryCollection):
     def get_neighbors(
         self, node_id: str, k: int = 10, index_name: str = "default"
     ) -> list[dict[str, Any]]:
-        """
-        Get neighbors of a node.
+        """Get neighbors of a node.
 
         Args:
             node_id: Node ID to get neighbors for
@@ -491,7 +513,16 @@ class GraphMemoryCollection(BaseMemoryCollection):
             index_name: Graph index to query
 
         Returns:
-            List of neighbor dicts with 'node_id', 'weight', and 'data'
+            List of neighbor dicts with ``node_id``, ``weight``, and ``data``.
+
+        Notes
+        -----
+        This method keeps the *new* dict-style return format used by
+        ``GraphMemoryCollection`` while also being compatible with
+        ``SimpleGraphIndex.get_neighbors``, which returns ``(node_id, weight)``
+        tuples.  Tests that directly exercise ``SimpleGraphIndex`` (without
+        going through this collection) will continue to see the original
+        tuple format, e.g. ``("n2", 1.0)``.
         """
         if index_name not in self.indexes:
             return []
