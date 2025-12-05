@@ -413,6 +413,11 @@ class VDBMemoryCollection(BaseMemoryCollection):
         if index_name_kw is not None:
             index_names = index_name_kw
 
+        # 向后兼容：支持 raw_data 参数名
+        raw_data = kwargs.pop("raw_data", None)
+        if raw_data is not None:
+            content = raw_data
+
         # 生成 stable_id
         stable_id = self._get_stable_id(content, metadata)
 
@@ -685,7 +690,15 @@ class VDBMemoryCollection(BaseMemoryCollection):
 
         # 获取额外参数
         threshold = kwargs.get("threshold")
-        metadata_conditions = {k: v for k, v in kwargs.items() if k not in ("threshold",)}
+        # 排除已处理的参数，只保留真正的 metadata 条件
+        excluded_keys = {
+            "threshold",
+            "metadata_filter",
+            "metadata_filter_func",
+            "topk",
+            "query_vector",
+        }
+        metadata_conditions = {k: v for k, v in kwargs.items() if k not in excluded_keys}
 
         # 执行搜索
         top_k_ids, distances = index.search(processed_query, topk=top_k, threshold=threshold)
