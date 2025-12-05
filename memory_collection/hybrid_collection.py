@@ -284,10 +284,19 @@ class HybridCollection(BaseMemoryCollection):
 
         if idx_type == IndexType.VDB and index_name in self.vdb_indexes:
             index = self.vdb_indexes[index_name]
-            return index.count() if hasattr(index, "count") else 0
+            # 优先使用 count() 方法，否则使用 len(id_map)
+            if hasattr(index, "count"):
+                return index.count()
+            elif hasattr(index, "id_map"):
+                return len(index.id_map)
+            return 0
         elif idx_type == IndexType.KV and index_name in self.kv_indexes:
             index = self.kv_indexes[index_name]
-            return index.count() if hasattr(index, "count") else 0
+            if hasattr(index, "count"):
+                return index.count()
+            elif hasattr(index, "doc_count"):
+                return index.doc_count
+            return 0
         elif idx_type == IndexType.GRAPH and index_name in self.graph_indexes:
             index = self.graph_indexes[index_name]
             return index.node_count() if hasattr(index, "node_count") else len(index.nodes)
