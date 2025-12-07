@@ -224,6 +224,10 @@ class MemoryManager:
         self.collection_status[name] = "loaded"
 
         self.logger.info(f"Created collection '{name}' with backend_type '{backend_type}'")
+
+        # 立即保存 manager 状态，确保重启后能识别该 collection
+        self._save_manager()
+
         return new_collection
 
     def has_collection(self, name: str) -> bool:
