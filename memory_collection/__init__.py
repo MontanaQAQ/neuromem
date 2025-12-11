@@ -8,12 +8,19 @@ Memory Collection Module - Core memory collection implementations
 - Service : Collection = 1 : 1
 
 论文特性支持（Part 5）：
-- Triple storage (TiM) - 三元组存储
-- Link evolution (A-Mem) - 链接演化
-- Ebbinghaus forgetting (MemoryBank) - 遗忘曲线
-- Heat score migration (MemoryOS) - 热度迁移
-- Token budget filtering (SCM) - Token 预算
-- Conflict detection (Mem0) - 冲突检测
+- 5.0 Note structure (A-Mem) - Note 结构
+- 5.1 Triple storage (TiM) - 三元组存储
+- 5.2 Link evolution (A-Mem) - 链接演化
+- 5.3 Ebbinghaus forgetting (MemoryBank) - 遗忘曲线
+- 5.3.1 User Portrait (MemoryBank) - 用户画像
+- 5.4 Heat score migration (MemoryOS) - 热度迁移
+- 5.4.1 MemGPT Three-tier storage - 三层存储
+- 5.4.2 Segment-Page architecture (MemoryOS) - 分段页架构
+- 5.4.3 Long-term Personal Memory (MemoryOS) - 长期个人记忆
+- 5.5 Token budget filtering (SCM) - Token 预算
+- 5.6 Conflict detection (Mem0) - 冲突检测
+- 5.7 Phrase/Passage distinction (HippoRAG) - 短语/段落节点区分
+- 5.8 Graph-enhanced memory (Mem0g) - 图增强记忆
 """
 
 # Re-export SimpleGraphIndex from search_engine for backward compatibility
@@ -23,8 +30,10 @@ from .base_collection import BaseMemoryCollection, IndexType
 # Enhanced collections with paper features
 from .enhanced_collections import (
     EnhancedGraphCollection,
+    EnhancedHybridCollection,
     EnhancedVDBCollection,
     GraphMemoryCollectionWithFeatures,
+    HybridCollectionWithFeatures,
     VDBMemoryCollectionWithFeatures,
 )
 from .graph_collection import GraphMemoryCollection
@@ -33,6 +42,10 @@ from .kv_collection import KVMemoryCollection
 
 # Paper feature utilities
 from .paper_features import (
+    AgentPersona,
+    # 5.0 A-Mem Note Structure
+    AMemNote,
+    AMemNoteMixin,
     # 5.6 Conflict Detection (Mem0)
     ConflictConfig,
     ConflictDetectionMixin,
@@ -40,6 +53,7 @@ from .paper_features import (
     ConflictResult,
     # 5.3 Ebbinghaus Forgetting (MemoryBank)
     EbbinghausForgetting,
+    EdgeType,
     EntityAttributeExtractor,
     ForgettingConfig,
     ForgettingMixin,
@@ -49,9 +63,29 @@ from .paper_features import (
     HeatConfig,
     HeatMigrationMixin,
     HeatScoreManager,
+    HierarchicalPaperFeaturesMixin,
+    # 5.7 HippoRAG Node Types
+    HippoRAGMixin,
+    HippoRAGNode,
     # 5.2 Link Evolution (A-Mem)
     LinkEvolutionMixin,
+    # 5.4.3 LPM (MemoryOS)
+    LPMMixin,
+    Mem0gEntity,
+    # 5.8 Mem0g Graph-Enhanced
+    Mem0gMixin,
+    Mem0gRelation,
+    MemGPTMessage,
+    # 5.4.1 MemGPT Three-Tier Storage
+    MemGPTStorageMixin,
+    MemGPTWorkingContext,
+    MemoryOSLPM,
+    MemoryOSPage,
+    MemoryOSSegment,
+    NodeType,
     PaperFeaturesMixin,
+    # 5.4.2 MemoryOS Segment-Page
+    SegmentPageMixin,
     # 5.5 Token Budget (SCM)
     SimpleTokenCounter,
     TiktokenCounter,
@@ -61,6 +95,10 @@ from .paper_features import (
     # 5.1 Triple Storage (TiM)
     Triple,
     TripleStorageMixin,
+    UserPersona,
+    # 5.3.1 User Portrait (MemoryBank)
+    UserPortrait,
+    UserPortraitMixin,
 )
 from .vdb_collection import VDBMemoryCollection
 
@@ -76,8 +114,13 @@ __all__ = [
     # Enhanced collections with paper features
     "VDBMemoryCollectionWithFeatures",
     "GraphMemoryCollectionWithFeatures",
+    "HybridCollectionWithFeatures",
     "EnhancedVDBCollection",
     "EnhancedGraphCollection",
+    "EnhancedHybridCollection",
+    # Paper feature utilities - 5.0 A-Mem Note
+    "AMemNote",
+    "AMemNoteMixin",
     # Paper feature utilities - 5.1 Triple Storage
     "Triple",
     "TripleStorageMixin",
@@ -87,10 +130,26 @@ __all__ = [
     "EbbinghausForgetting",
     "ForgettingConfig",
     "ForgettingMixin",
+    # Paper feature utilities - 5.3.1 User Portrait
+    "UserPortrait",
+    "UserPortraitMixin",
     # Paper feature utilities - 5.4 Heat Score
     "HeatConfig",
     "HeatScoreManager",
     "HeatMigrationMixin",
+    # Paper feature utilities - 5.4.1 MemGPT Three-Tier
+    "MemGPTStorageMixin",
+    "MemGPTWorkingContext",
+    "MemGPTMessage",
+    # Paper feature utilities - 5.4.2 Segment-Page
+    "SegmentPageMixin",
+    "MemoryOSSegment",
+    "MemoryOSPage",
+    # Paper feature utilities - 5.4.3 LPM
+    "LPMMixin",
+    "MemoryOSLPM",
+    "UserPersona",
+    "AgentPersona",
     # Paper feature utilities - 5.5 Token Budget
     "TokenBudgetConfig",
     "TokenBudgetFilter",
@@ -103,9 +162,19 @@ __all__ = [
     "ConflictResult",
     "ConflictDetectionMixin",
     "EntityAttributeExtractor",
+    # Paper feature utilities - 5.7 HippoRAG
+    "HippoRAGMixin",
+    "HippoRAGNode",
+    "NodeType",
+    "EdgeType",
+    # Paper feature utilities - 5.8 Mem0g
+    "Mem0gMixin",
+    "Mem0gEntity",
+    "Mem0gRelation",
     # Combined Mixins
     "PaperFeaturesMixin",
     "GraphPaperFeaturesMixin",
+    "HierarchicalPaperFeaturesMixin",
     # Backward compatibility
     "SimpleGraphIndex",
 ]
