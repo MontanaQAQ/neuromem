@@ -1104,3 +1104,57 @@ class HybridCollection(BaseMemoryCollection):
         self.index_meta.clear()
 
         self.logger.info(f"HybridCollection '{self.name}' cleared")
+
+    def get_storage_stats(self) -> dict[str, int]:
+        """聚合所有子Collection的统计"""
+        import json
+
+        # 1. 统计 text_storage（共享的）
+        text_entries = len(self.text_storage.get_all_ids())
+        text_size = sum(
+            len(self.text_storage.get(id_).encode("utf-8"))
+            for id_ in self.text_storage.get_all_ids()
+        )
+
+        # 2. 统计 metadata_storage（共享的）
+        metadata_entries = len(self.metadata_storage.get_all_ids())
+        metadata_size = sum(
+            len(json.dumps(self.metadata_storage.get(id_)).encode("utf-8"))
+            for id_ in self.metadata_storage.get_all_ids()
+        )
+
+        # 3. 统计所有索引
+        total_index_entries = 0
+        total_index_size = 0
+
+        # VDB indexes
+        for index_name, index_obj in self.vdb_indexes.items():
+            if hasattr(index_obj, "index"):
+                total_index_entries += index_obj.index.ntotal
+                # 估计 VDB 索引大小
+                meta = self.index_meta.get(index_name, {})
+                dim = meta.get("dim", 0)
+                total_index_size += index_obj.index.ntotal * dim * 4
+
+        # KV indexes
+        for _index_name, index_obj in self.kv_indexes.items():
+            if hasattr(index_obj, "corpus"):
+                corpus_size = len(index_obj.corpus)
+                total_index_entries += corpus_size
+                total_index_size += corpus_size * 100  # 估计
+
+        # Graph indexes
+        for _index_name, index_obj in self.graph_indexes.items():
+            if hasattr(index_obj, "graph"):
+                nodes = len(index_obj.graph)
+                edges = sum(len(neighbors) for neighbors in index_obj.graph.values())
+                total_index_entries += nodes
+                total_index_size += nodes * 50 + edges * 20
+
+        return {
+            "total_entries": text_entries,
+            "text_storage_entries": text_entries,
+            "metadata_storage_entries": metadata_entries,
+            "index_entries": total_index_entries,
+            "total_size_bytes": text_size + metadata_size + total_index_size,
+        }

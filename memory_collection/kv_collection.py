@@ -242,6 +242,43 @@ class KVMemoryCollection(BaseMemoryCollection):
             logger.error(f"清理失败: {e}")
             raise
 
+    def get_storage_stats(self) -> dict[str, int]:
+        """统计KV存储空间（纯memory dict）"""
+        import json
+
+        # 1. 统计 text_storage
+        text_entries = len(self.text_storage.get_all_ids())
+        text_size = sum(
+            len(self.text_storage.get(id_).encode("utf-8"))
+            for id_ in self.text_storage.get_all_ids()
+        )
+
+        # 2. 统计 metadata_storage
+        metadata_entries = len(self.metadata_storage.get_all_ids())
+        metadata_size = sum(
+            len(json.dumps(self.metadata_storage.get(id_)).encode("utf-8"))
+            for id_ in self.metadata_storage.get_all_ids()
+        )
+
+        # 3. 统计所有 index（KV index 的条目数）
+        total_index_entries = 0
+        for _index_name, index_info in self.indexes.items():
+            index_obj = index_info.get("index")
+            if index_obj and hasattr(index_obj, "corpus"):
+                # BM25/TFIDF 等索引具有 corpus 属性
+                total_index_entries += len(index_obj.corpus)
+
+        # KV index 大小估计（索引结构）
+        index_size = total_index_entries * 100  # 简单估计每个条目 100 字节
+
+        return {
+            "total_entries": text_entries,
+            "text_storage_entries": text_entries,
+            "metadata_storage_entries": metadata_entries,
+            "index_entries": total_index_entries,
+            "total_size_bytes": text_size + metadata_size + index_size,
+        }
+
     def insert(
         self,
         content: str,

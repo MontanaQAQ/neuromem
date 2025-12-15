@@ -1133,6 +1133,47 @@ class VDBMemoryCollection(BaseMemoryCollection):
             "index_details": index_details,
         }
 
+    def get_storage_stats(self) -> dict[str, int]:
+        """统计VDB存储空间"""
+        # 1. 统计 text_storage
+        text_entries = len(self.text_storage.get_all_ids())
+        text_size = sum(
+            len(self.text_storage.get(id_).encode("utf-8"))
+            for id_ in self.text_storage.get_all_ids()
+        )
+
+        # 2. 统计 metadata_storage
+        import json
+
+        metadata_entries = len(self.metadata_storage.get_all_ids())
+        metadata_size = sum(
+            len(json.dumps(self.metadata_storage.get(id_)).encode("utf-8"))
+            for id_ in self.metadata_storage.get_all_ids()
+        )
+
+        # 3. 统计所有 index
+        total_index_vectors = 0
+        for _index_name, info in self.index_info.items():
+            index_obj = info.get("index")
+            if index_obj and hasattr(index_obj, "index"):
+                # 注意：必须使用 index_obj.index.ntotal，不是 index_obj.ntotal
+                total_index_vectors += index_obj.index.ntotal
+
+        # 估算索引大小（假设每个向量 dim*4 字节 float32）
+        index_size = 0
+        if self.index_info:
+            first_index = next(iter(self.index_info.values()))
+            dim = first_index.get("dim", 0)
+            index_size = total_index_vectors * dim * 4
+
+        return {
+            "total_entries": text_entries,
+            "text_storage_entries": text_entries,
+            "metadata_storage_entries": metadata_entries,
+            "index_entries": total_index_vectors,
+            "total_size_bytes": text_size + metadata_size + index_size,
+        }
+
     def reset_statistics(self):
         """Reset all statistics counters while preserving index structure."""
         # Preserve index_stats keys but reset their values

@@ -351,6 +351,27 @@ class BaseMemoryCollection(ABC):
         """
         ...
 
+    # ==================== 抽象方法：统计信息 ====================
+
+    @abstractmethod
+    def get_storage_stats(self) -> dict[str, int]:
+        """
+        获取存储空间统计。
+
+        返回所有存储组件（text_storage, metadata_storage, index）的条目数和大小。
+
+        Returns:
+            统计信息字典:
+            {
+                "total_entries": 总条目数,
+                "text_storage_entries": 文本存储条目数,
+                "metadata_storage_entries": 元数据存储条目数,
+                "index_entries": 索引条目数（对于 VDB/Graph 等）,
+                "total_size_bytes": 总大小（字节）
+            }
+        """
+        ...
+
     # ==================== 基础方法：清理 ====================
 
     def clear(self) -> None:

@@ -623,6 +623,46 @@ class GraphMemoryCollection(BaseMemoryCollection):
             "index_count": len(self.indexes),
         }
 
+    def get_storage_stats(self) -> dict[str, int]:
+        """统计Graph存储空间"""
+        import json
+
+        # 1. 统计 text_storage
+        text_entries = len(self.text_storage.get_all_ids())
+        text_size = sum(
+            len(self.text_storage.get(id_).encode("utf-8"))
+            for id_ in self.text_storage.get_all_ids()
+        )
+
+        # 2. 统计 metadata_storage
+        metadata_entries = len(self.metadata_storage.get_all_ids())
+        metadata_size = sum(
+            len(json.dumps(self.metadata_storage.get(id_)).encode("utf-8"))
+            for id_ in self.metadata_storage.get_all_ids()
+        )
+
+        # 3. 统计所有 graph index（节点数 + 边数）
+        total_nodes = 0
+        total_edges = 0
+        for _index_name, index_info in self.indexes.items():
+            index_obj = index_info.get("index")
+            if index_obj and hasattr(index_obj, "graph"):
+                # 计算节点数
+                total_nodes += len(index_obj.graph)
+                # 计算边数
+                total_edges += sum(len(neighbors) for neighbors in index_obj.graph.values())
+
+        # Graph 索引大小估计
+        index_size = total_nodes * 50 + total_edges * 20  # 每节点50字节，每边20字节
+
+        return {
+            "total_entries": text_entries,
+            "text_storage_entries": text_entries,
+            "metadata_storage_entries": metadata_entries,
+            "index_entries": total_nodes,
+            "total_size_bytes": text_size + metadata_size + index_size,
+        }
+
     @classmethod
     def load(cls, name: str, path: str | None = None) -> GraphMemoryCollection:
         """
