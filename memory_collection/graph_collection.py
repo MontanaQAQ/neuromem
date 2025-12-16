@@ -644,13 +644,13 @@ class GraphMemoryCollection(BaseMemoryCollection):
         # 3. 统计所有 graph index（节点数 + 边数）
         total_nodes = 0
         total_edges = 0
-        for _index_name, index_info in self.indexes.items():
-            index_obj = index_info.get("index")
-            if index_obj and hasattr(index_obj, "graph"):
+        for _index_name, index_obj in self.indexes.items():
+            # 注意：self.indexes 是 dict[str, SimpleGraphIndex]，不是 dict[str, dict]
+            if hasattr(index_obj, "nodes") and hasattr(index_obj, "adjacency"):
                 # 计算节点数
-                total_nodes += len(index_obj.graph)
+                total_nodes += len(index_obj.nodes)
                 # 计算边数
-                total_edges += sum(len(neighbors) for neighbors in index_obj.graph.values())
+                total_edges += sum(len(neighbors) for neighbors in index_obj.adjacency.values())
 
         # Graph 索引大小估计
         index_size = total_nodes * 50 + total_edges * 20  # 每节点50字节，每边20字节

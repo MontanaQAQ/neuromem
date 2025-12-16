@@ -225,8 +225,8 @@ class MemoryManager:
 
         self.logger.info(f"Created collection '{name}' with backend_type '{backend_type}'")
 
-        # 立即保存 manager 状态，确保重启后能识别该 collection
-        self._save_manager()
+        # 注意：不立即保存 manager.json，只在 store_collection() 时保存
+        # 这样避免元数据与实际数据不一致的问题
 
         return new_collection
 
