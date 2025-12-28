@@ -65,8 +65,21 @@ def _register_faiss_index():
     register_index_type("FAISS", FaissIndex)
 
 
+# 注册SageDB索引（C++ vector database）
+def _register_sagedb_index():
+    """注册SageDB索引类型"""
+    try:
+        from .sagedb_index import SageDBIndex
+
+        register_index_type("SAGEDB", SageDBIndex)
+    except ImportError:
+        # SageDB 可选，如果导入失败则跳过
+        pass
+
+
 # 执行注册
 _register_faiss_index()
+_register_sagedb_index()
 
 
 # 导出公共接口
