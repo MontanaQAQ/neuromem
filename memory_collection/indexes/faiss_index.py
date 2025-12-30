@@ -491,6 +491,19 @@ class FAISSIndex(BaseIndex):
 
         logger.info(f"Loaded FAISSIndex from {path}")
 
+    def clear(self) -> None:
+        """清空索引"""
+        # 重新创建一个空的 FAISS 索引
+        self._create_index()
+        # 清空映射和元数据
+        self.id_map.clear()
+        self.rev_map.clear()
+        self.next_id = 0
+        self.tombstones.clear()
+        self.vector_hashes.clear()
+        self.vector_store.clear()
+        logger.info("Cleared FAISSIndex")
+
     def __repr__(self) -> str:
         """返回索引的字符串表示"""
         return f"FAISSIndex(dim={self.dim}, size={self.size()}, tombstones={len(self.tombstones)})"
