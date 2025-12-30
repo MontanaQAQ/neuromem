@@ -354,3 +354,10 @@ class GraphIndex(BaseIndex):
         if self.graph.has_edge(source, target):
             return self.graph[source][target].get("weight", self.default_weight)
         return None
+
+    def clear(self) -> None:
+        """清空图索引
+
+        清除所有节点和边，重置图为空状态。
+        """
+        self.graph.clear()
