@@ -53,46 +53,26 @@ class MemoryManager:
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
     def create_collection(
-        self, name_or_config: str | dict[str, Any], config: dict[str, Any] | None = None
+        self, name: str, config: dict[str, Any] | None = None
     ) -> UnifiedCollection:
         """创建新的 Collection
 
-        支持两种调用方式：
-        1. 新方式: create_collection(name, config)
-        2. 旧方式: create_collection(config)  (config包含name字段)
-
         Args:
-            name_or_config: Collection名称或包含名称的配置字典
-            config: Collection配置（仅在新方式时使用）
+            name: Collection 名称
+            config: Collection 配置（可选）
 
         Returns:
             新创建的 UnifiedCollection 实例
 
         示例：
             >>> manager = MemoryManager()
-            >>> # 新方式
             >>> collection = manager.create_collection("my_data", {"max_size": 1000})
-            >>> # 旧方式（兼容）
-            >>> collection = manager.create_collection({"name": "my_data", "max_size": 1000})
         """
-        # 检测调用方式
-        if isinstance(name_or_config, dict):
-            # 旧方式: create_collection(config)
-            config_dict = name_or_config
-            name = config_dict.get("name")
-            if not name:
-                raise ValueError("配置字典必须包含 'name' 字段")
-        else:
-            # 新方式: create_collection(name, config)
-            name = name_or_config
-            config_dict = config or {}
-
         if name in self.collections:
             self.logger.warning(f"Collection '{name}' already exists in memory")
             return self.collections[name]
 
-        collection = UnifiedCollection(name, config_dict)
-        self.collections[name] = collection
+        collection = UnifiedCollection(name, config or {})
         self.logger.info(f"Created collection '{name}'")
         return collection
 
@@ -123,27 +103,6 @@ class MemoryManager:
 
         return None
 
-    def has_collection(self, name: str) -> bool:
-        """检查 Collection 是否存在（内存或磁盘）
-
-        Args:
-            name: Collection 名称
-
-        Returns:
-            如果 Collection 存在（内存中或磁盘上）返回 True，否则返回 False
-
-        示例：
-            >>> manager = MemoryManager()
-            >>> if manager.has_collection("my_data"):
-            ...     collection = manager.get_collection("my_data")
-        """
-        # 检查内存中是否存在
-        if name in self.collections:
-            return True
-
-        # 检查磁盘上是否存在
-        return self.has_on_disk(name)
-
     def remove_collection(self, name: str) -> bool:
         """删除 Collection（内存 + 磁盘）
 
@@ -169,19 +128,6 @@ class MemoryManager:
             self.logger.info(f"Removed collection '{name}' from disk")
 
         return True
-
-    def delete_collection(self, name: str) -> bool:
-        """删除 Collection（内存 + 磁盘）
-
-        这是 remove_collection 的别名，为了兼容旧代码。
-
-        Args:
-            name: Collection 名称
-
-        Returns:
-            是否删除成功
-        """
-        return self.remove_collection(name)
 
     def persist(self, name: str) -> bool:
         """持久化 Collection 到磁盘
