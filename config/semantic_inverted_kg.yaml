@@ -1,0 +1,39 @@
+version: "2.0"
+
+service:
+  name: "semantic_inverted_kg"
+  type: "hierarchical.semantic_inverted_knowledge_graph"
+  description: "Three-layer architecture: Semantic (FAISS) + Inverted (BM25) + Knowledge Graph (Segment)"
+  routing_strategy: "cascade"
+  layer_priorities:
+    - semantic
+    - inverted
+    - kg
+  cross_layer_query: true
+
+collection:
+  name: "semantic_inverted_kg_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/semantic_inverted_kg"
+
+indexes:
+  - name: "semantic_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"
+      index_type: "flat"
+
+  - name: "inverted_index"
+    type: "bm25"
+    config:
+      k1: 1.5
+      b: 0.75
+
+  - name: "kg_index"
+    type: "segment"
+    config:
+      strategy: "time"
+      segment_size: 100

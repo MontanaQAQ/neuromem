@@ -1,0 +1,17 @@
+version: "2.0"
+service:
+  name: "topic_segment_summary"
+  type: "partitional.segment_index"
+  description: "Hierarchical memory service: topic_segment_summary"
+collection:
+  name: "topic_segment_summary_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/topic_segment_summary"
+indexes:
+  - name: "primary_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"

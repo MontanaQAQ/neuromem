@@ -1,0 +1,22 @@
+version: "2.0"
+service:
+  name: "lsh_inverted"
+  type: "partitional.lsh_hash"
+  description: "LSH-based deduplication with inverted index"
+collection:
+  name: "lsh_inverted_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/lsh_inverted"
+indexes:
+  - name: "lsh_index"
+    type: "lsh"
+    config:
+      num_perm: 128
+      threshold: 0.5
+  - name: "bm25_index"
+    type: "bm25"
+    config:
+      k1: 1.5
+      b: 0.75

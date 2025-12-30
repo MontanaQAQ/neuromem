@@ -1,0 +1,21 @@
+version: "2.0"
+service:
+  name: "feature_queue_segment"
+  type: "partitional.segment_index"
+  description: "Queue-based feature extraction with segment indexing"
+collection:
+  name: "feature_queue_segment_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/feature_queue_segment"
+indexes:
+  - name: "fifo_index"
+    type: "fifo"
+    config:
+      max_size: 1000
+  - name: "segment_index"
+    type: "segment"
+    config:
+      strategy: "time"
+      segment_size: 100

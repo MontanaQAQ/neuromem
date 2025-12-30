@@ -1,0 +1,17 @@
+version: "2.0"
+service:
+  name: "keyword_graph"
+  type: "hierarchical.linknote_graph"
+  description: "Hierarchical memory service: keyword_graph"
+collection:
+  name: "keyword_graph_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/keyword_graph"
+indexes:
+  - name: "primary_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"

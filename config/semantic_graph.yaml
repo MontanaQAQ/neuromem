@@ -1,0 +1,17 @@
+version: "2.0"
+service:
+  name: "semantic_graph"
+  type: "hierarchical.property_graph"
+  description: "Hierarchical memory service: semantic_graph"
+collection:
+  name: "semantic_graph_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/semantic_graph"
+indexes:
+  - name: "primary_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"

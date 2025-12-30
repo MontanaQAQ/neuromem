@@ -1,0 +1,31 @@
+version: "2.0"
+
+service:
+  name: "inverted_vectorstore"
+  type: "partitional.inverted_vectorstore_combination"
+  description: "Hybrid search combining BM25 sparse retrieval and FAISS dense vector search"
+  fusion_strategy: "rrf"
+  fusion_weights:
+    bm25: 0.5
+    faiss: 0.5
+
+collection:
+  name: "inverted_vectorstore_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/inverted_vectorstore"
+
+indexes:
+  - name: "bm25_index"
+    type: "bm25"
+    config:
+      k1: 1.5
+      b: 0.75
+
+  - name: "faiss_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"
+      index_type: "flat"

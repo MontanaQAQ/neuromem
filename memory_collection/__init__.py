@@ -100,6 +100,7 @@ from .paper_features import (
     UserPortrait,
     UserPortraitMixin,
 )
+from .unified_collection import UnifiedCollection
 from .vdb_collection import VDBMemoryCollection
 
 __all__ = [
@@ -111,6 +112,7 @@ __all__ = [
     "KVMemoryCollection",
     "GraphMemoryCollection",
     "HybridCollection",
+    "UnifiedCollection",
     # Enhanced collections with paper features
     "VDBMemoryCollectionWithFeatures",
     "GraphMemoryCollectionWithFeatures",

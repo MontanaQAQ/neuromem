@@ -1,0 +1,17 @@
+version: "2.0"
+service:
+  name: "semantic_inverted"
+  type: "hierarchical.semantic_inverted_knowledge_graph"
+  description: "Hierarchical memory service: semantic_inverted"
+collection:
+  name: "semantic_inverted_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/semantic_inverted"
+indexes:
+  - name: "primary_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"

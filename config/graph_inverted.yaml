@@ -1,0 +1,17 @@
+version: "2.0"
+service:
+  name: "graph_inverted"
+  type: "hierarchical.property_graph"
+  description: "Hierarchical memory service: graph_inverted"
+collection:
+  name: "graph_inverted_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/graph_inverted"
+indexes:
+  - name: "primary_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"

@@ -1,0 +1,37 @@
+version: "2.0"
+
+service:
+  name: "feature_summary_vectorstore"
+  type: "partitional.feature_summary_vectorstore_combination"
+  description: "Triple-index combination with auto feature extraction and summarization"
+  fusion_strategy: "weighted"
+  index_weights:
+    faiss: 0.5
+    bm25: 0.3
+    fifo: 0.2
+
+collection:
+  name: "feature_summary_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/feature_summary"
+
+indexes:
+  - name: "faiss_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"
+      index_type: "flat"
+
+  - name: "bm25_index"
+    type: "bm25"
+    config:
+      k1: 1.5
+      b: 0.75
+
+  - name: "fifo_index"
+    type: "fifo"
+    config:
+      max_size: 1000

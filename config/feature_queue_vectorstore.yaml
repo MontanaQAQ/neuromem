@@ -1,0 +1,29 @@
+version: "2.0"
+
+service:
+  name: "feature_queue_vectorstore"
+  type: "partitional.fifo_queue"
+  description: "Queue-based feature extraction with vector storage"
+
+collection:
+  name: "feature_queue_vectorstore_memory"
+  storage:
+    type: "simple"
+    config:
+      persist_dir: "~/.local/share/sage/memory/feature_queue_vectorstore"
+
+indexes:
+  - name: "fifo_index"
+    type: "fifo"
+    config:
+      max_size: 1000
+  - name: "faiss_index"
+    type: "faiss"
+    config:
+      dimension: 768
+      metric: "cosine"
+  - name: "bm25_index"
+    type: "bm25"
+    config:
+      k1: 1.5
+      b: 0.75
