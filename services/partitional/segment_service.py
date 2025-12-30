@@ -135,11 +135,11 @@ class SegmentService(BaseMemoryService):
     def insert(
         self,
         entry: str,
-        vector: Any,
-        metadata: dict[str, Any],
+        vector: Any = None,
+        metadata: dict[str, Any] | None = None,
         *,
-        insert_mode: str,
-        insert_params: dict[str, Any],
+        insert_mode: str = "passive",
+        insert_params: dict[str, Any] | None = None,
     ) -> str:
         """
         插入数据到分段索引（统一接口）
@@ -148,7 +148,7 @@ class SegmentService(BaseMemoryService):
             entry: 原始文本内容
             vector: 向量（从调用者传入）
             metadata: 元数据字典
-            insert_mode: 插入模式（默认 "normal"）
+            insert_mode: 插入模式（默认 "passive"）
             insert_params: 插入参数
                 - timestamp: 自定义时间戳（默认当前时间）
                 - force_new_segment: 强制创建新段（默认 False）
@@ -162,6 +162,7 @@ class SegmentService(BaseMemoryService):
         """
         # 确保 insert_params 不为 None
         insert_params = insert_params or {}
+        metadata = metadata or {}
 
         # 扩展元数据
         extended_metadata = {

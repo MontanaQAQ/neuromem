@@ -51,6 +51,9 @@ class FIFOQueueIndex(BaseIndex):
         """
         super().__init__(config)
 
+        # 设置索引类型
+        self.index_type = "fifo"
+
         if "max_size" not in self.config:
             msg = "FIFOQueueIndex requires 'max_size' in config"
             raise ValueError(msg)

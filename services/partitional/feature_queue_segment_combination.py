@@ -117,11 +117,11 @@ class FeatureQueueSegmentCombinationService(BaseMemoryService):
     def insert(
         self,
         entry: str,
-        vector: Any,
-        metadata: dict[str, Any],
+        vector: Any = None,
+        metadata: dict[str, Any] | None = None,
         *,
-        insert_mode: str,
-        insert_params: dict[str, Any],
+        insert_mode: str = "passive",
+        insert_params: dict[str, Any] | None = None,
     ) -> str:
         """
         插入数据到三个索引（统一接口）
@@ -130,12 +130,13 @@ class FeatureQueueSegmentCombinationService(BaseMemoryService):
             entry: 文本内容
             vector: 向量（从调用者传入）
             metadata: 元数据
-            insert_mode: 插入模式（默认 "normal"）
+            insert_mode: 插入模式（默认 "passive"）
             insert_params: 插入参数
 
         Returns:
             str: 数据ID
         """
+        metadata = metadata or {}
         # 特征提取
         if self.enable_feature_extraction:
             features = self._extract_features(entry)

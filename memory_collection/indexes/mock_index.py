@@ -130,6 +130,15 @@ class MockIndex(BaseIndex):
         # Mock 版本不实现持久化
         pass
 
+    def clear(self) -> None:
+        """
+        清空索引
+
+        Note:
+            清空所有存储的 data_id
+        """
+        self._data_ids.clear()
+
     def __repr__(self) -> str:
         """返回索引的字符串表示"""
         return f"MockIndex(type='{self.index_type}', size={len(self._data_ids)})"
