@@ -2,10 +2,10 @@
 
 This module provides a SageDB backend for the neuromem vector database system.
 
+SageDB is now an independent PyPI package. Install with: pip install isagedb
+
 **Important**: SageDB is a self-developed C++ vector database, NOT based on FAISS.
 It provides high-performance vector operations with custom indexing and metadata management.
-
-ANNS algorithms will be migrated to sage-libs in the future for better modularity.
 """
 
 import json
@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 from sage.common.utils.logging.custom_logger import CustomLogger
+from sagedb import SageDB
 
 from .base_vdb_index import BaseVDBIndex
 
@@ -82,16 +83,8 @@ class SageDBIndex(BaseVDBIndex):
 
     def _init_sagedb(self):
         """Initialize the SageDB C++ backend."""
-        try:
-            from sage.middleware.components.sage_db.python.sage_db import SageDB
-
-            self.db = SageDB(self.dim)
-            self.logger.info(f"Initialized SageDB with dimension {self.dim}")
-        except ImportError as e:
-            self.logger.error(f"Failed to import SageDB: {e}")
-            raise ImportError(
-                "SageDB is not available. Please ensure sage-middleware is properly installed."
-            ) from e
+        self.db = SageDB(self.dim)
+        self.logger.info(f"Initialized SageDB with dimension {self.dim}")
 
     def insert(self, vector: np.ndarray, string_id: str) -> int:
         """Insert a vector into the index.
