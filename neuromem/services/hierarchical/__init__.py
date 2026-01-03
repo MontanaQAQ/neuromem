@@ -7,7 +7,7 @@ Hierarchical Services - 层次型内存服务
 - SemanticInvertedKnowledgeGraphService: 语义+倒排+知识图谱三层服务
 
 文档:
-- README: packages/sage-middleware/src/sage/middleware/components/sage_mem/neuromem/services/hierarchical/README.md
+- README: neuromem/services/hierarchical/README.md
 - 示例: examples/services/
   - linknote_example.py - Linknote 完整示例
   - property_graph_example.py - PropertyGraph 完整示例
@@ -15,8 +15,8 @@ Hierarchical Services - 层次型内存服务
 
 快速开始:
 ```python
-from sage.middleware.components.sage_mem.neuromem.memory_collection import UnifiedCollection
-from sage.middleware.components.sage_mem.neuromem.services import MemoryServiceRegistry
+from neuromem.memory_collection import UnifiedCollection
+from neuromem.services import MemoryServiceRegistry
 
 # Linknote 笔记链接
 collection = UnifiedCollection("my_notes")

@@ -5,6 +5,8 @@ A flexible memory management system for RAG applications with support for
 vector databases, key-value stores, and graph structures.
 """
 
+from ._version import __author__, __email__, __version__
+
 from .memory_collection import (
     BaseMemoryCollection,
     GraphMemoryCollection,
@@ -13,8 +15,10 @@ from .memory_collection import (
 )
 from .memory_manager import MemoryManager
 
-__version__ = "0.1.0"
 __all__ = [
+    "__version__",
+    "__author__",
+    "__email__",
     "MemoryManager",
     "BaseMemoryCollection",
     "VDBMemoryCollection",
