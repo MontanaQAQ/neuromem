@@ -10,11 +10,11 @@ Unit tests for PropertyGraphService
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import UnifiedCollection
-from sage.middleware.components.sage_mem.neuromem.services.hierarchical import (
+from neuromem.memory_collection import UnifiedCollection
+from neuromem.services.hierarchical import (
     PropertyGraphService,
 )
-from sage.middleware.components.sage_mem.neuromem.services import MemoryServiceRegistry
+from neuromem.services import MemoryServiceRegistry
 
 
 class TestPropertyGraphInitialization:

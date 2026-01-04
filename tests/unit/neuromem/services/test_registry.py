@@ -10,8 +10,8 @@ Unit tests for MemoryServiceRegistry
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import UnifiedCollection
-from sage.middleware.components.sage_mem.neuromem.services import (
+from neuromem.memory_collection import UnifiedCollection
+from neuromem.services import (
     BaseMemoryService,
     MemoryServiceRegistry,
 )

@@ -7,7 +7,7 @@
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection.indexes import (
+from neuromem.memory_collection.indexes import (
     BaseIndex,
     IndexFactory,
     MockIndex,

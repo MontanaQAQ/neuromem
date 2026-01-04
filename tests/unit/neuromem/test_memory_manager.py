@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_manager import (
+from neuromem.memory_manager import (
     MemoryManager,
 )
 

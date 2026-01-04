@@ -26,11 +26,11 @@ except ImportError:
         fixture = staticmethod(pytest_fixture)
 
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import (
+from neuromem.memory_collection import (
     GraphMemoryCollection,
 )
-from sage.middleware.components.sage_mem.neuromem.memory_manager import MemoryManager
-from sage.middleware.components.sage_mem.neuromem.utils.path_utils import (
+from neuromem.memory_manager import MemoryManager
+from neuromem.utils.path_utils import (
     get_default_data_dir,
 )
 
@@ -175,7 +175,7 @@ def test_graph_collection_with_manager(cleanup_data):
 
 def test_graph_index_operations(cleanup_data):
     """Test low-level graph index operations."""
-    from sage.middleware.components.sage_mem.neuromem.memory_collection import (
+    from neuromem.memory_collection import (
         SimpleGraphIndex,
     )
 

@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 try:
-    from sage.middleware.components.sage_mem.neuromem.memory_collection.kv_collection import (
+    from neuromem.memory_collection.kv_collection import (
         KVMemoryCollection,
         load_config,
     )

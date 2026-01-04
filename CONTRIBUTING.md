@@ -1,152 +1,271 @@
-# Quick Start: Neuromem CI/CD Setup
+# Contributing to NeuroMem
 
-This guide helps you set up the CI/CD environment for neuromem development.
+Thank you for your interest in contributing to NeuroMem! This guide will help you get started.
 
-## For Contributors
+## 🚀 Quick Start
 
-### First-time Setup
-
-#### Option 1: Automatic Setup (SAGE Developers - Recommended)
-
-If you're working on neuromem as part of SAGE development:
+### Development Setup
 
 ```bash
-cd /path/to/SAGE
+# Install in development mode
 ./quickstart.sh --dev --yes
-```
 
-This will **automatically**:
-- Install neuromem in editable mode
-- Install pre-commit framework
-- **Configure pre-commit hooks for neuromem** (no manual setup needed!)
-
-#### Option 2: Manual Setup (Standalone Development)
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/intellistream/neuromem.git
-cd neuromem
-
-# 2. Install neuromem with dev dependencies
-pip install -e .[dev]
-
-# 3. Install pre-commit hooks (if not auto-installed)
+# Or manually
+pip install -e . --no-deps
+pip install isage-common isagevdb pytest pytest-cov pytest-mock
 pre-commit install
+```
 
-# 4. Test the setup
+### Running Tests
+
+```bash
+# Run all unit tests
+pytest tests/unit/ -v
+
+# Run with coverage
+pytest tests/unit/ --cov=neuromem --cov-report=html
+
+# Run specific test file
+pytest tests/unit/neuromem/indexes/test_bm25_index.py -v
+
+# Run quick tests only (skip slow/gpu tests)
+pytest tests/unit/ -m "not slow and not gpu"
+```
+
+### Code Quality
+
+```bash
+# Run pre-commit hooks
 pre-commit run --all-files
-```
 
-**Note**: When you run `pip install -e .[dev]`, it will attempt to automatically
-install pre-commit hooks if you're in a git repository.
-
-### Daily Workflow
-
-```bash
-# Make your changes
-vim memory_collection/your_file.py
-
-# Stage your changes
-git add .
-
-# Commit (pre-commit hooks run automatically)
-git commit -m "feat: add new feature"
-
-# If hooks fail, fix the issues and try again
-# Most formatting issues are auto-fixed
-git add .
-git commit -m "feat: add new feature"
-
-# Push to remote
-git push origin your-branch
-```
-
-### CI/CD Pipeline
-
-When you push to GitHub:
-
-1. **Lint Check** (runs in ~1 min)
-   - Validates code style with ruff
-   - Auto-formatting check
-
-2. **Validation** (runs in ~1 min)
-   - Checks pyproject.toml
-   - Python syntax validation
-
-3. **Build Check** (runs in ~2 min)
-   - Builds Python package
-   - Validates package structure
-
-All checks must pass before merging.
-
-## Handling Hook Failures
-
-### Ruff Check Fails
-
-```bash
-# Auto-fix most issues
-ruff check --fix .
+# Format code with ruff
 ruff format .
 
-# Re-stage and commit
-git add .
-git commit -m "your message"
+# Lint code with ruff
+ruff check . --fix
 ```
 
-### Syntax Error
+## 📋 Development Workflow
 
-Fix the Python syntax error in your code, then retry.
+### 1. Before You Start
 
-### File Check Fails
+- Fork the repository
+- Clone your fork: `git clone https://github.com/YOUR_USERNAME/NeuroMem.git`
+- Add upstream remote: `git remote add upstream https://github.com/intellistream/NeuroMem.git`
+- Create a new branch: `git checkout -b feature/your-feature-name`
 
-Pre-commit will auto-fix most file issues (whitespace, EOF, etc.).
-Just re-stage and commit:
+### 2. Making Changes
 
+- Write clean, documented code following project conventions
+- Add/update tests for new functionality
+- Ensure all tests pass: `pytest tests/unit/ -v`
+- Run code quality checks: `pre-commit run --all-files`
+
+### 3. Commit Guidelines
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <short summary>
+
+<body (optional)>
+
+<footer (optional)>
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, no logic change)
+- `refactor`: Code refactoring
+- `test`: Test changes
+- `chore`: Build process or auxiliary tool changes
+- `perf`: Performance improvements
+
+**Examples:**
 ```bash
-git add .
-git commit -m "your message"
+git commit -m "feat(memory): add hierarchical graph indexing"
+git commit -m "fix(vdb): correct cosine distance calculation"
+git commit -m "docs: update installation guide for Python 3.11"
+git commit -m "test(indexes): add edge cases for BM25"
 ```
 
-## Skip Hooks (Not Recommended)
+### 4. Submitting Pull Requests
 
-```bash
-# Only use in emergency
-git commit --no-verify -m "urgent fix"
+- Push your changes: `git push origin feature/your-feature-name`
+- Open a pull request on GitHub
+- Ensure all CI checks pass
+- Request review from maintainers
+- Address review feedback
+
+## 🏗️ Architecture Guidelines
+
+NeuroMem follows a modular architecture:
+
+```
+neuromem/
+├── memory_manager.py           # Central manager
+├── memory_collection/          # Collection types
+│   ├── indexes/               # Index implementations
+│   └── base_collection.py
+├── services/                   # Memory services
+│   ├── partitional/           # Partition-based services
+│   └── hierarchical/          # Hierarchy-based services
+├── search_engine/             # Search algorithms
+├── storage_engine/            # Storage backends
+└── utils/                     # Utilities
 ```
 
-## Update Hooks
+### Key Principles
 
-```bash
-# Get latest hook versions
-pre-commit autoupdate
+1. **Modular Design**: Each component should be independent and reusable
+2. **Type Hints**: All functions must have proper type annotations
+3. **Documentation**: Docstrings for all public APIs
+4. **Testing**: Comprehensive unit tests for new features
+5. **Error Handling**: Clear error messages with context
 
-# Test updated hooks
-pre-commit run --all-files
+## 📝 Code Style
+
+### Python Style
+
+- Follow PEP 8
+- Line length: 100 characters max
+- Use type hints for all function signatures
+- Docstrings in Google style format
+
+**Example:**
+
+```python
+from typing import Optional, Dict, Any
+
+def create_index(
+    name: str,
+    dim: int,
+    backend_type: str = "FAISS",
+    metadata: Optional[Dict[str, Any]] = None
+) -> Index:
+    """Create a new vector index.
+    
+    Args:
+        name: Index name.
+        dim: Vector dimension.
+        backend_type: Backend type (FAISS, SageVDB).
+        metadata: Optional metadata dict.
+        
+    Returns:
+        Index: Created index instance.
+        
+    Raises:
+        ValueError: If dim is invalid.
+    """
+    # Implementation
 ```
 
-## Troubleshooting
+### Import Organization
 
-### "pre-commit: command not found"
+```python
+# Standard library
+import os
+from typing import List, Dict
 
-```bash
-pip install pre-commit
+# Third-party
+import numpy as np
+import yaml
+
+# Local imports
+from neuromem.memory_collection import BaseCollection
+from neuromem.services import BaseService
 ```
 
-### Hooks not running
+## 🐛 Reporting Issues
 
-```bash
-# Reinstall hooks
-pre-commit uninstall
-pre-commit install
+### Bug Reports
+
+Include:
+- Clear description of the issue
+- Steps to reproduce
+- Expected vs actual behavior
+- Environment details (Python version, OS, dependencies)
+- Minimal code example
+
+### Feature Requests
+
+Include:
+- Clear use case description
+- Proposed solution (if any)
+- Benefits and potential drawbacks
+- Related issues or PRs
+
+## 📚 Documentation
+
+- Update README.md for user-facing changes
+- Update .github/copilot-instructions.md for architectural changes
+- Add docstrings for all new functions/classes
+- Update type hints when signatures change
+
+## 🔍 Testing Guidelines
+
+### Unit Tests
+
+- Test one component at a time
+- Use mocks for external dependencies
+- Cover edge cases and error conditions
+- Keep tests fast (< 1s per test)
+
+### Test Structure
+
+```python
+import pytest
+from neuromem.memory_collection.indexes import BM25Index
+
+class TestBM25Index:
+    """Test BM25Index functionality."""
+    
+    def test_create_index(self):
+        """Test index creation."""
+        index = BM25Index(name="test")
+        assert index.name == "test"
+    
+    def test_query_empty_index(self):
+        """Test querying empty index."""
+        index = BM25Index(name="test")
+        results = index.query("test query")
+        assert len(results) == 0
 ```
 
-### Permission denied
+### Test Markers
 
-```bash
-# Make hooks executable
-chmod +x .git/hooks/pre-commit
+Use pytest markers to categorize tests:
+
+```python
+@pytest.mark.slow
+def test_large_dataset():
+    """Test with large dataset (slow)."""
+    pass
+
+@pytest.mark.gpu
+def test_gpu_acceleration():
+    """Test GPU functionality (requires GPU)."""
+    pass
 ```
 
-## More Information
+## 🔗 Dependencies
 
-See [CI_CD_README.md](CI_CD_README.md) for detailed documentation.
+- **Core**: isage-common, isagevdb, numpy, pyyaml
+- **Testing**: pytest, pytest-cov, pytest-mock
+- **Development**: pre-commit, ruff
+
+When adding dependencies:
+- Update `pyproject.toml`
+- Justify why the dependency is needed
+- Consider maintenance burden
+
+## 📞 Contact
+
+- GitHub Issues: https://github.com/intellistream/NeuroMem/issues
+- Email: shuhao_zhang@hust.edu.cn
+
+## 📄 License
+
+By contributing, you agree that your contributions will be licensed under the project's license.

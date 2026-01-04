@@ -10,7 +10,7 @@
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection.unified_collection import (
+from neuromem.memory_collection.unified_collection import (
     UnifiedCollection,
 )
 

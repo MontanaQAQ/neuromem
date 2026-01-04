@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection.indexes import (
+from neuromem.memory_collection.indexes import (
     FAISSIndex,
     IndexFactory,
 )

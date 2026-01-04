@@ -4,10 +4,10 @@
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import (
+from neuromem.memory_collection import (
     UnifiedCollection,
 )
-from sage.middleware.components.sage_mem.neuromem.services.partitional import (
+from neuromem.services.partitional import (
     FIFOQueueService,
 )
 

@@ -6,7 +6,7 @@ Tests initialization and index creation validation.
 import pytest
 
 try:
-    from sage.middleware.components.sage_mem.neuromem.memory_collection.vdb_collection import (
+    from neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )
 

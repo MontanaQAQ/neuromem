@@ -10,8 +10,8 @@ Unit tests for BaseMemoryService
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import UnifiedCollection
-from sage.middleware.components.sage_mem.neuromem.services import BaseMemoryService
+from neuromem.memory_collection import UnifiedCollection
+from neuromem.services import BaseMemoryService
 
 
 class TestAbstractMethods:

@@ -11,11 +11,11 @@
 
 import pytest
 
-from sage.middleware.components.sage_mem.neuromem.memory_collection import UnifiedCollection
-from sage.middleware.components.sage_mem.neuromem.services.partitional.feature_queue_summary_combination import (
+from neuromem.memory_collection import UnifiedCollection
+from neuromem.services.partitional.feature_queue_summary_combination import (
     FeatureQueueSummaryCombinationService,
 )
-from sage.middleware.components.sage_mem.neuromem.services.registry import (
+from neuromem.services.registry import (
     MemoryServiceRegistry,
 )
 

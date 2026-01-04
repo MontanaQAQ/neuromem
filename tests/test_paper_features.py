@@ -14,11 +14,11 @@ import time
 
 import numpy as np
 import pytest
-from sage.middleware.components.sage_mem.neuromem.memory_collection.enhanced_collections import (
+from neuromem.memory_collection.enhanced_collections import (
     GraphMemoryCollectionWithFeatures,
     VDBMemoryCollectionWithFeatures,
 )
-from sage.middleware.components.sage_mem.neuromem.memory_collection.paper_features import (
+from neuromem.memory_collection.paper_features import (
     # 5.6 Conflict Detection
     ConflictConfig,
     ConflictDetector,
