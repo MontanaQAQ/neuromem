@@ -47,3 +47,14 @@ dmypy.json
 # Distribution
 dist/
 build/
+
+# Temporary improvement docs
+*_IMPROVEMENTS.md
+IMPROVEMENTS.md
+
+# Test logs
+pytest.log
+test.log
+
+# Temporary fix scripts
+fix_*.sh
