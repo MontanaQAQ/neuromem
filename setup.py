@@ -71,7 +71,7 @@ with open("README.md", encoding="utf-8") as fh:
 
 setup(
     name="neuromem",
-    version="0.1.0",
+    version="0.2.0.1",
     author="IntelliStream Team",
     author_email="your-email@example.com",
     description="Standalone memory management engine for RAG applications",
