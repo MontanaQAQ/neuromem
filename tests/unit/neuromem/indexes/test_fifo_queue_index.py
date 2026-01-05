@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from neuromem.memory_collection.indexes import (
+from sage.neuromem.memory_collection.indexes import (
     FIFOQueueIndex,
     IndexFactory,
 )

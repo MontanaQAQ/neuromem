@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "isage-neuromem"
-version = "0.1.0"
+version = "0.2.0"
 description = "NeuroMem - Brain-inspired memory system for AI agents with multi-modal storage"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -66,8 +66,11 @@ Repository = "https://github.com/intellistream/NeuroMem"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["neuromem*"]
+include = ["sage.neuromem*"]
 exclude = ["tests*", "examples*"]
+
+[tool.setuptools]
+zip-safe = false
 
 [tool.black]
 line-length = 100

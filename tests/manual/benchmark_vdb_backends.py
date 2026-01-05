@@ -94,7 +94,7 @@ def create_test_vectors(n: int, dim: int) -> list[np.ndarray]:
 
 def benchmark_backend(backend_name: str, dim: int = 128, n_vectors: int = 10000):
     """基准测试一个后端"""
-    from neuromem.search_engine.vdb_index import create_index
+    from sage.neuromem.search_engine.vdb_index import create_index
 
     print(f"\n{'=' * 60}")
     print(f"Benchmarking {backend_name} backend")

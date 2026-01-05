@@ -25,7 +25,7 @@ pytest = None
 try:
     import pytest
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-    from neuromem.memory_collection.vdb_collection import (
+    from sage.neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )
 
@@ -430,7 +430,7 @@ def test_statistics_accuracy_after_operations(collection_with_index):
 
 if __name__ == "__main__":
     from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-    from neuromem.memory_collection.vdb_collection import (
+    from sage.neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )
 

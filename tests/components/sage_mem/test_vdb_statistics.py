@@ -24,7 +24,7 @@ except ImportError:
     PYTEST_AVAILABLE = False
 
 from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-from neuromem.memory_collection.vdb_collection import (
+from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
 )
 

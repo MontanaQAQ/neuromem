@@ -10,11 +10,11 @@ Unit tests for LinknoteGraphService
 
 import pytest
 
-from neuromem.memory_collection import UnifiedCollection
-from neuromem.services.hierarchical import (
+from sage.neuromem.memory_collection import UnifiedCollection
+from sage.neuromem.services.hierarchical import (
     LinknoteGraphService,
 )
-from neuromem.services import MemoryServiceRegistry
+from sage.neuromem.services import MemoryServiceRegistry
 
 
 class TestLinknoteInitialization:

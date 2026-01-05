@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services.hierarchical.semantic_inverted_knowledge_graph import (
+from sage.neuromem.services.hierarchical.semantic_inverted_knowledge_graph import (
     SemanticInvertedKnowledgeGraphService,
 )
-from neuromem.services.registry import (
+from sage.neuromem.services.registry import (
     MemoryServiceRegistry,
 )
 

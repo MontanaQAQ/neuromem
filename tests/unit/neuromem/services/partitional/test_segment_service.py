@@ -6,10 +6,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services.partitional import (
+from sage.neuromem.services.partitional import (
     SegmentService,
 )
 

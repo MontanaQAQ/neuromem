@@ -11,11 +11,11 @@
 
 import pytest
 
-from neuromem.memory_collection import UnifiedCollection
-from neuromem.services.partitional.feature_summary_vectorstore_combination import (
+from sage.neuromem.memory_collection import UnifiedCollection
+from sage.neuromem.services.partitional.feature_summary_vectorstore_combination import (
     FeatureSummaryVectorStoreCombinationService,
 )
-from neuromem.services.registry import (
+from sage.neuromem.services.registry import (
     MemoryServiceRegistry,
 )
 

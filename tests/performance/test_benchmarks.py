@@ -14,10 +14,10 @@ import numpy as np
 import psutil
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services import (
+from sage.neuromem.services import (
     MemoryServiceRegistry,
 )
 

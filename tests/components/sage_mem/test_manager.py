@@ -4,8 +4,8 @@ import shutil
 import numpy as np
 import pytest
 
-from neuromem.memory_manager import MemoryManager
-from neuromem.utils.path_utils import (
+from sage.neuromem.memory_manager import MemoryManager
+from sage.neuromem.utils.path_utils import (
     get_default_data_dir,
 )
 

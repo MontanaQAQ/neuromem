@@ -7,10 +7,10 @@ import pytest
 # Skip all LSH tests - LSH Index not yet registered in IndexFactory
 pytestmark = pytest.mark.skip(reason="LSH Index not registered in IndexFactory")
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services.partitional import (
+from sage.neuromem.services.partitional import (
     LSHHashService,
 )
 

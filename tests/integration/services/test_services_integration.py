@@ -19,19 +19,19 @@ from __future__ import annotations
 
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services.hierarchical.semantic_inverted_knowledge_graph import (
+from sage.neuromem.services.hierarchical.semantic_inverted_knowledge_graph import (
     SemanticInvertedKnowledgeGraphService,
 )
-from neuromem.services.partitional.feature_summary_vectorstore_combination import (
+from sage.neuromem.services.partitional.feature_summary_vectorstore_combination import (
     FeatureSummaryVectorStoreCombinationService,
 )
-from neuromem.services.partitional.inverted_vectorstore_combination import (
+from sage.neuromem.services.partitional.inverted_vectorstore_combination import (
     InvertedVectorStoreCombinationService,
 )
-from neuromem.services.registry import (
+from sage.neuromem.services.registry import (
     MemoryServiceRegistry,
 )
 

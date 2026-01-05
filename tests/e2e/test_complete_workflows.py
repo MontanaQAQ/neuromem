@@ -10,10 +10,10 @@ E2E Tests for Complete Memory Service Workflows
 import numpy as np
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services import (
+from sage.neuromem.services import (
     MemoryServiceRegistry,
 )
 

@@ -19,10 +19,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services.partitional import (
+from sage.neuromem.services.partitional import (
     FeatureQueueSegmentCombinationService,
     FeatureQueueSummaryCombinationService,
     FeatureQueueVectorstoreCombinationService,

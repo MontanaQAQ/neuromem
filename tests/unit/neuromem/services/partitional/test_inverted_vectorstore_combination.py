@@ -13,11 +13,11 @@
 
 import pytest
 
-from neuromem.memory_collection import UnifiedCollection
-from neuromem.services.partitional.inverted_vectorstore_combination import (
+from sage.neuromem.memory_collection import UnifiedCollection
+from sage.neuromem.services.partitional.inverted_vectorstore_combination import (
     InvertedVectorStoreCombinationService,
 )
-from neuromem.services.registry import (
+from sage.neuromem.services.registry import (
     MemoryServiceRegistry,
 )
 

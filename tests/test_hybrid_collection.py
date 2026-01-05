@@ -9,7 +9,7 @@ Unit tests for HybridCollection - Part 6 of NeuroMem Refactor.
 
 import numpy as np
 import pytest
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     HybridCollection,
     IndexType,
 )

@@ -10,15 +10,15 @@ Tests end-to-end scenarios combining LinknoteGraphService and PropertyGraphServi
 
 import pytest
 
-from neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
-from neuromem.services import (
+from sage.neuromem.services import (
     MemoryServiceRegistry,
 )
 
 # Import services to trigger registration
-from neuromem.services.hierarchical import (  # noqa: F401
+from sage.neuromem.services.hierarchical import (  # noqa: F401
     LinknoteGraphService,
     PropertyGraphService,
 )

@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from neuromem.memory_collection.vdb_collection import (
+from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
 )
 
