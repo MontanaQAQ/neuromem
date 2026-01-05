@@ -19,14 +19,42 @@ benchmarks/
     └── specialized_analysis/  # Specialized analyzers
 ```
 
+## Prerequisites
+
+### Installation
+
+**Option 1: Install from PyPI with benchmark support**
+```bash
+pip install isage-neuromem[benchmark]
+```
+
+**Option 2: Development installation**
+```bash
+# Clone repositories
+git clone https://github.com/intellistream/neuromem.git
+git clone https://github.com/intellistream/sageData.git
+
+# Install sageData first
+cd sageData && pip install -e .
+
+# Install neuromem with benchmark dependencies
+cd ../neuromem && pip install -e ".[dev,benchmark]"
+```
+
+### Dependencies
+
+The benchmark suite requires:
+- **isage-data** (`sage.data`): Data loaders for LongMemEval, Locomo, MemAgentBench datasets
+- **isage-common**: SAGE core utilities (logging, embeddings)
+- **isagedb**: SageDB vector database backend
+
+> ⚠️ **Important**: If `isage-data` is not yet published to PyPI, you must install it manually from the [sageData repository](https://github.com/intellistream/sageData). See [docs/SAGEDATA_SETUP.md](../docs/SAGEDATA_SETUP.md) for details.
+
 ## Quick Start
 
 ### Running Benchmarks
 
 ```bash
-# Install benchmark dependencies
-pip install -e ".[dev]"
-
 # Run basic benchmark
 python benchmarks/experiment/memory_test_pipeline.py --config benchmarks/experiment/config/default.yaml
 
