@@ -120,6 +120,15 @@ NeuroMem is part of the SAGE ecosystem and installed as a namespace package:
 - **Import path**: `sage.neuromem`
 - **Namespace**: Part of SAGE (Structured AI Graph Engine)
 
+## Benchmarks
+
+Comprehensive benchmark suite is available in `benchmarks/`:
+- **Experiment Pipeline**: Complete benchmark pipeline for memory operations
+- **Evaluation Tools**: Performance analysis and metrics
+- **Configurations**: Pre-configured test scenarios
+
+See [benchmarks/README.md](benchmarks/README.md) for details.
+
 ## Future Plans
 
 This sub-project is designed as a core memory component of SAGE and may be rewritten in C++/Rust for better performance in the future.
