@@ -4,9 +4,46 @@
 
 ## Installation
 
+### From PyPI
+
 ```bash
 pip install isage-neuromem
 ```
+
+### For Development
+
+```bash
+# Clone the repository
+git clone https://github.com/intellistream/NeuroMem.git
+cd NeuroMem
+
+# Quick start (recommended)
+./quickstart.sh
+
+# Or manual installation
+pip install -e .
+pip install pre-commit  # For contributors
+pre-commit install
+```
+
+## Quick Start
+
+```python
+from sage.neuromem import MemoryManager
+
+# Create memory manager
+manager = MemoryManager()
+
+# Create a collection
+config = {
+    "name": "my_collection",
+    "backend_type": "VDB",
+    "description": "My vector database collection"
+}
+collection = manager.create_collection(config)
+```
+
+For more examples, see [examples/](examples/).
 
 ## Features
 
