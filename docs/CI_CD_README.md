@@ -56,6 +56,41 @@ Runs automatically on:
    - Validates package structure with `twine check`
    - Ensures package can be distributed
 
+### Workflow: `.github/workflows/benchmark.yml`
+
+Purpose-built for the paper1 memory benchmarks that were ported from the SAGE benchmarks repo. The workflow can be triggered manually or via the nightly cron (UTC 02:00) and always runs on a self-hosted runner tagged `self-hosted` + `llm-server` with GPU + vLLM access.
+
+#### Runner requirements
+
+- vLLM/LLM endpoint reachable from the runner (export `LLM_BASE_URL`, `LLM_MODEL_NAME`, `LLM_API_KEY` in the runner environment or pass them via workflow inputs)
+- Hugging Face download token via `HF_TOKEN` environment variable (used to fetch datasets/models)
+- Pre-installed benchmark dependencies (handled automatically by `pip install -e .[benchmark]`)
+- Adequate disk space for `.sage/benchmarks` artifacts
+
+#### Inputs
+
+| Input | Description | Default |
+| --- | --- | --- |
+| `sections` | Comma separated logical sections (currently only `stm` is consumed) | `stm` |
+| `experiments` | Comma separated task IDs such as `group-1` … `group-10` | All ten groups |
+| `config_path` | Path to the YAML config inside the repo | `benchmarks/experiment/config/longmemeval_short_term_memory_pipeline.yaml` |
+| `quick_mode` | Boolean flag to run only the first two tasks | `false` |
+| `llm_base_url` | Optional override for `runtime.base_url` | empty |
+| `llm_model_name` | Optional override for `runtime.model_name` | empty |
+| `llm_api_key` | Optional override for `runtime.api_key` | empty |
+
+Values coming from the inputs take precedence, but the workflow will fall back to environment variables (`LLM_BASE_URL`, `LLM_MODEL_NAME`, `LLM_API_KEY`) when inputs are blank. Configure these as encrypted environment variables on the self-hosted runner to avoid exposing secrets in dispatch forms.
+
+#### What the job does
+
+1. Checks out the repo, sets up Python 3.11, caches pip, and installs `.[benchmark]`.
+2. Optionally installs the Hugging Face token (if `HF_TOKEN` is present) under `~/.huggingface/token`.
+3. Copies the selected config, injects any runtime overrides (LLM endpoint/model/key), and stores a generated config under `benchmarks/experiment/config/generated/`.
+4. Iterates over the requested task IDs (respecting `quick_mode`) and runs `benchmarks/experiment/memory_test_pipeline.py` for each task, mirroring the paper1 experiment flow.
+5. Uploads `.sage/benchmarks/**` and `benchmarks/logs/**` as artifacts for downstream analysis.
+
+All benchmark logs are available directly in the workflow logs, while structured JSON results live under `.sage/benchmarks/benchmark_memory/<dataset>/<timestamp>/<memory_name>/` inside the uploaded artifact.
+
 ### Required Secrets
 
 No secrets required for basic CI/CD (lint, validate, build).
