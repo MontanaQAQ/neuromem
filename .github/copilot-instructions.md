@@ -297,12 +297,77 @@ class MyClass:
 
 ---
 
+## Publishing to PyPI
+
+### Using sage-pypi-publisher
+
+NeuroMem uses `sage-pypi-publisher` for building and publishing to PyPI. This tool automatically compiles Python source to bytecode for better performance and IP protection.
+
+**Installation**:
+```bash
+pip install --upgrade sage-pypi-publisher
+```
+
+**Publishing Workflow**:
+
+1. **Update Version** (use 4-digit semantic versioning):
+   ```bash
+   # Update these files:
+   # - pyproject.toml: version = "0.2.0.1"
+   # - sage/neuromem/_version.py: __version__ = "0.2.0.1"
+   # - setup.py: version="0.2.0.1"
+   ```
+
+2. **Commit Version Changes**:
+   ```bash
+   git add pyproject.toml sage/neuromem/_version.py setup.py
+   git commit -m "chore: bump version to X.X.X.X"
+   git push origin main-dev
+   ```
+
+3. **Build and Upload** (one command):
+   ```bash
+   cd /path/to/neuromem
+   sage-pypi-publisher build . -o /tmp/neuromem-build -u -r pypi --no-dry-run
+   ```
+
+**What sage-pypi-publisher Does**:
+- ✅ Auto-detects pure Python package
+- ✅ Compiles `.py` → `.pyc` (keeps `__init__.py` and `_version.py`)
+- ✅ Builds optimized wheel (bytecode compilation)
+- ✅ Validates package with `twine check`
+- ✅ Uploads to PyPI with proper authentication
+- ✅ Provides package URL for verification
+
+**Publishing Options**:
+- **Test PyPI**: `-r testpypi` (for testing before production)
+- **Dry Run**: `--dry-run` (default, simulates upload without actually uploading)
+- **Production**: `--no-dry-run` (required for actual upload)
+
+**Verification**:
+```bash
+# Check uploaded version
+pip index versions isage-neuromem
+
+# Install from PyPI
+pip install isage-neuromem==X.X.X.X
+```
+
+**Benefits of Bytecode Compilation**:
+- Faster loading times (pre-compiled)
+- Reduced package inspection
+- Similar wheel size to source distribution
+- Maintains full functionality
+
+---
+
 ## Additional Resources
 
 - **API Reference**: `neuromem/services/API_REFERENCE.md`
 - **Benchmarks**: `neuromem/services/BENCHMARKS.md`
 - **Contributing**: `CONTRIBUTING.md`
 - **Examples**: `examples/` directory
+- **CI/CD Guide**: `docs/CI_CD_README.md`
 
 ---
 
@@ -313,3 +378,5 @@ class MyClass:
 3. **Test thoroughly**: Run relevant test suite before suggesting changes
 4. **Document clearly**: Match existing doc style (Chinese/English per module)
 5. **Preserve architecture**: Don't break abstractions or bypass layers
+6. **Version updates**: Always use 4-digit semantic versioning (X.X.X.X)
+7. **Publishing**: Use `sage-pypi-publisher` for all PyPI releases
