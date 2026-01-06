@@ -67,34 +67,30 @@ echo "📝 步骤 4: 更新 pyproject.toml..."
 if [ -f "pyproject.toml" ]; then
     # 备份原文件
     cp pyproject.toml pyproject.toml.backup
-    
+
     # 更新 packages.find
     sed -i 's/include = \["neuromem\*"\]/include = ["sage.middleware.components.sage_mem.neuromem*"]/' pyproject.toml
-    
+
     # 添加 zip-safe 配置（如果不存在）
     if ! grep -q "zip-safe" pyproject.toml; then
         echo "" >> pyproject.toml
         echo "[tool.setuptools]" >> pyproject.toml
         echo "zip-safe = false" >> pyproject.toml
     fi
-    
+
     echo "✅ pyproject.toml 更新完成"
 else
     echo "⚠️  警告：未找到 pyproject.toml"
 fi
 echo ""
 
-# 步骤 5: 更新 setup.py（如果存在）
-echo "📝 步骤 5: 更新 setup.py..."
-if [ -f "setup.py" ]; then
-    cp setup.py setup.py.backup
-    
-    # 更新 find_packages
-    sed -i 's/packages=find_packages()/packages=find_packages(where=".", include=["sage.middleware.components.sage_mem.neuromem*"], exclude=["tests*", "examples*"])/' setup.py
-    
-    echo "✅ setup.py 更新完成"
+# 步骤 5: 验证 pyproject.toml 配置
+echo "📝 步骤 5: 验证 pyproject.toml 配置..."
+if [ -f "pyproject.toml" ]; then
+    echo "✅ pyproject.toml 存在，检查包名是否为 'isage-neuromem'"
+    grep -q 'name = "isage-neuromem"' pyproject.toml && echo "✅ 包名正确" || echo "⚠️  请检查 pyproject.toml 中的包名"
 else
-    echo "⚠️  setup.py 不存在（使用 pyproject.toml）"
+    echo "⚠️  pyproject.toml 不存在，请创建该文件"
 fi
 echo ""
 
@@ -150,4 +146,3 @@ echo "   git commit -m 'refactor: convert to SAGE namespace package'"
 echo ""
 echo "📦 备份位置: neuromem_backup/"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-

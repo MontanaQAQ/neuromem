@@ -22,7 +22,7 @@ To ensure consistency between local development, CI/CD, and SAGE main repository
 **Version Consistency**:
 - `.pre-commit-config.yaml`: Uses `ruff-pre-commit@v0.14.2`
 - `.github/workflows/test.yml`: Installs `ruff==0.14.2`
-- `setup.py`: Requires `ruff==0.14.2` in dev dependencies
+- `pyproject.toml`: Requires `ruff>=0.1.0` in benchmark dependencies
 - **SAGE main repo**: Also uses `ruff@v0.14.2`
 
 This ensures that:
@@ -237,7 +237,7 @@ pre-commit autoupdate
 ### CI Failures
 
 1. **Lint failures**: Run `pre-commit run --all-files` locally first
-2. **Build failures**: Check `pyproject.toml` and `setup.py`
+2. **Build failures**: Check `pyproject.toml`
 3. **Validation failures**: Ensure all Python files have valid syntax
 
 ### Common Errors

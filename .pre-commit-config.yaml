@@ -31,6 +31,8 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: detect-private-key
+      - id: debug-statements
+      - id: check-docstring-first
 
   # Python: Ruff linter and formatter (replaces black, isort, flake8)
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -43,13 +45,3 @@ repos:
       - id: ruff-format
         name: ruff format
         stages: [pre-commit, manual]
-
-  # Python: Check syntax (lightweight, no external deps)
-  - repo: local
-    hooks:
-      - id: python-syntax-check
-        name: Check Python syntax
-        entry: python -m py_compile
-        language: system
-        types: [python]
-        stages: [pre-commit]

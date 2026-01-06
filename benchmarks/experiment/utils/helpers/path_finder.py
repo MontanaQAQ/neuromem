@@ -3,7 +3,7 @@ from pathlib import Path
 
 def get_project_root() -> Path:
     """
-    获取项目根目录（包含 packages 目录的目录）
+    获取 NeuroMem 项目根目录（包含 pyproject.toml 的目录）
 
     Returns:
         Path: 项目根目录路径
@@ -11,10 +11,13 @@ def get_project_root() -> Path:
     Raises:
         FileNotFoundError: 如果未找到项目根目录
     """
-    # Use centralized project root finding function from sage-common
-    from sage.common.config import find_sage_project_root
+    # 从当前文件向上查找，直到找到包含 pyproject.toml 的目录
+    current_path = Path(__file__).resolve()
 
-    project_root = find_sage_project_root()
-    if project_root is None:
-        raise FileNotFoundError("未找到 SAGE 项目根目录")
-    return project_root
+    # 向上遍历目录
+    for parent in [current_path] + list(current_path.parents):
+        # 检查是否存在项目标识文件
+        if (parent / "pyproject.toml").exists():
+            return parent
+
+    raise FileNotFoundError("未找到 NeuroMem 项目根目录")
