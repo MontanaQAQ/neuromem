@@ -1,6 +1,49 @@
-# neuromem
+# isage-neuromem
 
-**neuromem** is a standalone memory management engine designed for RAG (Retrieval-Augmented Generation) applications. It provides flexible memory collection abstractions with support for vector databases, key-value stores, and graph structures.
+**NeuroMem** is a brain-inspired memory management engine for SAGE (Structured AI Graph Engine). It provides flexible memory collection abstractions with support for vector databases, key-value stores, and graph structures, designed specifically for RAG (Retrieval-Augmented Generation) applications.
+
+## Installation
+
+### From PyPI
+
+```bash
+pip install isage-neuromem
+```
+
+### For Development
+
+```bash
+# Clone the repository
+git clone https://github.com/intellistream/NeuroMem.git
+cd NeuroMem
+
+# Quick start (recommended)
+./quickstart.sh
+
+# Or manual installation
+pip install -e .
+pip install pre-commit  # For contributors
+pre-commit install
+```
+
+## Quick Start
+
+```python
+from sage.neuromem import MemoryManager
+
+# Create memory manager
+manager = MemoryManager()
+
+# Create a collection
+config = {
+    "name": "my_collection",
+    "backend_type": "VDB",
+    "description": "My vector database collection"
+}
+collection = manager.create_collection(config)
+```
+
+For more examples, see [examples/](examples/).
 
 ## Features
 
@@ -13,7 +56,7 @@
 ## Architecture
 
 ```
-neuromem/
+sage/neuromem/
 ├── memory_manager.py          # Central manager for collections
 ├── memory_collection/         # Collection abstractions
 │   ├── base_collection.py
@@ -34,7 +77,7 @@ neuromem/
 ## Quick Start
 
 ```python
-from neuromem.memory_manager import MemoryManager
+from sage.neuromem import MemoryManager
 
 # Create manager
 manager = MemoryManager()
@@ -70,10 +113,30 @@ results = collection.retrieve(
 )
 ```
 
+## Package Structure
+
+NeuroMem is part of the SAGE ecosystem and installed as a namespace package:
+- **Package name on PyPI**: `isage-neuromem`
+- **Import path**: `sage.neuromem`
+- **Namespace**: Part of SAGE (Structured AI Graph Engine)
+
+## Benchmarks
+
+Comprehensive benchmark suite is available in `benchmarks/`:
+- **Experiment Pipeline**: Complete benchmark pipeline for memory operations
+- **Evaluation Tools**: Performance analysis and metrics
+- **Configurations**: Pre-configured test scenarios
+
+See [benchmarks/README.md](benchmarks/README.md) for details.
+
 ## Future Plans
 
-This sub-project will eventually be separated into its own repository and may be rewritten in C++/Rust for better performance.
+This sub-project is designed as a core memory component of SAGE and may be rewritten in C++/Rust for better performance in the future.
 
 ## License
 
-See LICENSE file in the SAGE project root.
+Apache-2.0 License - see LICENSE file for details.
+
+## Part of SAGE Ecosystem
+
+NeuroMem is a component of the SAGE (Structured AI Graph Engine) project by IntelliStream Team.

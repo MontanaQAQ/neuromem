@@ -1,0 +1,228 @@
+name: Paper1 Memory Benchmarks
+
+on:
+  schedule:
+    # 每天 UTC 2:00 (北京时间 10:00) 运行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      sections:
+        description: 'Comma-separated section names to run (stm, mtm, lpm)'
+        required: false
+        default: 'stm'
+      experiments:
+        description: 'Comma-separated task IDs (e.g. group-1,group-2)'
+        required: false
+        default: 'group-1,group-2,group-3,group-4,group-5,group-6,group-7,group-8,group-9,group-10'
+      config_path:
+        description: 'Benchmark config file relative to the repository root'
+        required: true
+        default: 'benchmarks/experiment/config/longmemeval_short_term_memory_pipeline.yaml'
+      quick_mode:
+        description: 'Run only the first two task IDs for a smoke test'
+        required: false
+        type: boolean
+        default: false
+      llm_base_url:
+        description: 'Optional override for runtime.base_url in the config'
+        required: false
+      llm_model_name:
+        description: 'Optional override for runtime.model_name in the config'
+        required: false
+      llm_api_key:
+        description: 'Optional override for runtime.api_key in the config'
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  paper1-benchmark:
+    name: Paper1 Benchmark Suite
+    runs-on: [self-hosted, llm-server]
+    timeout-minutes: 240
+    permissions:
+      contents: read
+      actions: read
+    env:
+      PYTHONUNBUFFERED: 1
+      BENCHMARK_CONFIG_PATH: ${{ github.event.inputs.config_path || 'benchmarks/experiment/config/longmemeval_short_term_memory_pipeline.yaml' }}
+      BENCHMARK_TASKS: ${{ github.event.inputs.experiments || 'group-1,group-2,group-3,group-4,group-5,group-6,group-7,group-8,group-9,group-10' }}
+      BENCHMARK_SECTIONS: ${{ github.event.inputs.sections || 'stm' }}
+      BENCHMARK_QUICK_MODE: ${{ github.event.inputs.quick_mode || 'false' }}
+      BENCHMARK_BASE_URL_INPUT: ${{ github.event.inputs.llm_base_url || '' }}
+      BENCHMARK_MODEL_NAME_INPUT: ${{ github.event.inputs.llm_model_name || '' }}
+      BENCHMARK_API_KEY_INPUT: ${{ github.event.inputs.llm_api_key || '' }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml', 'setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[benchmark]
+
+      - name: Configure Hugging Face token
+        run: |
+          if [ -z "${HF_TOKEN:-}" ]; then
+            echo "HF_TOKEN not provided; skipping token setup."
+            exit 0
+          fi
+          mkdir -p ~/.huggingface
+          printf '%s' "$HF_TOKEN" > ~/.huggingface/token
+
+      - name: Prepare benchmark config
+        id: prepare-config
+        env:
+          SOURCE_CONFIG: ${{ env.BENCHMARK_CONFIG_PATH }}
+          TARGET_FILE: ${{ format('benchmarks/experiment/config/generated/paper1_{0}.yaml', github.run_id) }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$TARGET_FILE")"
+          python - <<'PY'
+          import os
+          import pathlib
+          from typing import Iterable, Optional
+
+          import yaml
+
+          def pick_first(values: Iterable[Optional[str]]) -> Optional[str]:
+              for value in values:
+                  if value:
+                      return value
+              return None
+
+          source = pathlib.Path(os.environ["SOURCE_CONFIG"]).expanduser()
+          if not source.exists():
+              raise SystemExit(f"Config file not found: {source}")
+          dst = pathlib.Path(os.environ["TARGET_FILE"])
+          text = source.read_text(encoding="utf-8")
+          dst.write_text(text, encoding="utf-8")
+          data = yaml.safe_load(text) or {}
+          runtime = data.setdefault("runtime", {})
+
+          overrides = {
+              "base_url": pick_first(
+                  (
+                      os.environ.get("BENCHMARK_BASE_URL_INPUT"),
+                      os.environ.get("LLM_BASE_URL"),
+                  )
+              ),
+              "api_key": pick_first(
+                  (
+                      os.environ.get("BENCHMARK_API_KEY_INPUT"),
+                      os.environ.get("LLM_API_KEY"),
+                  )
+              ),
+              "model_name": pick_first(
+                  (
+                      os.environ.get("BENCHMARK_MODEL_NAME_INPUT"),
+                      os.environ.get("LLM_MODEL_NAME"),
+                  )
+              ),
+          }
+
+          for key, value in overrides.items():
+              if value:
+                  runtime[key] = value
+
+          with open(dst, "w", encoding="utf-8") as fh:
+              yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+
+          print(f"Prepared config written to: {dst}")
+          PY
+          echo "config-path=$TARGET_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Run paper1 benchmark suite
+        env:
+          CONFIG_FILE: ${{ steps.prepare-config.outputs.config-path }}
+          TASKS_RAW: ${{ env.BENCHMARK_TASKS }}
+          QUICK_MODE: ${{ env.BENCHMARK_QUICK_MODE }}
+          SECTION_FILTER: ${{ env.BENCHMARK_SECTIONS }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$CONFIG_FILE" ]]; then
+            echo "Failed to resolve generated config path"
+            exit 1
+          fi
+          if [[ ! -f "$CONFIG_FILE" ]]; then
+            echo "Config file not found: $CONFIG_FILE"
+            exit 1
+          fi
+
+          SECTION_LIST=$(echo "${SECTION_FILTER:-stm}" | tr '[:upper:]' '[:lower:]')
+          if [[ "$SECTION_LIST" != *"stm"* ]]; then
+            echo "Section filter ($SECTION_LIST) does not include 'stm'; skipping benchmark run."
+            exit 0
+          fi
+
+          DEFAULT_TASKS="group-1,group-2,group-3,group-4,group-5,group-6,group-7,group-8,group-9,group-10"
+          RAW_TASKS=${TASKS_RAW:-$DEFAULT_TASKS}
+
+          IFS=',' read -ra PARSED <<< "$RAW_TASKS"
+          TASKS=()
+          for RAW in "${PARSED[@]}"; do
+            CLEAN=$(echo "$RAW" | xargs)
+            [[ -z "$CLEAN" ]] && continue
+            TASKS+=("$CLEAN")
+          done
+
+          if [[ ${#TASKS[@]} -eq 0 ]]; then
+            echo "No task ids resolved from '$RAW_TASKS'"
+            exit 1
+          fi
+
+          if [[ "${QUICK_MODE,,}" == "true" && ${#TASKS[@]} -gt 2 ]]; then
+            TASKS=("${TASKS[@]:0:2}")
+            echo "Quick mode enabled - running first ${#TASKS[@]} task(s)."
+          fi
+
+          echo "Running benchmarks with config: $CONFIG_FILE"
+          echo "Task IDs: ${TASKS[*]}"
+
+          for TASK_ID in "${TASKS[@]}"; do
+            echo "::group::Benchmark $TASK_ID"
+            python benchmarks/experiment/memory_test_pipeline.py --config "$CONFIG_FILE" --task_id "$TASK_ID"
+            echo "::endgroup::"
+          done
+
+      - name: List benchmark outputs
+        if: always()
+        run: |
+          if [ -d ".sage/benchmarks" ]; then
+            echo "Generated benchmark files:"
+            find .sage/benchmarks -maxdepth 3 -type f | sort || true
+          else
+            echo "No benchmark outputs were produced."
+          fi
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper1-benchmark-${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            .sage/benchmarks
+            benchmarks/logs

@@ -1,18 +1,45 @@
+# ============================================================================
+# NeuroMem Package Configuration
+# ============================================================================
+# 类脑记忆管理引擎，为 RAG 应用提供灵活的记忆集合抽象
+# 支持多后端（Vector DB、Key-Value、Graph）的统一内存管理
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 构建系统配置
+# ----------------------------------------------------------------------------
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = [
+    "setuptools>=65.0",    # 现代 setuptools
+    "wheel",               # wheel 构建支持
+]
 build-backend = "setuptools.build_meta"
 
+# ----------------------------------------------------------------------------
+# 项目元数据
+# ----------------------------------------------------------------------------
 [project]
 name = "isage-neuromem"
-version = "0.1.0"
+version = "0.2.0.1"
 description = "NeuroMem - Brain-inspired memory system for AI agents with multi-modal storage"
 readme = "README.md"
 requires-python = ">=3.10"
+
+# 许可证
 license = {text = "Apache-2.0"}
+
+# 项目作者
 authors = [
     {name = "IntelliStream Team", email = "shuhao_zhang@hust.edu.cn"}
 ]
-keywords = ["memory", "ai", "agents", "vector-database", "knowledge-graph", "rag", "llm"]
+
+# PyPI 搜索关键词
+keywords = [
+    "memory", "ai", "agents", "vector-database",
+    "knowledge-graph", "rag", "llm"
+]
+
+# PyPI 分类器
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -26,74 +53,184 @@ classifiers = [
     "Topic :: Database",
 ]
 
+# ----------------------------------------------------------------------------
+# 核心依赖 - NeuroMem 运行必需的基础依赖
+# ----------------------------------------------------------------------------
 dependencies = [
-    # SAGE components (already on PyPI)
-    "isage-common>=0.2.0",  # For logging, embedding, config
-    "isagedb>=0.1.6",  # SageDB vector database
-    
-    # Core dependencies
-    "numpy>=1.26.0,<2.3.0",
-    "pyyaml>=6.0,<7.0",
-    "networkx>=3.0,<4.0",
-    "python-dateutil>=2.8.0",
-    
-    # Optional but recommended
-    "redis>=5.0.0,<6.0.0",
-    "neo4j>=5.0.0,<6.0.0",
+    # SAGE 生态组件（已发布到 PyPI）
+    "isage-common",                     # 日志、嵌入、配置等核心工具
+    "isage-vdb",                        # SageDB 向量数据库后端
+    "isage-kernel",                     # SAGE Kernel 服务工厂和运行时
+
+    # 核心依赖
+    "numpy>=1.26.0,<2.3.0",             # 数组操作和数值计算
+    "pyyaml>=6.0,<7.0",                 # YAML 配置文件解析
+    "networkx>=3.0,<4.0",               # 图结构支持（Graph 内存类型）
+    "python-dateutil>=2.8.0",           # 日期时间处理工具
+
+    # 搜索引擎依赖
+    "bm25s>=0.1.0",                     # BM25s 文本索引
+    "PyStemmer>=2.0.0",                 # Stemmer for BM25s
+    "faiss-cpu>=1.7.0",                 # FAISS 向量索引（CPU版本）
+    "datasketch>=1.5.0",                # LSH 索引支持（MinHash）
+
+    # 后端存储（必需）
+    "redis>=5.0.0,<6.0.0",              # Redis KV 存储后端
+    "neo4j>=5.0.0,<6.0.0",              # Neo4j 图数据库后端
 ]
 
+# ----------------------------------------------------------------------------
+# 可选依赖组 - 按功能模块分组的可选依赖
+# 用户可根据需要安装：pip install isage-neuromem[benchmark]
+# ----------------------------------------------------------------------------
 [project.optional-dependencies]
-full = [
-    "redis>=5.0.0,<6.0.0",
-    "neo4j>=5.0.0,<6.0.0",
-]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
-]
-test = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
+
+# 基准测试套件（包含所有测试、开发、评估工具）
+benchmark = [
+    # 数据加载和处理
+    "isage-data",                       # SAGE 数据加载器（LongMemEval、Locomo、MemAgentBench）
+    "isage-platform",
+    "pandas>=2.0.0",                    # 数据分析和处理
+    "pyarrow>=10.0.0",                  # Arrow 数据格式（isage-data 依赖）
+
+    # 可视化和分析
+    "matplotlib>=3.7.0",                # 可视化图表生成
+
+    # NLP 和 LLM
+    "nltk>=3.8.0",                      # 自然语言处理工具
+    "openai>=1.0.0",                    # OpenAI API 客户端
+
+    # 系统监控
+    "psutil>=5.9.0",                    # 系统资源监控
+
+    # 测试和开发工具
+    "pytest>=7.0.0",                    # 测试框架
+    "pytest-cov>=4.0.0",                # 覆盖率报告
+    "pytest-benchmark>=4.0.0",          # 性能基准测试框架
+    "ruff>=0.1.0",                      # 代码检查和格式化
+    "mypy>=1.0.0",                      # 静态类型检查
+    "pre-commit>=3.0.0",                # Git pre-commit hooks
 ]
 
+# ----------------------------------------------------------------------------
+# 项目链接
+# ----------------------------------------------------------------------------
 [project.urls]
 Homepage = "https://github.com/intellistream/NeuroMem"
 Documentation = "https://intellistream.github.io/SAGE/"
 Repository = "https://github.com/intellistream/NeuroMem"
 "Bug Tracker" = "https://github.com/intellistream/NeuroMem/issues"
 
+# ----------------------------------------------------------------------------
+# 包构建配置
+# ----------------------------------------------------------------------------
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["neuromem*"]
-exclude = ["tests*", "examples*"]
+where = ["."]                           # 源码搜索根目录
+include = ["sage.neuromem*"]            # 包含的包模式
+exclude = ["tests*", "examples*"]       # 排除的包模式
 
+[tool.setuptools]
+zip-safe = false                        # 不生成 zip-safe 包
+
+# ----------------------------------------------------------------------------
+# 开发工具配置
+# ----------------------------------------------------------------------------
+
+# 代码格式化 (Black)
 [tool.black]
-line-length = 100
-target-version = ['py310', 'py311']
+line-length = 100                       # 最大行长度
+target-version = ['py310', 'py311']     # 目标 Python 版本
 
+# 代码检查和格式化 (Ruff)
 [tool.ruff]
-line-length = 100
-target-version = "py310"
+line-length = 100                       # 最大行长度
+target-version = "py310"                # 目标 Python 版本
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "PIE", "PT", "RET", "SIM"]
-ignore = [
-    "E501",   # Line too long (handled by formatter)
-    "B905",   # zip without strict (Python 3.9 compatibility)
+# 启用的检查规则
+select = [
+    "E",     # pycodestyle 错误
+    "F",     # Pyflakes
+    "W",     # pycodestyle 警告
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "PIE",   # flake8-pie
+    "PT",    # flake8-pytest-style
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
 ]
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+# 忽略的规则
+ignore = [
+    "E501",  # 行过长（由格式化工具处理）
+    "B905",  # zip without strict（Python 3.9 兼容性）
+]
 
+# 静态类型检查 (MyPy)
+[tool.mypy]
+python_version = "3.10"                 # Python 版本
+warn_return_any = true                  # 警告返回 Any 类型
+warn_unused_configs = true              # 警告未使用的配置
+disallow_untyped_defs = false           # 允许无类型定义
+ignore_missing_imports = true           # 忽略缺失的导入
+
+# ----------------------------------------------------------------------------
+# 测试配置 (Pytest)
+# ----------------------------------------------------------------------------
 [tool.pytest.ini_options]
+# 测试文件搜索路径
 testpaths = ["tests"]
+
+# 测试文件匹配模式
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+
+# 异步测试支持
+asyncio_mode = "auto"
+
+# 日志配置
+log_cli = true
+log_cli_level = "INFO"
+log_file = "pytest.log"
+log_file_level = "DEBUG"
+
+# 测试运行参数
+addopts = [
+    "-v",                               # 详细输出
+    "--strict-markers",                 # 严格标记检查
+    "--tb=short",                       # 简短回溯
+    "--disable-warnings",               # 禁用警告
+    # 覆盖率参数（需要先安装：pip install isage-neuromem[test]）
+    # "--cov=.",                        # 覆盖率检查
+    # "--cov-report=term-missing",      # 终端覆盖率报告（显示缺失行）
+    # "--cov-report=html:htmlcov",      # HTML 覆盖率报告
+]
+
+# 测试标记定义
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "benchmark: Benchmark tests",
+    "performance: Performance tests",
+    "slow: Slow tests (use -m 'not slow' to skip)",
+    "gpu: Tests requiring GPU",
+    "cpp: Tests for C++ bindings",
+]
+
+# 忽略路径
+norecursedirs = [
+    ".git",
+    ".tox",
+    "dist",
+    "build",
+    "*.egg",
+    "vendors",
+    "third_party",
+]

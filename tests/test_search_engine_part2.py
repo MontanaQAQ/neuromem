@@ -18,7 +18,7 @@ class TestSimpleGraphIndex:
     @pytest.fixture
     def graph_index(self):
         """Create a fresh graph index for each test."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine.graph_index import (
+        from sage.neuromem.search_engine.graph_index import (
             SimpleGraphIndex,
         )
 
@@ -152,7 +152,7 @@ class TestSimpleGraphIndex:
             graph_index.store(tmpdir)
 
             # Load
-            from sage.middleware.components.sage_mem.neuromem.search_engine.graph_index import (
+            from sage.neuromem.search_engine.graph_index import (
                 SimpleGraphIndex,
             )
 
@@ -181,7 +181,7 @@ class TestBM25sIndexExtended:
     @pytest.fixture
     def kv_index(self):
         """Create a BM25sIndex with test data."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine.kv_index import (
+        from sage.neuromem.search_engine.kv_index import (
             BM25sIndex,
         )
 
@@ -267,7 +267,7 @@ class TestIndexFactory:
 
     def test_create_kv_index(self):
         """Test creating KV index via factory."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine import IndexFactory
+        from sage.neuromem.search_engine import IndexFactory
 
         index = IndexFactory.create_kv_index(
             {
@@ -281,7 +281,7 @@ class TestIndexFactory:
 
     def test_create_graph_index(self):
         """Test creating graph index via factory."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine import IndexFactory
+        from sage.neuromem.search_engine import IndexFactory
 
         index = IndexFactory.create_graph_index(
             {
@@ -294,7 +294,7 @@ class TestIndexFactory:
 
     def test_get_supported_types(self):
         """Test getting supported index types."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine import IndexFactory
+        from sage.neuromem.search_engine import IndexFactory
 
         kv_types = IndexFactory.get_supported_kv_types()
         assert "bm25s" in kv_types
@@ -308,7 +308,7 @@ class TestGraphIndexFactory:
 
     def test_create_and_load(self):
         """Test create and load via factory."""
-        from sage.middleware.components.sage_mem.neuromem.search_engine.graph_index import (
+        from sage.neuromem.search_engine.graph_index import (
             GraphIndexFactory,
         )
 

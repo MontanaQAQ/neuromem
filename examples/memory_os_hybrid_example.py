@@ -22,7 +22,7 @@ import time
 from typing import Any
 
 import numpy as np
-from sage.middleware.components.sage_mem.neuromem.memory_collection import (
+from sage.neuromem.memory_collection import (
     HybridCollection,
 )
 
