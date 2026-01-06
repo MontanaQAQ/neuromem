@@ -37,6 +37,7 @@ env/
 # Testing
 .pytest_cache/
 .benchmarks/
+.sage/
 .coverage
 .coverage.*
 htmlcov/

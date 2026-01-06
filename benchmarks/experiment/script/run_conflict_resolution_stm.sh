@@ -6,8 +6,8 @@ set -e  # Exit immediately on error
 
 # Get absolute path of script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Get project root directory (from script/ up 8 levels to SAGE/)
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../../../../.." && pwd)"
+# Get project root directory (from script/ up 3 levels to neuromem/)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 # Python script relative path
 PYTHON_SCRIPT="$SCRIPT_DIR/../memory_test_pipeline.py"
 # Configuration file path
@@ -42,7 +42,7 @@ for i in "${!TASK_IDS[@]}"; do
   echo ""
 
   # Run experiment
-  python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID"
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID"
 
   echo ""
   echo "? Task $TASK_ID completed [$TASK_NUM/${#TASK_IDS[@]}]"

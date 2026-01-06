@@ -6,8 +6,8 @@ set -e  # 遇到错误立即退出
 
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 获取项目根目录 (从 script/normalization_strategy/ 向上 9 层到 SAGE/)
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../../../../../.." && pwd)"
+# 获取项目根目录 (从 script/normalization_strategy/ 向上 4 层到 neuromem/)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # 配置文件路径
@@ -63,7 +63,7 @@ for i in "${!TASK_IDS[@]}"; do
   echo "--------------------------------------------------------------------"
 
   # 运行任务并将输出重定向到日志文件（同时显示到终端）
-  python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
 
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "✅ 任务 $TASK_ID 完成，日志已保存到: $LOG_FILE"

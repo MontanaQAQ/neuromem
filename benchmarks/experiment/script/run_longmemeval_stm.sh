@@ -6,8 +6,8 @@ set -e  # 遇到错误立即退出
 
 # 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 获取项目根目录 (从 script/ 向上 7 层到 SAGE/)
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../../../.." && pwd)"
+# 获取项目根目录 (从 script/ 向上 3 层到 neuromem/)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../memory_test_pipeline.py"
 # 配置文件路径（LongMemEval - STM）
@@ -56,7 +56,7 @@ for i in "${!TASK_IDS[@]}"; do
   echo ""
 
   # 运行实验（如需强制指定数据文件，可在此追加 --config 的 data.filepath 或使用环境变量）
-  python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID"
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID"
 
   echo ""
   echo "✅ 任务 $TASK_ID 完成 [$TASK_NUM/${#TASK_IDS[@]}]"
