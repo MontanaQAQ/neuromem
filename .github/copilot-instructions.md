@@ -30,7 +30,7 @@ neuromem/
 
 - **Python Version**: 3.10+
 - **Type Hints**: Always use type annotations (from `__future__ import annotations`)
-- **Docstrings**: 
+- **Docstrings**:
   - Use Chinese for internal modules (memory_manager.py, services)
   - Use English for public APIs and examples
   - Include typical usage examples for complex classes
@@ -139,7 +139,7 @@ Pluggable storage backends for different data types.
 
 ### When Adding New Features
 
-1. **New Index Type**: 
+1. **New Index Type**:
    - Inherit from `BaseIndex` in `memory_collection/indexes/`
    - Implement `build()`, `search()`, `to_dict()`, `from_dict()`
    - Register in `IndexFactory`
@@ -255,17 +255,17 @@ from __future__ import annotations
 
 class MyClass:
     """Brief description
-    
+
     Detailed explanation...
-    
+
     Attributes:
         attr1: Description
         attr2: Description
     """
-    
+
     def __init__(self, ...):
         """Initialize...
-        
+
         Args:
             param1: Description
             param2: Description
@@ -315,12 +315,11 @@ pip install --upgrade sage-pypi-publisher
    # Update these files:
    # - pyproject.toml: version = "0.2.0.1"
    # - sage/neuromem/_version.py: __version__ = "0.2.0.1"
-   # - setup.py: version="0.2.0.1"
    ```
 
 2. **Commit Version Changes**:
    ```bash
-   git add pyproject.toml sage/neuromem/_version.py setup.py
+   git add pyproject.toml sage/neuromem/_version.py
    git commit -m "chore: bump version to X.X.X.X"
    git push origin main-dev
    ```

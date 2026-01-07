@@ -166,9 +166,9 @@ exclude = ["tests*", "examples*"]
 zip-safe = false  # 添加这行
 ```
 
-### 步骤 6: 更新 setup.py（如果使用）
+### 步骤 6: 验证 pyproject.toml 配置
 
-修改 `setup.py`:
+检查 `pyproject.toml`:
 
 ```python
 setup(
@@ -343,7 +343,7 @@ pytest tests/ -v
 
 ```bash
 git add sage/
-git add pyproject.toml setup.py
+git add pyproject.toml
 git add examples/ tests/ README.md
 git rm -r neuromem  # 如果使用了 git mv，这步可跳过
 git commit -m "refactor: convert to SAGE namespace package
@@ -351,7 +351,7 @@ git commit -m "refactor: convert to SAGE namespace package
 - Move neuromem to sage.middleware.components.sage_mem.neuromem
 - Add namespace marker files (__init__.py with pkgutil.extend_path)
 - Update import paths in examples, tests, and documentation
-- Update pyproject.toml and setup.py package configuration
+- Update pyproject.toml package configuration
 - Bump version to 0.2.0 (breaking change)
 
 BREAKING CHANGE: Import path changed from 'neuromem' to 'sage.middleware.components.sage_mem.neuromem'
