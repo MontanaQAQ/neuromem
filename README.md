@@ -1,10 +1,14 @@
 ![NeuroMem Logo](docs/assets/neuromem.png)
 
 <h3 align="center">
-Love grows from the smallest of memories
+Love grows from the smallest of memories ~
 </h3>
 
-NeuroMem is a subproject of [SAGE](https://github.com/intellistream/SAGE), dedicated to exploring memory systems for large language models.
+<p align="center">
+| <a href="README_cn.md"><b>中文文档</b></a> | <a href="https://intellistream.slack.com/"><b>Developer Slack</b></a> |
+</p>
+
+🔥 Welcome! NeuroMem is a subproject of [SAGE](https://github.com/intellistream/SAGE), dedicated to exploring memory systems for large language models.
 
 ---
 
