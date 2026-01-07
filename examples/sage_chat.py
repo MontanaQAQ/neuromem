@@ -5,17 +5,45 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from pipeline.short_term_memory_pipeline import STMPipeline
+
+# ============================================================================
+# 配置参数（在此处修改）
+# ============================================================================
+
+PIPELINE_CONFIG = {
+    # 记忆服务配置
+    "service_type": "partitional.fifo_queue",  # 服务类型: partitional.fifo_queue, partitional.lsh_hash, etc.
+    "max_size": 10,  # FIFO 队列最大容量（轮次）
+    "max_history": 10,  # 检索时返回的最大历史记录数
+    # LLM 配置
+    "use_llm": True,  # 是否使用真实 LLM（False 则使用模拟回复）
+    "api_key": "iloveshuhao",
+    "base_url": "http://172.17.0.1:1040/v1",
+    "model_name": "pangu_embedded_1b",
+    "max_tokens": 256,
+    "temperature": 0.7,
+}
 
 
 def main():
     """主函数"""
     print("🚀 启动 NeuroMem STM 聊天机器人...")
     print("━" * 50)
+    print("📝 当前配置:")
+    print(f"   - 服务类型: {PIPELINE_CONFIG['service_type']}")
+    print(f"   - 队列大小: {PIPELINE_CONFIG['max_size']}")
+    print(f"   - 检索数量: {PIPELINE_CONFIG['max_history']}")
+    print(f"   - 使用 LLM: {PIPELINE_CONFIG['use_llm']}")
+    if PIPELINE_CONFIG["use_llm"]:
+        print(f"   - 模型名称: {PIPELINE_CONFIG['model_name']}")
+    print("━" * 50)
 
     try:
-        # 初始化 Pipeline
-        pipeline = STMPipeline()
+        # 初始化 Pipeline（注入配置参数）
+        pipeline = STMPipeline(config=PIPELINE_CONFIG)
         print("✅ Pipeline 已创建，开始聊天！")
         print("💡 输入 'exit' 或 'quit' 退出聊天\n")
 
@@ -56,6 +84,10 @@ def main():
 
                 traceback.print_exc()
                 continue
+
+        # 退出前停止 pipeline
+        with contextlib.suppress(Exception):
+            pipeline.close()
 
     except Exception as e:
         print(f"❌ 初始化失败: {e}")
