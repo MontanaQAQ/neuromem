@@ -58,7 +58,7 @@ classifiers = [
 # ----------------------------------------------------------------------------
 dependencies = [
     # SAGE 生态组件（已发布到 PyPI）
-    "isage-common",                     # 日志、嵌入、配置等核心工具
+    "isage-common[embedding]",          # 日志、嵌入、配置等核心工具（包含 embedding 支持）
     "isage-vdb",                        # SageDB 向量数据库后端
     "isage-kernel",                     # SAGE Kernel 服务工厂和运行时
 

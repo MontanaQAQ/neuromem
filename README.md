@@ -1,3 +1,9 @@
+![NeuroMem Logo](docs/assets/neuromem.png)
+
+<h3 align="center">
+Love grows from the smallest of memories.
+</h3>
+
 # isage-neuromem
 
 **NeuroMem** is a brain-inspired memory management engine for SAGE (Structured AI Graph Engine). It provides flexible memory collection abstractions with support for vector databases, key-value stores, and graph structures, designed specifically for RAG (Retrieval-Augmented Generation) applications.
