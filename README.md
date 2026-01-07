@@ -170,10 +170,10 @@ See [benchmarks/README.md](benchmarks/README.md) for details.
 
 This sub-project is designed as a core memory component of SAGE and may be rewritten in C++/Rust for better performance in the future.
 
-## License
-
-Apache-2.0 License - see LICENSE file for details.
-
 ## Part of SAGE Ecosystem
 
 NeuroMem is a component of the SAGE (Structured AI Graph Engine) project by IntelliStream Team. -->
+
+## License
+
+Apache-2.0 License - see LICENSE file for details.

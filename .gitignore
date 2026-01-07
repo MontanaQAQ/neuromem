@@ -55,6 +55,7 @@ build/
 IMPROVEMENTS.md
 
 # Test logs
+.sage/test/
 pytest.log
 test.log
 

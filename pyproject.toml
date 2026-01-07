@@ -197,7 +197,7 @@ asyncio_mode = "auto"
 # 日志配置
 log_cli = true
 log_cli_level = "INFO"
-log_file = "pytest.log"
+log_file = ".sage/test/pytest.log"
 log_file_level = "DEBUG"
 
 # 测试运行参数
@@ -234,3 +234,7 @@ norecursedirs = [
     "vendors",
     "third_party",
 ]
+
+# Benchmark 配置 (禁用持久化存储以避免生成 .benchmarks 目录)
+benchmark_disable = false               # 不禁用 benchmark
+benchmark_storage = "null"              # 禁用持久化存储
