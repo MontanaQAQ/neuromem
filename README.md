@@ -1,10 +1,41 @@
 ![NeuroMem Logo](docs/assets/neuromem.png)
 
 <h3 align="center">
-Love grows from the smallest of memories.
+Love grows from the smallest of memories
 </h3>
 
-# isage-neuromem
+NeuroMem is a subproject of [SAGE](https://github.com/intellistream/SAGE), dedicated to exploring memory systems for large language models.
+
+---
+
+## Getting Started
+
+Install neuromem with `pip` :
+
+```bash
+pip install isage-neuromem
+```
+
+For development, clone the repo and use the provided quickstart script:
+
+```bash
+git clone https://github.com/intellistream/NeuroMem.git
+cd neuromem
+./quickstart.sh
+```
+
+This will set up a local development environment (virtualenv + dependencies) suitable for running tests and benchmarks. You can then:
+
+- Explore examples in `examples/`
+- Run the benchmark suite in `benchmarks/`
+- Dive into the core implementation under `sage/neuromem/`
+
+
+
+<!-- # isage-neuromem
+
+
+
 
 **NeuroMem** is a brain-inspired memory management engine for SAGE (Structured AI Graph Engine). It provides flexible memory collection abstractions with support for vector databases, key-value stores, and graph structures, designed specifically for RAG (Retrieval-Augmented Generation) applications.
 
@@ -145,4 +176,4 @@ Apache-2.0 License - see LICENSE file for details.
 
 ## Part of SAGE Ecosystem
 
-NeuroMem is a component of the SAGE (Structured AI Graph Engine) project by IntelliStream Team.
+NeuroMem is a component of the SAGE (Structured AI Graph Engine) project by IntelliStream Team. -->
