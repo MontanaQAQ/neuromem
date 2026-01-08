@@ -10,8 +10,6 @@ v0.2.1+ 架构更新:
 API参考: docs/COLLECTION_CONFIG_GUIDE.md
 """
 
-from ..search_engine.graph_index import SimpleGraphIndex
-
 # Paper feature utilities (Mixins and helper classes)
 from .paper_features import (
     AgentPersona,
@@ -77,8 +75,6 @@ from .unified_collection import UnifiedCollection
 __all__ = [
     # Core
     "UnifiedCollection",
-    # Backward compatibility
-    "SimpleGraphIndex",
     # Paper feature utilities - 5.0 A-Mem Note
     "AMemNote",
     "AMemNoteMixin",
