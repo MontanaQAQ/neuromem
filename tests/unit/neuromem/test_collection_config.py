@@ -80,10 +80,12 @@ class TestCollectionConfig:
         config = CollectionConfig.from_dict(data)
 
         assert config.name == "my_collection"
-        assert config.storage_backend == "simple"
+        # "simple" is automatically converted to "memory"
+        assert config.storage_backend == "memory"
         assert config.storage_config == {"persist_dir": "/tmp"}
         assert len(config.indexes) == 1
-        assert config.indexes[0].config["dimension"] == 768
+        # "dimension" is automatically converted to "dim"
+        assert config.indexes[0].config["dim"] == 768
 
     def test_from_dict_new_format(self):
         """Test loading from new format (with storage_backend)"""
@@ -184,7 +186,9 @@ collection:
         assert config.name == "legacy_collection"
         assert config.storage_backend == "memory"
         assert len(config.indexes) == 1
-        assert config.indexes[0].config["dimension"] == 768
+        # "dimension" is automatically converted to "dim"
+        assert config.indexes[0].config["dim"] == 768
+        assert config.indexes[0].config["metric"] == "cosine"
 
     def test_to_yaml(self, tmp_path):
         """Test saving to YAML"""
