@@ -156,7 +156,7 @@ class UnifiedCollection:
         )
 
         # T1.2: 将数据加入指定索引
-        target_indexes = index_names or list(self.indexes.keys())
+        target_indexes = list(self.indexes.keys()) if index_names is None else index_names
         for idx_name in target_indexes:
             if idx_name in self.indexes:
                 self.indexes[idx_name].add(data_id, text, metadata or {})
