@@ -31,12 +31,60 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .paper_features import (
     GraphPaperFeaturesMixin,
     HierarchicalPaperFeaturesMixin,
     PaperFeaturesMixin,
 )
 from .unified_collection import UnifiedCollection
+
+
+class MetadataStorageAdapter:
+    """Adapter for UnifiedCollection metadata storage to match legacy interface"""
+
+    def __init__(self, unified_collection: UnifiedCollection):
+        self.collection = unified_collection
+        self._fields: set[str] = set()
+
+    def get(self, item_id: str) -> dict[str, Any] | None:
+        """Get metadata for an item"""
+        data = self.collection.get(item_id)
+        return data["metadata"] if data else None
+
+    def store(self, item_id: str, metadata: dict[str, Any]) -> bool:
+        """Store metadata for an item"""
+        data = self.collection.get(item_id)
+        if not data:
+            return False
+        data["metadata"] = metadata
+        self.collection.storage.put(item_id, data)
+        return True
+
+    def has_field(self, field_name: str) -> bool:
+        """Check if a field is registered"""
+        return field_name in self._fields
+
+    def add_field(self, field_name: str) -> None:
+        """Register a new field"""
+        self._fields.add(field_name)
+
+
+class TextStorageAdapter:
+    """Adapter for UnifiedCollection text storage to match legacy interface"""
+
+    def __init__(self, unified_collection: UnifiedCollection):
+        self.collection = unified_collection
+
+    def get(self, item_id: str) -> str | None:
+        """Get text for an item"""
+        data = self.collection.get(item_id)
+        return data["text"] if data else None
+
+    def get_all_ids(self) -> list[str]:
+        """Get all item IDs"""
+        return list(self.collection.raw_data.keys())
 
 
 class UnifiedCollectionWithVDBFeatures(
@@ -99,6 +147,24 @@ class UnifiedCollectionWithVDBFeatures(
         ...     storage_config={},
         ... )
     """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize with storage adapters for Mixin compatibility"""
+        super().__init__(*args, **kwargs)
+        self.metadata_storage = MetadataStorageAdapter(self)
+        self.text_storage = TextStorageAdapter(self)
+
+    def get_metadata(self, item_id: str) -> dict[str, Any] | None:
+        """Get metadata for an item (Mixin compatibility)"""
+        return self.metadata_storage.get(item_id)
+
+    def get_all_ids(self) -> list[str]:
+        """Get all item IDs (Mixin compatibility)"""
+        return self.text_storage.get_all_ids()
+
+    def has_item(self, item_id: str) -> bool:
+        """Check if item exists (Mixin compatibility)"""
+        return self.get(item_id) is not None
 
 
 class UnifiedCollectionWithGraphFeatures(
@@ -176,6 +242,20 @@ class UnifiedCollectionWithGraphFeatures(
         ... )
     """
 
+    def __init__(self, *args, **kwargs):
+        """Initialize with storage adapters for Mixin compatibility"""
+        super().__init__(*args, **kwargs)
+        self.metadata_storage = MetadataStorageAdapter(self)
+        self.text_storage = TextStorageAdapter(self)
+
+    def get_metadata(self, item_id: str) -> dict[str, Any] | None:
+        """Get metadata for an item (Mixin compatibility)"""
+        return self.metadata_storage.get(item_id)
+
+    def get_all_ids(self) -> list[str]:
+        """Get all item IDs (Mixin compatibility)"""
+        return self.text_storage.get_all_ids()
+
 
 class UnifiedCollectionWithHybridFeatures(
     HierarchicalPaperFeaturesMixin,
@@ -230,6 +310,20 @@ class UnifiedCollectionWithHybridFeatures(
         ...     storage_config={},
         ... )
     """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize with storage adapters for Mixin compatibility"""
+        super().__init__(*args, **kwargs)
+        self.metadata_storage = MetadataStorageAdapter(self)
+        self.text_storage = TextStorageAdapter(self)
+
+    def get_metadata(self, item_id: str) -> dict[str, Any] | None:
+        """Get metadata for an item (Mixin compatibility)"""
+        return self.metadata_storage.get(item_id)
+
+    def get_all_ids(self) -> list[str]:
+        """Get all item IDs (Mixin compatibility)"""
+        return self.text_storage.get_all_ids()
 
 
 # 便利别名（与 enhanced_collections.py 保持一致）

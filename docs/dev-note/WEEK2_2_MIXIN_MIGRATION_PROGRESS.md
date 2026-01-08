@@ -72,7 +72,7 @@
    - ForgettingMixin
    - TokenBudgetMixin
    - ConflictDetectionMixin
-   
+
    所有这些 Mixin 都需要类似的接口适配。
 
 ## 测试结果
@@ -102,7 +102,7 @@
    ```python
    # 错误
    collection = UnifiedCollectionWithVDBFeatures({"name": "test"})
-   
+
    # 正确
    collection = UnifiedCollectionWithVDBFeatures("test")
    ```

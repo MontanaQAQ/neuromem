@@ -458,11 +458,18 @@ class UnifiedCollection:
             **params: 查询参数
 
         Returns:
-            匹配的完整数据列表 [{text, metadata, created_at}, ...]
+            匹配的完整数据列表 [{id, text, metadata, created_at}, ...]
 
         Note:
             - 等价于 [get(id) for id in query_by_index(...)]
             - 自动过滤掉已删除的数据
+            - 返回结果包含 id 字段以支持 Mixin 功能
         """
         data_ids = self.query_by_index(index_name, query, **params)
-        return [self.raw_data[id_] for id_ in data_ids if id_ in self.raw_data]
+        results = []
+        for id_ in data_ids:
+            if id_ in self.raw_data:
+                data = self.raw_data[id_].copy()
+                data["id"] = id_  # Add id field for Mixin compatibility
+                results.append(data)
+        return results

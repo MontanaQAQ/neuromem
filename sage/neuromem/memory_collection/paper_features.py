@@ -85,7 +85,9 @@ class AMemNote:
         if isinstance(timestamp, str):
             timestamp = datetime.fromisoformat(timestamp)
         elif timestamp is None:
-            timestamp = datetime.now()
+            from datetime import timezone
+
+            timestamp = datetime.now(timezone.utc)
 
         return cls(
             note_id=data.get("note_id", str(uuid4())),
@@ -234,10 +236,12 @@ class AMemNoteMixin:
         metadata = self.metadata_storage.get(note_id) or {}  # type: ignore[attr-defined]
 
         timestamp_str = metadata.get("timestamp")
+        from datetime import timezone
+
         timestamp = (
             datetime.fromisoformat(timestamp_str)
             if isinstance(timestamp_str, str)
-            else datetime.now()
+            else datetime.now(timezone.utc)
         )
 
         return AMemNote(
@@ -348,7 +352,7 @@ class TripleStorageMixin:
         query: str,
         passage: str,
         answer: str,
-        vector: np.ndarray,
+        vector: np.ndarray | None = None,
         index_name: str = "triple_index",
         metadata: dict[str, Any] | None = None,
     ) -> str:
@@ -359,7 +363,7 @@ class TripleStorageMixin:
             query: The query text
             passage: The passage text (used for embedding)
             answer: The answer text
-            vector: Pre-computed embedding vector (based on passage)
+            vector: Pre-computed embedding vector (optional for UnifiedCollection)
             index_name: Name of the index to insert into
             metadata: Optional additional metadata
 
@@ -510,13 +514,16 @@ class LinkEvolutionMixin:
             similar_nodes = find_similar_func(node_vector, 20)
 
         # 2. Decay existing edges
-        current_neighbors = graph_index.get_neighbors(node_id, k=100)
-        for neighbor_id, weight in current_neighbors:
+        current_neighbors = graph_index.get_neighbors(node_id, hop=1)
+        for neighbor_id in current_neighbors:
+            weight = graph_index.get_edge_weight(node_id, neighbor_id)
+            if weight is None:
+                continue
             new_weight = weight * decay_factor
             if new_weight < min_weight:
-                graph_index.remove_edge(node_id, neighbor_id)
+                graph_index.graph.remove_edge(node_id, neighbor_id)
             else:
-                graph_index.update_edge_weight(node_id, neighbor_id, new_weight)
+                graph_index.graph.add_edge(node_id, neighbor_id, weight=new_weight)
             updated_count += 1
 
         # 3. Add/strengthen edges to similar nodes
@@ -526,14 +533,14 @@ class LinkEvolutionMixin:
             if similarity < similarity_threshold:
                 continue
 
-            if graph_index.has_edge(node_id, neighbor_id):
+            if graph_index.graph.has_edge(node_id, neighbor_id):
                 # Strengthen existing edge
                 current_weight = graph_index.get_edge_weight(node_id, neighbor_id) or 0.0
                 new_weight = min(current_weight + similarity * reinforcement_factor, max_weight)
-                graph_index.update_edge_weight(node_id, neighbor_id, new_weight)
+                graph_index.graph.add_edge(node_id, neighbor_id, weight=new_weight)
             else:
                 # Add new edge
-                graph_index.add_edge(node_id, neighbor_id, similarity)
+                graph_index.graph.add_edge(node_id, neighbor_id, weight=similarity)
 
             updated_count += 1
 
@@ -931,7 +938,9 @@ class UserPortraitMixin:
         if daily_event_summary is not None:
             portrait.daily_event_summary = daily_event_summary
             # Also store in daily_summaries with today's date
-            today = datetime.now().strftime("%Y-%m-%d")
+            from datetime import timezone
+
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             portrait.daily_summaries[today] = daily_event_summary
 
         if global_event_summary is not None:
@@ -2320,9 +2329,10 @@ class ConflictDetectionMixin:
 
     def insert_with_conflict_check(
         self,
-        content: str,
-        vector: np.ndarray,
-        index_name: str,
+        text: str | None = None,
+        content: str | None = None,
+        vector: np.ndarray | None = None,
+        index_name: str | None = None,
         detector: ConflictDetector | None = None,
         resolution: str = "skip",  # "skip", "replace", "append"
         metadata: dict[str, Any] | None = None,
@@ -2333,8 +2343,9 @@ class ConflictDetectionMixin:
         Insert with conflict detection.
 
         Args:
-            content: Text content
-            vector: Content vector
+            text: Text content (UnifiedCollection interface)
+            content: Text content (legacy interface)
+            vector: Content vector (optional for UnifiedCollection)
             index_name: Index name
             detector: Conflict detector
             resolution: Conflict resolution strategy
@@ -2348,6 +2359,10 @@ class ConflictDetectionMixin:
             - "action": "inserted", "skipped", or "replaced"
             - "conflict": conflicting item or None
         """
+        # Support both text= (UnifiedCollection) and content= (legacy)
+        text_content = text or content
+        if not text_content or not index_name:
+            return {"id": None, "action": "error", "conflict": None}
         if (
             not hasattr(self, "retrieve")
             or not hasattr(self, "insert")
@@ -2357,9 +2372,12 @@ class ConflictDetectionMixin:
 
         detector = detector or ConflictDetector()
 
+        # For UnifiedCollection, use text query; for legacy, use vector
+        query_param = text_content if hasattr(self, "_is_unified_collection") else vector
+
         # Retrieve similar items for conflict check
         similar_items = self.retrieve(  # type: ignore[attr-defined]
-            query=vector,
+            query=query_param,
             index_name=index_name,
             top_k=10,
             with_metadata=True,
@@ -2367,7 +2385,7 @@ class ConflictDetectionMixin:
 
         # Detect conflicts
         conflict_result = detector.detect(
-            new_fact=content,
+            new_fact=text_content,
             existing_facts=similar_items,
             new_vector=vector,
             get_vector_func=get_vector_func,
@@ -2388,13 +2406,21 @@ class ConflictDetectionMixin:
                 if conflict_item and "id" in conflict_item:
                     self.delete(conflict_item["id"])  # type: ignore[attr-defined]
 
-                new_id = self.insert(  # type: ignore[attr-defined]
-                    content=content,
-                    index_names=index_name,
-                    vector=vector,
-                    metadata=metadata,
-                    **kwargs,
-                )
+                # Support both UnifiedCollection and legacy Collection
+                if hasattr(self, "_is_unified_collection"):
+                    new_id = self.insert(  # type: ignore[attr-defined]
+                        text=text_content,
+                        metadata=metadata or {},
+                        index_names=[index_name] if isinstance(index_name, str) else index_name,
+                    )
+                else:
+                    new_id = self.insert(  # type: ignore[attr-defined]
+                        content=text_content,
+                        index_names=index_name,
+                        vector=vector,
+                        metadata=metadata,
+                        **kwargs,
+                    )
                 return {
                     "id": new_id,
                     "action": "replaced",
@@ -2402,13 +2428,21 @@ class ConflictDetectionMixin:
                 }
 
         # No conflict, normal insert
-        new_id = self.insert(  # type: ignore[attr-defined]
-            content=content,
-            index_names=index_name,
-            vector=vector,
-            metadata=metadata,
-            **kwargs,
-        )
+        # Support both UnifiedCollection and legacy Collection
+        if hasattr(self, "_is_unified_collection"):
+            new_id = self.insert(  # type: ignore[attr-defined]
+                text=text_content,
+                metadata=metadata or {},
+                index_names=[index_name] if isinstance(index_name, str) else index_name,
+            )
+        else:
+            new_id = self.insert(  # type: ignore[attr-defined]
+                content=text_content,
+                index_names=index_name,
+                vector=vector,
+                metadata=metadata,
+                **kwargs,
+            )
         return {
             "id": new_id,
             "action": "inserted",
@@ -3014,6 +3048,7 @@ class Mem0gMixin:
 class PaperFeaturesMixin(
     TripleStorageMixin,
     ForgettingMixin,
+    HeatMigrationMixin,
     TokenBudgetMixin,
     ConflictDetectionMixin,
 ):
@@ -3023,6 +3058,7 @@ class PaperFeaturesMixin(
     Includes:
     - Triple storage (TiM)
     - Ebbinghaus forgetting (MemoryBank)
+    - Heat-based migration (MemoryBank)
     - Token budget filtering (SCM)
     - Conflict detection (Mem0)
     """
@@ -3032,6 +3068,7 @@ class GraphPaperFeaturesMixin(
     AMemNoteMixin,
     LinkEvolutionMixin,
     ForgettingMixin,
+    HeatMigrationMixin,
     HippoRAGMixin,
     Mem0gMixin,
 ):
@@ -3042,6 +3079,7 @@ class GraphPaperFeaturesMixin(
     - Note structure (A-Mem)
     - Link evolution (A-Mem)
     - Ebbinghaus forgetting (MemoryBank)
+    - Heat-based migration (MemoryBank)
     - Phrase/Passage node distinction (HippoRAG)
     - Graph-enhanced memory (Mem0g)
     """
