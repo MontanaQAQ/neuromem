@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1.0] - 2026-01-08
 
+### Breaking Changes ⚠️
+
+- **Removed deprecated Collection classes**:
+  - `BaseMemoryCollection` - Removed (use `UnifiedCollection`)
+  - `VDBMemoryCollection` - Removed (use `UnifiedCollection`)
+  - `KVMemoryCollection` - Removed (use `UnifiedCollection`)
+  - `GraphMemoryCollection` - Removed (use `UnifiedCollection`)
+  - `HybridCollection` - Removed (use `UnifiedCollection`)
+  - `enhanced_collections.py` - Removed (use Mixin pattern)
+
+- **Simplified `memory_collection/__init__.py`**:
+  - From 183 lines to 70 lines
+  - Only exports `UnifiedCollection` and Paper Features Mixins
+  - Cleaner namespace and import structure
+
+- **Paper Features migration**:
+  - All paper features now use Mixin pattern
+  - Old Collection-specific feature classes removed
+  - Use composition: `class MyCollection(UnifiedCollection, FeatureMixin): pass`
+
 ### Added
 
 #### Core Features
@@ -27,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MemoryStorage with iteration support (`__iter__` method)
   - RedisStorage for distributed environments
   - SageDB integration for large-scale vector storage
+
 
 #### Memory Services
 - 20+ memory services with comprehensive test coverage

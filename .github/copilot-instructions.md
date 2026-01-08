@@ -6,21 +6,49 @@
 
 ### Core Architecture
 
+**v0.2.1+ Architecture** (UnifiedCollection Era):
+
 ```
 neuromem/
-├── memory_manager.py          # Central lifecycle manager
-├── memory_collection/         # Collection abstractions (VDB, KV, Graph, Hybrid)
-├── search_engine/             # Index implementations (FAISS, BM25s, LSH, etc.)
-├── storage_engine/            # Storage backends (vector, text, metadata)
-└── services/                  # High-level memory services (hierarchical, partitional)
-```
+├── memory_manager.py                    # Central lifecycle manager
+├── memory_collection/
+│   ├── unified_collection.py            # ⭐ Unified abstraction (primary)
+│   ├── collection_config.py             # YAML configuration management
+│   ├── indexes/                         # Index implementations
+│   │   ├── faiss_index.py              # Vector search
+│   │   ├── bm25_index.py               # Text search
+│   │   ├── graph_index.py              # Graph operations
+│   │   └── ...other indexes
+│   └── paper_features.py                # Advanced memory mixins
+├── search_engine/                       # Index algorithms (FAISS, BM25, etc.)
+├── storage_engine/
+│   ├── storage_factory.py               # Storage backend factory
+│   ├── memory_storage.py                # In-memory backend
+│   ├── redis_storage.py                 # Redis backend
+│   └── sagedb_storage.py                # Vector DB backend
+├── services/                            # High-level services (hierarchical, partitional, graph)
+└── utils/                               # Utilities
 
 ### Key Design Patterns
 
-1. **Service Registry Pattern**: All memory services registered through `MemoryServiceRegistry`
-2. **Factory Pattern**: `IndexFactory` for creating various index types
-3. **Unified Collection**: Central abstraction for all memory operations
-4. **Lazy Loading**: Collections loaded on-demand from disk
+1. **Unified Collection Pattern**: `UnifiedCollection` as primary abstraction for all memory types
+2. **Mixin Pattern**: Paper features implemented as mixins (TripleStorageMixin, LinkEvolutionMixin, etc.)
+3. **Service Registry Pattern**: All memory services registered through `MemoryServiceRegistry`
+4. **Factory Pattern**: `IndexFactory` for creating various index types, `StorageFactory` for storage backends
+5. **Plugin Storage**: Pluggable storage backends (Memory, Redis, SageDB)
+6. **Configuration-First**: YAML-based configuration management via `CollectionConfig`
+7. **Lazy Loading**: Collections loaded on-demand from disk
+
+### Version History
+
+- **v0.2.1.0** (Current): UnifiedCollection production-ready
+  - Single abstraction for all memory types
+  - Pluggable storage backends
+  - Simplified codebase (removed 6 old Collection classes)
+  - All 354 unit tests passing
+
+- **v0.2.0.0**: Initial stable release with individual Collection types
+- **v0.1.x**: Early development phase
 
 ---
 

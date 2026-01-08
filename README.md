@@ -70,69 +70,118 @@ pre-commit install
 ## Quick Start
 
 ```python
-from sage.neuromem import MemoryManager
+from sage.neuromem import MemoryManager, UnifiedCollection
 
-# Create memory manager
+# Using MemoryManager (recommended for multiple collections)
 manager = MemoryManager()
+collection = manager.create_collection("my_collection")
 
-# Create a collection
-config = {
-    "name": "my_collection",
-    "backend_type": "VDB",
-    "description": "My vector database collection"
-}
-collection = manager.create_collection(config)
+# Or directly using UnifiedCollection
+collection = UnifiedCollection(
+    name="my_collection",
+    storage_backend="memory"  # Memory, Redis, or SageDB
+)
+
+# Insert data
+collection.insert("id1", {"text": "Hello, world!"})
+
+# Create an index for search
+collection.add_index({
+    "name": "text_search",
+    "index_type": "bm25"  # FAISS, BM25, Graph, FIFO, etc.
+})
+
+# Search
+results = collection.retrieve("hello", top_k=5, index_name="text_search")
 ```
-
-For more examples, see [examples/](examples/).
 
 ## Features
 
-- **Multiple Backend Support**: VDB (Vector Database), KV (Key-Value), Graph
-- **Flexible Storage Engine**: Pluggable storage backends for vectors, text, and metadata
-- **Powerful Search Engine**: Multiple index types (FAISS, BM25s, etc.)
-- **Collection Management**: Create, load, store, and manage memory collections
-- **Memory Manager**: Centralized management of multiple collections
+- **UnifiedCollection**: Single abstraction for all memory types
+  - Multi-index support: FAISS (vectors), BM25 (text), Graph, FIFO, Segment
+  - Flexible storage: Memory, Redis, SageDB
+  - Unified insert/retrieve API
+
+- **Collection Configuration**: YAML-based config management
+  - Pre-configured templates for common use cases
+  - Automatic parameter validation and conversion
+  - See `COLLECTION_CONFIG_GUIDE.md` for details
+
+- **Storage Flexibility**: Pluggable storage backends
+  - In-memory storage for development
+  - Redis for distributed deployments  
+  - SageDB for large-scale vector storage
+
+- **Paper Features**: Mixins for advanced memory techniques
+  - Triple Storage, Link Evolution, Forgetting
+  - Heat Score Migration, Token Budget
+  - Conflict Detection, HippoRAG patterns, etc.
 
 ## Architecture
 
 ```
 sage/neuromem/
-├── memory_manager.py          # Central manager for collections
-├── memory_collection/         # Collection abstractions
-│   ├── base_collection.py
-│   ├── vdb_collection.py
-│   ├── kv_collection.py
-│   └── graph_collection.py
-├── search_engine/             # Index implementations
-│   ├── vdb_index/
-│   ├── kv_index/
-│   └── graph_index/
-├── storage_engine/            # Storage backends
-│   ├── vector_storage.py
-│   ├── text_storage.py
-│   └── metadata_storage.py
-└── utils/                     # Utility functions
+├── memory_manager.py              # Central manager for collections
+├── memory_collection/
+│   ├── unified_collection.py      # Unified collection abstraction ⭐
+│   ├── collection_config.py       # YAML configuration management
+│   ├── indexes/                   # Index implementations
+│   │   ├── faiss_index.py
+│   │   ├── bm25_index.py
+│   │   ├── graph_index.py
+│   │   └── ...
+│   └── paper_features.py          # Paper feature mixins
+├── search_engine/                 # Index algorithms
+├── storage_engine/                # Storage backends
+│   ├── storage_factory.py
+│   ├── memory_storage.py
+│   ├── redis_storage.py
+│   └── sagedb_storage.py
+└── utils/                         # Utility functions
 ```
 
-## Quick Start
+## Quick Start (Advanced)
 
 ```python
-from sage.neuromem import MemoryManager
+from sage.neuromem import UnifiedCollection
+from sage.neuromem.memory_collection import TripleStorageMixin, LinkEvolutionMixin
 
-# Create manager
-manager = MemoryManager()
+# Create collection with paper features
+class AdvancedCollection(UnifiedCollection, TripleStorageMixin, LinkEvolutionMixin):
+    pass
 
-# Create a VDB collection
-config = {
-    "name": "my_collection",
-    "backend_type": "VDB",
-    "description": "My vector database collection"
-}
-collection = manager.create_collection(config)
+collection = AdvancedCollection("my_advanced_collection")
 
-# Insert data
-collection.batch_insert_data(
+# Use advanced features
+collection.insert("id1", {"text": "information"})
+
+# Store triple relationships
+triple = collection.store_triple(
+    query="What is X?",
+    passage="X is...",
+    answer="X"
+)
+
+# Track link evolution
+collection.evolve_links("source_id", "target_id", metadata={"confidence": 0.9})
+```
+
+## Migration from v0.1.x
+
+If you're upgrading from v0.1.x or earlier versions, see [MIGRATION_GUIDE.md](docs/dev-note/MIGRATION_GUIDE.md) for detailed migration instructions.
+
+### Quick Migration Summary
+
+```python
+# Old (v0.1.x)
+from sage.neuromem import VDBMemoryCollection
+collection = VDBMemoryCollection({"name": "test"})
+
+# New (v0.2.1+)
+from sage.neuromem import UnifiedCollection
+collection = UnifiedCollection("test", storage_backend="memory")
+collection.add_index({"name": "default", "index_type": "faiss", "dim": 768})
+```
     texts=["Hello world", "Goodbye world"],
     metadatas=[{"source": "doc1"}, {"source": "doc2"}]
 )
