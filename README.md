@@ -161,6 +161,17 @@ NeuroMem is part of the SAGE ecosystem and installed as a namespace package:
 - **Import path**: `sage.neuromem`
 - **Namespace**: Part of SAGE (Structured AI Graph Engine)
 
+## Documentation
+
+- **[CollectionConfig Guide](docs/COLLECTION_CONFIG_GUIDE.md)** - Complete configuration management documentation
+  - Creating collections from code, dict, and YAML
+  - Index configuration and storage backend selection
+  - Migration guide from legacy formats
+  - Best practices and examples
+
+- **[Memory Services API Reference](sage/neuromem/services/API_REFERENCE.md)** - Detailed API documentation for memory services
+- **[Contributing Guide](docs/CONTRIBUTING.md)** - Development guidelines and contribution workflow
+
 ## Benchmarks
 
 Comprehensive benchmark suite is available in `benchmarks/`:

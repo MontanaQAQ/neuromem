@@ -2,15 +2,47 @@
 
 完整的 API 签名、参数说明和返回值文档。
 
+> **注意**: 本文档专注于 Memory Services API。关于 CollectionConfig 和 YAML 配置的详细信息，请参阅 [CollectionConfig 使用指南](../../../docs/COLLECTION_CONFIG_GUIDE.md)。
+
 ---
 
 ## 目录
 
-1. [基类 API](#基类-api)
-2. [Service Registry API](#service-registry-api)
-3. [Partitional Services API](#partitional-services-api)
-4. [Hierarchical Services API](#hierarchical-services-api)
-5. [异常处理](#异常处理)
+1. [配置管理](#配置管理)
+2. [基类 API](#基类-api)
+3. [Service Registry API](#service-registry-api)
+4. [Partitional Services API](#partitional-services-api)
+5. [Hierarchical Services API](#hierarchical-services-api)
+6. [异常处理](#异常处理)
+
+---
+
+## 配置管理
+
+NeuroMem 使用 `CollectionConfig` 类统一管理集合配置。详细信息请参阅：
+
+- **[CollectionConfig 使用指南](../../../docs/COLLECTION_CONFIG_GUIDE.md)** - 完整的配置文档
+  - 从代码、字典、YAML 创建配置
+  - 索引配置详解
+  - 存储后端选择
+  - 迁移指南和最佳实践
+
+**快速示例**:
+
+```python
+from sage.neuromem.config import CollectionConfig
+
+# 从 YAML 创建配置
+config = CollectionConfig.from_yaml("config/my_collection.yaml")
+collection = config.create_collection()
+
+# 或者从代码创建
+config = CollectionConfig(
+    name="my_collection",
+    indexes=[{"name": "main", "type": "faiss", "config": {"dim": 768}}]
+)
+collection = config.create_collection()
+```
 
 ---
 
