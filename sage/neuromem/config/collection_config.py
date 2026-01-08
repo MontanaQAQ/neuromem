@@ -69,10 +69,17 @@ class IndexConfig:
         if not index_type:
             raise ValueError("IndexConfig requires 'type' or 'index_type' field")
 
+        # 获取配置并进行兼容性转换
+        config = data.get("config", {}).copy()
+
+        # 兼容 dimension -> dim（FAISS 索引）
+        if "dimension" in config and "dim" not in config:
+            config["dim"] = config.pop("dimension")
+
         return cls(
             name=data["name"],
             index_type=index_type,
-            config=data.get("config", {}),
+            config=config,
         )
 
 
@@ -145,6 +152,10 @@ class CollectionConfig:
         storage_backend = data.get("storage_backend") or storage_data.get("type", "memory")
         storage_config = data.get("storage_config") or storage_data.get("config", {})
 
+        # 兼容旧的 "simple" 存储类型（映射到 "memory"）
+        if storage_backend == "simple":
+            storage_backend = "memory"
+
         # 解析索引配置
         indexes_data = data.get("indexes", [])
         indexes = [IndexConfig.from_dict(idx_data) for idx_data in indexes_data]
@@ -182,8 +193,18 @@ class CollectionConfig:
         with yaml_path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
-        # 支持 collection 嵌套格式
-        collection_data = data.get("collection", data)
+        # 支持多种 YAML 格式：
+        # 1. collection 嵌套格式：{"collection": {...}}
+        # 2. 顶层 indexes：{"collection": {...}, "indexes": [...]}
+        # 3. 扁平格式：直接在顶层定义所有字段
+
+        if "collection" in data:
+            collection_data = data["collection"].copy()
+            # 如果 indexes 在顶层，合并到 collection_data
+            if "indexes" in data and "indexes" not in collection_data:
+                collection_data["indexes"] = data["indexes"]
+        else:
+            collection_data = data
 
         return cls.from_dict(collection_data)
 
