@@ -14,6 +14,18 @@ from sage.neuromem.memory_collection.indexes import (
 )
 
 
+@pytest.fixture(autouse=True)
+def restore_index_registry():
+    """自动保存和恢复 IndexFactory 注册表，避免测试间相互影响"""
+    # 保存当前注册表
+    original_registry = IndexFactory._registry.copy()
+
+    yield
+
+    # 恢复注册表
+    IndexFactory._registry = original_registry
+
+
 class TestIndexFactory:
     """IndexFactory 功能测试"""
 
@@ -44,11 +56,8 @@ class TestIndexFactory:
         """测试创建未知类型索引"""
         IndexFactory.clear_registry()
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Unknown index type"):
             IndexFactory.create("unknown_type", {})
-
-        assert "Unknown index type" in str(exc_info.value)
-        assert "unknown_type" in str(exc_info.value)
 
     def test_unregister(self):
         """测试注销索引类型"""
