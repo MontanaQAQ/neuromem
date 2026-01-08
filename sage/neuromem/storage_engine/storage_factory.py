@@ -131,6 +131,10 @@ class MemoryStorage(StorageBackend):
     def __len__(self) -> int:
         return len(self.data)
 
+    def __iter__(self):
+        """使 MemoryStorage 可迭代，返回所有键"""
+        return iter(self.data.keys())
+
 
 class RedisStorage(StorageBackend):
     """
