@@ -104,6 +104,7 @@ class UnifiedCollection:
         """
         self.name = name
         self.config = config or {}
+        self._is_unified_collection = True  # Marker for Mixin compatibility
 
         # 创建可插拔存储后端
         from ..storage_engine import StorageFactory

@@ -377,6 +377,14 @@ class TripleStorageMixin:
         }
 
         # Use the parent class insert method
+        # Support both legacy Collection (content=) and UnifiedCollection (text=)
+        if hasattr(self, "_is_unified_collection"):
+            return self.insert(  # type: ignore[attr-defined]
+                text=content,
+                metadata=extended_metadata,
+                index_names=[index_name] if isinstance(index_name, str) else index_name,
+            )
+        # Legacy Collection interface
         return self.insert(  # type: ignore[attr-defined]
             content=content,
             index_names=index_name,
@@ -1100,7 +1108,7 @@ class HeatScoreManager:
         """
         if heat < self.config.cold_threshold:
             return "demote"
-        elif heat > self.config.hot_threshold:
+        if heat > self.config.hot_threshold:
             return "promote"
         return None
 
@@ -2375,7 +2383,7 @@ class ConflictDetectionMixin:
                     "conflict": conflict_item,
                 }
 
-            elif resolution == "replace":
+            if resolution == "replace":
                 # Delete old, insert new
                 if conflict_item and "id" in conflict_item:
                     self.delete(conflict_item["id"])  # type: ignore[attr-defined]
@@ -3019,8 +3027,6 @@ class PaperFeaturesMixin(
     - Conflict detection (Mem0)
     """
 
-    pass
-
 
 class GraphPaperFeaturesMixin(
     AMemNoteMixin,
@@ -3040,8 +3046,6 @@ class GraphPaperFeaturesMixin(
     - Graph-enhanced memory (Mem0g)
     """
 
-    pass
-
 
 class HierarchicalPaperFeaturesMixin(
     UserPortraitMixin,
@@ -3060,5 +3064,3 @@ class HierarchicalPaperFeaturesMixin(
     - Long-term Personal Memory (MemoryOS)
     - Heat-based migration (MemoryOS)
     """
-
-    pass
