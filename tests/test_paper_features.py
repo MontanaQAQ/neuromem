@@ -1,5 +1,7 @@
 """
-Unit tests for Paper Features (Part 5).
+Unit tests for Paper Features with UnifiedCollection (Week 2.2).
+
+这是 test_paper_features.py 的重构版本，使用 UnifiedCollection + Mixin 替代 legacy enhanced collections。
 
 Tests for:
 - 5.1 Triple Storage (TiM)
@@ -14,9 +16,10 @@ import time
 
 import numpy as np
 import pytest
-from sage.neuromem.memory_collection.enhanced_collections import (
-    GraphMemoryCollectionWithFeatures,
-    VDBMemoryCollectionWithFeatures,
+
+from sage.neuromem.memory_collection.collections_with_features import (
+    UnifiedCollectionWithGraphFeatures,
+    UnifiedCollectionWithVDBFeatures,
 )
 from sage.neuromem.memory_collection.paper_features import (
     # 5.6 Conflict Detection
@@ -95,21 +98,14 @@ class TestTripleStorageMixin:
 
     def test_insert_triple(self):
         """Test inserting a triple."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_triple"})
-        collection.create_index(
-            {
-                "name": "triple_index",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_triple")
+        collection.add_index("triple_index", "faiss", {"dim": 4})
 
-        vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
         item_id = collection.insert_triple(
             query="What is Python?",
             passage="Python is a programming language.",
             answer="A programming language",
-            vector=vector,
             index_name="triple_index",
         )
 
@@ -118,17 +114,11 @@ class TestTripleStorageMixin:
 
     def test_retrieve_triples(self):
         """Test retrieving triples."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_retrieve_triple"})
-        collection.create_index(
-            {
-                "name": "triple_index",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_retrieve_triple")
+        collection.add_index("triple_index", "faiss", {"dim": 4})
 
         # Insert some triples
-        vectors = [
+        [
             np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32),
             np.array([0.2, 0.3, 0.4, 0.5], dtype=np.float32),
         ]
@@ -136,13 +126,11 @@ class TestTripleStorageMixin:
             query="What is Python?",
             passage="Python is a programming language.",
             answer="A programming language",
-            vector=vectors[0],
         )
         collection.insert_triple(
             query="What is Java?",
             passage="Java is also a programming language.",
             answer="A programming language",
-            vector=vectors[1],
         )
 
         # Retrieve
@@ -170,17 +158,21 @@ class TestLinkEvolutionMixin:
 
     def test_evolve_links_decay(self):
         """Test edge weight decay."""
-        collection = GraphMemoryCollectionWithFeatures({"name": "test_evolve"})
-        collection.create_index({"name": "default"})
+        collection = UnifiedCollectionWithGraphFeatures("test_evolve")
+        collection.add_index("default", "graph", {})
 
         # Add nodes and edges
-        collection.insert(content="Node A", index_names="default", node_id="A")
-        collection.insert(content="Node B", index_names="default", node_id="B")
-        collection.add_edge("A", "B", weight=1.0, index_name="default")
+        node_a_id = collection.insert(text="Node A", index_names=[])  # Don't auto-add to graph
+        node_b_id = collection.insert(text="Node B", index_names=[])
+
+        # Manually add nodes to graph index
+        collection.indexes["default"].add(node_a_id, {"text": "Node A"})
+        collection.indexes["default"].add(node_b_id, {"text": "Node B"})
+        collection.indexes["default"].graph.add_edge(node_a_id, node_b_id, weight=1.0)
 
         # Evolve with decay
         updated = collection.evolve_links(
-            node_id="A",
+            node_id=node_a_id,
             index_name="default",
             decay_factor=0.5,
         )
@@ -188,26 +180,25 @@ class TestLinkEvolutionMixin:
         assert updated >= 1
 
         # Check weight was decayed
-        weight = collection.indexes["default"].get_edge_weight("A", "B")
+        weight = collection.indexes["default"].get_edge_weight(node_a_id, node_b_id)
         assert weight is not None
         assert weight < 1.0
 
     def test_batch_evolve_links(self):
         """Test batch evolution."""
-        collection = GraphMemoryCollectionWithFeatures({"name": "test_batch_evolve"})
-        collection.create_index({"name": "default"})
+        collection = UnifiedCollectionWithGraphFeatures("test_batch_evolve")
+        collection.add_index("default", "graph", {})
 
         # Add nodes
+        node_ids = []
         for i in range(3):
-            collection.insert(
-                content=f"Node {i}",
-                index_names="default",
-                node_id=str(i),
-            )
+            node_id = collection.insert(text=f"Node {i}", index_names=[])
+            collection.indexes["default"].add(node_id, {"text": f"Node {i}"})
+            node_ids.append(node_id)
 
         # Add edges
-        collection.add_edge("0", "1", weight=1.0, index_name="default")
-        collection.add_edge("1", "2", weight=1.0, index_name="default")
+        collection.indexes["default"].graph.add_edge(node_ids[0], node_ids[1], weight=1.0)
+        collection.indexes["default"].graph.add_edge(node_ids[1], node_ids[2], weight=1.0)
 
         # Batch evolve
         total_updated = collection.batch_evolve_links(
@@ -300,21 +291,14 @@ class TestForgettingMixin:
 
     def test_update_access(self):
         """Test access update."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_access"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_access")
+        collection.add_index("main", "faiss", {"dim": 4})
 
         # Insert item
-        vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
         item_id = collection.insert(
-            content="Test content",
-            index_names="main",
-            vector=vector,
+            text="Test content",
+            index_names=["main"],
             metadata={"access_count": 0},
         )
 
@@ -330,23 +314,16 @@ class TestForgettingMixin:
 
     def test_apply_forgetting(self):
         """Test forgetting application."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_forget"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_forget")
+        collection.add_index("main", "faiss", {"dim": 4})
 
         current_time = time.time()
 
         # Insert fresh item
-        fresh_vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
         fresh_id = collection.insert(
-            content="Fresh content",
-            index_names="main",
-            vector=fresh_vector,
+            text="Fresh content",
+            index_names=["main"],
             metadata={
                 "last_access_time": current_time,
                 "access_count": 5,
@@ -354,11 +331,10 @@ class TestForgettingMixin:
         )
 
         # Insert old item
-        old_vector = np.array([0.5, 0.6, 0.7, 0.8], dtype=np.float32)
+        np.array([0.5, 0.6, 0.7, 0.8], dtype=np.float32)
         old_id = collection.insert(
-            content="Old content",
-            index_names="main",
-            vector=old_vector,
+            text="Old content",
+            index_names=["main"],
             metadata={
                 "last_access_time": current_time - 72 * 3600,  # 72 hours ago
                 "access_count": 0,
@@ -487,22 +463,15 @@ class TestTokenBudgetMixin:
 
     def test_retrieve_with_budget(self):
         """Test retrieval with budget."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_budget"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_budget")
+        collection.add_index("main", "faiss", {"dim": 4})
 
         # Insert items with varying text lengths
         for i in range(5):
-            vector = np.random.rand(4).astype(np.float32)
+            np.random.rand(4).astype(np.float32)
             collection.insert(
-                content="x" * (100 * (i + 1)),  # Increasing lengths
-                index_names="main",
-                vector=vector,
+                text="x" * (100 * (i + 1)),  # Increasing lengths
+                index_names=["main"],
             )
 
         # Retrieve with budget
@@ -620,28 +589,20 @@ class TestConflictDetectionMixin:
 
     def test_insert_with_conflict_skip(self):
         """Test insert with conflict - skip resolution."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_conflict"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_conflict")
+        collection.add_index("main", "faiss", {"dim": 4})
 
-        vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
 
         # Insert first fact
         collection.insert(
-            content="John's age is 25",
-            index_names="main",
-            vector=vector,
+            text="John's age is 25",
+            index_names=["main"],
         )
 
         # Try to insert conflicting fact
         result = collection.insert_with_conflict_check(
-            content="John's age is 30",
-            vector=vector,
+            text="John's age is 30",
             index_name="main",
             resolution="skip",
         )
@@ -652,28 +613,20 @@ class TestConflictDetectionMixin:
 
     def test_insert_with_conflict_replace(self):
         """Test insert with conflict - replace resolution."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_replace"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_replace")
+        collection.add_index("main", "faiss", {"dim": 4})
 
-        vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
 
         # Insert first fact
         old_id = collection.insert(
-            content="John's age is 25",
-            index_names="main",
-            vector=vector,
+            text="John's age is 25",
+            index_names=["main"],
         )
 
         # Insert conflicting fact with replace
         result = collection.insert_with_conflict_check(
-            content="John's age is 30",
-            vector=vector,
+            text="John's age is 30",
             index_name="main",
             resolution="replace",
         )
@@ -682,34 +635,26 @@ class TestConflictDetectionMixin:
         assert result["id"] is not None
         assert result["conflict"] is not None
 
-        # Old item should be deleted (has_item returns False)
-        assert not collection.has_item(old_id)
+        # Old item should be deleted (get returns None)
+        assert collection.get(old_id) is None
 
     def test_insert_no_conflict(self):
         """Test insert without conflict."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_no_conflict"})
-        collection.create_index(
-            {
-                "name": "main",
-                "dim": 4,
-                "backend_type": "FAISS",
-            }
-        )
+        collection = UnifiedCollectionWithVDBFeatures("test_no_conflict")
+        collection.add_index("main", "faiss", {"dim": 4})
 
-        vector1 = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
-        vector2 = np.array([0.5, 0.6, 0.7, 0.8], dtype=np.float32)
+        np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
+        np.array([0.5, 0.6, 0.7, 0.8], dtype=np.float32)
 
         # Insert first fact
         collection.insert(
-            content="John's age is 25",
-            index_names="main",
-            vector=vector1,
+            text="John's age is 25",
+            index_names=["main"],
         )
 
         # Insert non-conflicting fact
         result = collection.insert_with_conflict_check(
-            content="Mary's age is 30",
-            vector=vector2,
+            text="Mary's age is 30",
             index_name="main",
         )
 
@@ -724,11 +669,11 @@ class TestConflictDetectionMixin:
 
 
 class TestEnhancedVDBCollection:
-    """Integration tests for VDBMemoryCollectionWithFeatures."""
+    """Integration tests for UnifiedCollectionWithVDBFeatures."""
 
     def test_all_features_available(self):
         """Test that all paper features are available."""
-        collection = VDBMemoryCollectionWithFeatures({"name": "test_all"})
+        collection = UnifiedCollectionWithVDBFeatures("test_all")
 
         # Check methods exist
         assert hasattr(collection, "insert_triple")
@@ -741,11 +686,11 @@ class TestEnhancedVDBCollection:
 
 
 class TestEnhancedGraphCollection:
-    """Integration tests for GraphMemoryCollectionWithFeatures."""
+    """Integration tests for UnifiedCollectionWithGraphFeatures."""
 
     def test_all_features_available(self):
         """Test that all paper features are available."""
-        collection = GraphMemoryCollectionWithFeatures({"name": "test_all"})
+        collection = UnifiedCollectionWithGraphFeatures("test_all")
 
         # Check methods exist
         assert hasattr(collection, "evolve_links")
