@@ -576,7 +576,7 @@ class TestUnifiedCollectionEdgeCases:
         """测试添加不支持的索引类型"""
         collection = UnifiedCollection("test")
 
-        with pytest.raises(ValueError, match="Unsupported index type"):
+        with pytest.raises(ValueError, match="Unknown index type"):
             collection.add_index("invalid", "unsupported_index_type", {})
 
     def test_repr(self):
