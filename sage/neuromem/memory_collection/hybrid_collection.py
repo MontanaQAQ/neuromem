@@ -36,6 +36,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar
 
 import numpy as np
+
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine import (
@@ -76,6 +77,14 @@ class HybridCollection(BaseMemoryCollection):
                 - name: Collection 名称（必须）
                 - rrf_k: RRF 融合参数（默认 60）
         """
+        import warnings
+
+        warnings.warn(
+            "HybridCollection is deprecated and will be removed in v0.3.0.0. "
+            "Use UnifiedCollection instead. See docs/dev-note/MIGRATION_GUIDE.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(config)
 
         self.logger = CustomLogger()
@@ -140,13 +149,12 @@ class HybridCollection(BaseMemoryCollection):
         try:
             if type_str == IndexType.VDB.value or type_str == "vdb":
                 return self._create_vdb_index(index_name, config)
-            elif type_str == IndexType.KV.value or type_str == "kv":
+            if type_str == IndexType.KV.value or type_str == "kv":
                 return self._create_kv_index(index_name, config)
-            elif type_str == IndexType.GRAPH.value or type_str == "graph":
+            if type_str == IndexType.GRAPH.value or type_str == "graph":
                 return self._create_graph_index(index_name, config)
-            else:
-                self.logger.warning(f"Unknown index type: {type_str}")
-                return False
+            self.logger.warning(f"Unknown index type: {type_str}")
+            return False
         except Exception as e:
             self.logger.error(f"Failed to create index '{index_name}': {e}")
             return False
@@ -287,17 +295,17 @@ class HybridCollection(BaseMemoryCollection):
             # 优先使用 count() 方法，否则使用 len(id_map)
             if hasattr(index, "count"):
                 return index.count()
-            elif hasattr(index, "id_map"):
+            if hasattr(index, "id_map"):
                 return len(index.id_map)
             return 0
-        elif idx_type == IndexType.KV and index_name in self.kv_indexes:
+        if idx_type == IndexType.KV and index_name in self.kv_indexes:
             index = self.kv_indexes[index_name]
             if hasattr(index, "count"):
                 return index.count()
-            elif hasattr(index, "doc_count"):
+            if hasattr(index, "doc_count"):
                 return index.doc_count
             return 0
-        elif idx_type == IndexType.GRAPH and index_name in self.graph_indexes:
+        if idx_type == IndexType.GRAPH and index_name in self.graph_indexes:
             index = self.graph_indexes[index_name]
             return index.node_count() if hasattr(index, "node_count") else len(index.nodes)
 
@@ -492,10 +500,10 @@ class HybridCollection(BaseMemoryCollection):
                 return False
             return self._insert_to_vdb_index(index_name, item_id, vector)
 
-        elif idx_type == IndexType.KV:
+        if idx_type == IndexType.KV:
             return self._insert_to_kv_index(index_name, item_id, content)
 
-        elif idx_type == IndexType.GRAPH:
+        if idx_type == IndexType.GRAPH:
             edges = kwargs.get("edges", [])
             return self._insert_to_graph_index(index_name, item_id, content, edges)
 
@@ -525,11 +533,11 @@ class HybridCollection(BaseMemoryCollection):
                 self.vdb_indexes[index_name].delete(item_id)
                 return True
 
-            elif idx_type == IndexType.KV and index_name in self.kv_indexes:
+            if idx_type == IndexType.KV and index_name in self.kv_indexes:
                 self.kv_indexes[index_name].delete(item_id)
                 return True
 
-            elif idx_type == IndexType.GRAPH and index_name in self.graph_indexes:
+            if idx_type == IndexType.GRAPH and index_name in self.graph_indexes:
                 self.graph_indexes[index_name].remove_node(item_id)
                 return True
 
@@ -760,9 +768,8 @@ class HybridCollection(BaseMemoryCollection):
             ids = [r[0] for r in results]
             scores = [r[1] for r in results]
             return ids, scores
-        else:
-            ids = index.search(query, topk=top_k)
-            return ids, [1.0] * len(ids)
+        ids = index.search(query, topk=top_k)
+        return ids, [1.0] * len(ids)
 
     def _retrieve_from_graph(
         self,
@@ -857,11 +864,11 @@ class HybridCollection(BaseMemoryCollection):
         # 融合
         if fusion_strategy == "rrf":
             return self._rrf_fusion(all_results, top_k)
-        elif fusion_strategy == "weighted":
+        if fusion_strategy == "weighted":
             weights = kwargs.get("weights", {})
             return self._weighted_fusion(all_results, top_k, weights)
-        else:  # union
-            return self._union_fusion(all_results, top_k)
+        # union
+        return self._union_fusion(all_results, top_k)
 
     def _rrf_fusion(
         self, results_by_index: dict[str, list[dict[str, Any]]], top_k: int

@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any, ClassVar
 
 import numpy as np
+
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.vdb_index import index_factory
@@ -39,6 +40,14 @@ class VDBMemoryCollection(BaseMemoryCollection):
     supported_index_types: ClassVar[set[IndexType]] = {IndexType.VDB}
 
     def __init__(self, config: dict[str, Any]):
+        import warnings
+
+        warnings.warn(
+            "VDBMemoryCollection is deprecated and will be removed in v0.3.0.0. "
+            "Use UnifiedCollection instead. See docs/dev-note/MIGRATION_GUIDE.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # 调用父类初始化
         super().__init__(config)
 
@@ -173,9 +182,8 @@ class VDBMemoryCollection(BaseMemoryCollection):
         if index_name in self.index_info:
             del self.index_info[index_name]
             return True
-        else:
-            self.logger.warning(f"Index '{index_name}' does not exist.")
-            return False
+        self.logger.warning(f"Index '{index_name}' does not exist.")
+        return False
 
     def list_indexes(self) -> list[dict[str, Any]]:
         """
@@ -216,12 +224,11 @@ class VDBMemoryCollection(BaseMemoryCollection):
                 else:
                     self.logger.warning(f"索引 '{name}' 不存在")
             return result
-        else:
-            # 如果没有指定，返回所有索引信息
-            return [
-                {"name": name, "description": info["description"]}
-                for name, info in self.index_info.items()
-            ]
+        # 如果没有指定，返回所有索引信息
+        return [
+            {"name": name, "description": info["description"]}
+            for name, info in self.index_info.items()
+        ]
 
     # 按照筛选条件进行索引更新
     def update_index(
@@ -660,7 +667,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
             # 如果是字符串，记录警告（VDB 需要向量）
             self.logger.warning("VDB retrieve requires vector query, not string")
             return []
-        elif hasattr(query, "detach") and hasattr(query, "cpu"):
+        if hasattr(query, "detach") and hasattr(query, "cpu"):
             # PyTorch tensor
             processed_query = query.detach().cpu().numpy()  # type: ignore
         elif isinstance(query, list):
@@ -867,8 +874,7 @@ class VDBMemoryCollection(BaseMemoryCollection):
             # 这里只是一个简单的示例，实际应该使用更安全的方式
             if func_str.startswith("lambda"):
                 return eval(func_str)
-            else:
-                return lambda m: True
+            return lambda m: True
         except Exception:
             return lambda m: True
 
@@ -1230,8 +1236,7 @@ if __name__ == "__main__":
         norm = np.linalg.norm(vector)
         if norm == 0:
             raise ValueError("Cannot normalize a zero vector: input vector has zero norm.")
-        vector = vector / norm
-        return vector
+        return vector / norm
 
     def run_test():
         print(colored("\n=== 开始VDBMemoryCollection重构后测试 ===", "yellow"))

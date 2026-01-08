@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 
 import numpy as np
 import yaml
+
 from sage.common.utils.logging.custom_logger import CustomLogger
 
 from ..search_engine.kv_index import KVIndexFactory
@@ -47,6 +48,14 @@ class KVMemoryCollection(BaseMemoryCollection):
         Args:
             config: 配置字典，必须包含name等参数
         """
+        import warnings
+
+        warnings.warn(
+            "KVMemoryCollection is deprecated and will be removed in v0.3.0.0. "
+            "Use UnifiedCollection instead. See docs/dev-note/MIGRATION_GUIDE.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # 初始化CustomLogger
         self.logger = CustomLogger()
 
@@ -99,9 +108,8 @@ class KVMemoryCollection(BaseMemoryCollection):
             # 这里只是一个简单的示例，实际应该使用更安全的方式
             if func_str.startswith("lambda"):
                 return eval(func_str)
-            else:
-                # 对于其他函数类型，返回None，让调用者处理
-                return None
+            # 对于其他函数类型，返回None，让调用者处理
+            return None
         except Exception:
             self.logger.warning(f"无法反序列化函数: {func_str}")
             return None
@@ -628,9 +636,8 @@ class KVMemoryCollection(BaseMemoryCollection):
             del self.indexes[index_name]
             self.logger.info(f"成功删除索引: {index_name}")
             return True
-        else:
-            self.logger.warning(f"Index '{index_name}' does not exist.")
-            return False
+        self.logger.warning(f"Index '{index_name}' does not exist.")
+        return False
 
     def list_indexes(self) -> list[dict[str, Any]]:
         """

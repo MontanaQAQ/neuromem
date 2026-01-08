@@ -63,6 +63,14 @@ class BaseMemoryCollection(ABC):
         Args:
             config: 配置字典，必须包含 "name" 字段
         """
+        import warnings
+
+        warnings.warn(
+            "BaseMemoryCollection is deprecated and will be removed in v0.3.0.0. "
+            "Use UnifiedCollection instead. See docs/dev-note/MIGRATION_GUIDE.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.name = config["name"]
         self.text_storage = TextStorage()
         self.metadata_storage = MetadataStorage()

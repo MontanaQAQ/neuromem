@@ -49,6 +49,14 @@ class GraphMemoryCollection(BaseMemoryCollection):
             config: 配置字典，必须包含 "name" 字段；
                 为了向后兼容，也可以直接传入字符串 name。
         """
+        import warnings
+
+        warnings.warn(
+            "GraphMemoryCollection is deprecated and will be removed in v0.3.0.0. "
+            "Use UnifiedCollection instead. See docs/dev-note/MIGRATION_GUIDE.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if isinstance(config, str):
             config = {"name": config}
 

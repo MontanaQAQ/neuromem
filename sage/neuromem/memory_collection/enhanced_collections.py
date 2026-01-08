@@ -1,6 +1,10 @@
 """
 Enhanced Memory Collections with Paper Features.
 
+⚠️ DEPRECATED: This module will be removed in v0.3.0.0.
+Use UnifiedCollection with Mixin pattern instead.
+See docs/dev-note/MIGRATION_GUIDE.md for migration guide.
+
 Provides VDB and Graph collections with paper-specific features:
 - Triple storage (TiM)
 - Link evolution (A-Mem)
@@ -19,6 +23,7 @@ Provides VDB and Graph collections with paper-specific features:
 
 from __future__ import annotations
 
+import warnings
 from typing import ClassVar
 
 from .base_collection import IndexType
@@ -31,6 +36,14 @@ from .paper_features import (
     PaperFeaturesMixin,
 )
 from .vdb_collection import VDBMemoryCollection
+
+warnings.warn(
+    "enhanced_collections module is deprecated and will be removed in v0.3.0.0. "
+    "Use UnifiedCollection with Mixin pattern instead. "
+    "See docs/dev-note/MIGRATION_GUIDE.md",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class VDBMemoryCollectionWithFeatures(
