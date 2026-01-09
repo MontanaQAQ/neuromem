@@ -130,15 +130,15 @@ def count_valid_combinations() -> dict:
 
     for d1 in D1_SERVICES:
         service_valid = 0
-        for d2 in D2_PRE_INSERT:
+        for _d2 in D2_PRE_INSERT:
             for d3 in D3_POST_INSERT:
                 # 检查 D1-D3 兼容性
                 if not is_compatible(d1, d3):
                     invalid_count += len(D4_PRE_RETRIEVAL) * len(D5_POST_RETRIEVAL)
                     continue
 
-                for d4 in D4_PRE_RETRIEVAL:
-                    for d5 in D5_POST_RETRIEVAL:
+                for _d4 in D4_PRE_RETRIEVAL:
+                    for _d5 in D5_POST_RETRIEVAL:
                         valid_count += 1
                         service_valid += 1
 
