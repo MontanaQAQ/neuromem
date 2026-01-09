@@ -378,97 +378,395 @@ results = service.retrieve(
 
 ## 5. 实验价值分析
 
-### 5.1 完整性覆盖
+### 5.1 实验设计策略
 
-**底层分类维度**：
-- ✅ Partitional：3/8（37.5%）- 覆盖单索引×2 + 多索引融合×1
-- ✅ Hierarchical：2/3（66.7%）- 覆盖简单图 + 复杂图
+基于前期分析和实验效率考虑，采用**最小代表集 + 控制变量法**：
 
-**复杂度梯度**：
-1. **极简**：FIFO（无向量，O(1)）
-2. **简单**：LSH（单向量，O(1)近似）
-3. **中等**：Feature-Queue-Vector（三索引，O(log N)）
-4. **复杂**：Linknote（图+向量，O(N+E)）
-5. **最复杂**：Semantic Inverted KG（三层检索，O(log N)）
+#### 第一步：选定 3 个代表性数据结构（D1）
 
-**论文算法映射**：
-- ✅ 5/12 主流论文算法（SCM、TiM、MemGPT、A-Mem、HippoRAG）
-- ✅ 覆盖时序、语义、混合、图谱四大范式
+从 11 个服务中选择 **TiM、Mem0ᵍ、MemoryOS** 作为代表：
 
-### 5.2 实验组合潜力
+| 数据结构 | D1 Service | 选择理由 |
+|---------|-----------|---------|
+| **TiM** | `lsh_hash` | Partitional 类代表，LSH 向量索引，快速近似检索 |
+| **Mem0ᵍ** | `semantic_inverted_knowledge_graph` | Hierarchical 类代表，三层语义图谱 |
+| **MemoryOS** | `feature_queue_segment_combination` | Partitional 类代表，三索引融合（BM25+FIFO+Segment） |
 
-基于这 5 个数据结构，可以设计以下实验矩阵：
+**覆盖维度**：
+- ✅ 底层分类：Partitional（2个）+ Hierarchical（1个）
+- ✅ 索引复杂度：单索引（LSH）→ 三索引融合（FQS）→ 三层图谱（SIKG）
+- ✅ 论文代表性：TiM（近似检索）、Mem0ᵍ（图记忆）、MemoryOS（分段管理）
 
-**D1: 数据结构探索**（5 种）
-- FIFO vs LSH → 评估"语义检索的必要性"
-- LSH vs FAISS → 评估"精确检索 vs 近似检索"
-- Feature-Queue-Vector → 评估"融合策略的最优权重"
-- Linknote vs Semantic KG → 评估"简单图 vs 复杂图"
+#### 第二步：从每个 Operator 维度选出代表性策略
 
-**D2: PreInsert 策略**（4 种）
-- `none`：透传原始对话
-- `extract.entity`：实体提取
-- `extract.triple`：三元组提取
-- `transform.summarize`：摘要生成
+为避免组合爆炸，从每个维度的所有可用策略中，选出**最具代表性的 3-4 个**：
 
-**D3: PostInsert 策略**（3 种）
-- `none`：无后处理
-- `link_evolution`：链接演化（图结构专用）
-- `distillation`：知识蒸馏
+##### D2 (PreInsert) - 可用策略总览与筛选
 
-**D4: PreRetrieval 策略**（3 种）
-- `embedding`：基础向量化
-- `optimize.keyword_extract`：关键词提取
-- `enhancement.decompose`：查询分解
+**所有可用策略**（共 14 个）：
+- 基础：`none`
+- 转换：`transform.chunking`, `transform.summarize`, `transform.segment`, `transform.segment_denoise`, `transform.continuity_check`
+- 提取：`extract.keyword`, `extract.entity`, `extract.noun`, `extract.triple`, `extract.multi_summary`
+- 评分：`score.importance`, `score.heat`
 
-**D5: PostRetrieval 策略**（3 种）
-- `none`：透传检索结果
-- `rerank.ppr`：PageRank重排
-- `merge.link_expand`：链接扩展
+**✅ 选出代表性策略**（4 个）：
+1. **`none`** - 基线，透传原始对话
+2. **`extract.triple`** - 结构化提取（TiM/Mem0ᵍ 使用）
+3. **`transform.summarize`** - 摘要生成（MemoryBank 风格）
+4. **`score.importance`** - 重要性评分（MemoryOS 风格）
 
-**总组合数**：
+**排除理由**：
+- `extract.entity/noun/keyword`：与 `triple` 功能重叠，后者更完整
+- `transform.segment/chunking`：特定场景，代表性不足
+- `score.heat`：与 `importance` 相似，PostInsert 阶段处理更合理
+
+---
+
+##### D3 (PostInsert) - 可用策略总览与筛选
+
+**所有可用策略**（共 7 个）：
+- 基础：`none`
+- 优化：`distillation`, `crud`, `link_evolution`, `migrate`, `migrate.time_based`, `forgetting`
+- 增强：`enhance.profile_extraction`
+
+**✅ 选出代表性策略**（4 个）：
+1. **`none`** - 基线，无后处理
+2. **`distillation`** - 知识蒸馏/合并（TiM 使用）
+3. **`crud`** - LLM 决策式操作（Mem0ᵍ 使用）
+4. **`migrate`** - 热度迁移（MemoryOS 使用）
+
+**排除理由**：
+- `link_evolution`：图结构专用，通用性不足
+- `forgetting`：与 `distillation` 部分重叠
+- `migrate.time_based`：是 `migrate` 的特化版本
+- `enhance.profile_extraction`：是 `migrate` 的子功能
+
+---
+
+##### D4 (PreRetrieval) - 可用策略总览与筛选
+
+**所有可用策略**（共 9 个）：
+- 基础：`none`, `embedding`, `validate`
+- 优化：`optimize.keyword_extract`, `optimize.expand`, `optimize.rewrite`
+- 增强：`enhancement.decompose`, `enhancement.route`, `enhancement.multi_embed`
+
+**✅ 选出代表性策略**（4 个）：
+1. **`embedding`** - 标准向量化（TiM/Mem0ᵍ 使用）
+2. **`validate`** - 查询验证（质量保证）
+3. **`keyword_extract`** - 关键词提取（MemoryOS 使用）
+4. **`decompose`** - 查询分解（复杂推理场景）
+
+**排除理由**：
+- `none`：PreRetrieval 至少需要基础处理，无操作意义不大
+- `optimize.expand`：容易造成查询冗余，影响检索精度
+- `optimize.rewrite`：功能被 `keyword_extract` 覆盖
+- `enhancement.route/multi_embed`：过于特异化，适用场景有限
+
+---
+
+##### D5 (PostRetrieval) - 可用策略总览与筛选
+
+**所有可用策略**（共 14 个）：
+- 基础：`none`
+- 重排序：`rerank.semantic`, `rerank.time_weighted`, `rerank.ppr`, `rerank.weighted`
+- 过滤：`filter.token_budget`, `filter.threshold`, `filter.top_k`
+- 合并：`merge.link_expand`, `merge.multi_query`, `merge.multi_tier`, `scm_three_way`
+- 增强：`augment`, `augment.reinforce`
+
+**✅ 选出代表性策略**（4 个）：
+1. **`none`** - 基线，基础格式化
+2. **`rerank.weighted`** - 多因子重排（通用性强）
+3. **`filter.token_budget`** - Token 控制（实用性强）
+4. **`merge.multi_query`** - 多查询合并（MemoryOS 使用）
+
+**排除理由**：
+- `rerank.semantic/time_weighted/ppr`：是 `weighted` 的特化版本
+- `filter.threshold/top_k`：与 `token_budget` 功能重叠
+- `merge.link_expand/multi_tier`：特定场景，代表性不足
+- `scm_three_way`：SCM 专用
+- `augment/augment.reinforce`：实验性功能，成熟度不足
+
+---
+
+#### 第三步：实验设计方案
+
+**方案 A：论文复现实验**（最小化，3个实验）
+- 每个数据结构保持论文原配置不变
+- 用于验证 Pipeline 正确性
+
+| 实验ID | D1 | D2 | D3 | D4 | D5 |
+|-------|----|----|----|----|-----|
+| E1-TiM | `lsh_hash` | `extract.triple` | `distillation` | `embedding` | `none` |
+| E2-Mem0g | `semantic_inverted_knowledge_graph` | `extract.triple` | `crud` | `embedding` | `none` |
+| E3-MemoryOS | `feature_queue_segment_combination` | `none` | `migrate` | `keyword_extract` | `merge.multi_query` |
+
+---
+
+**方案 B：单维度探索实验**（推荐，48个实验）
+- 固定其他维度为论文配置
+- 每次只变化一个维度的代表性策略
+
+##### B1: 固定 D3/D4/D5，探索 D2
+
+| 实验组 | D1 | D2 变化 | D3 固定 | D4 固定 | D5 固定 | 实验数 |
+|-------|----|---------|---------|---------|---------| ------|
+| TiM-D2 | `lsh_hash` | 4种 | `distillation` | `embedding` | `none` | 4 |
+| Mem0g-D2 | `semantic_inverted_knowledge_graph` | 4种 | `crud` | `embedding` | `none` | 4 |
+| MemoryOS-D2 | `feature_queue_segment_combination` | 4种 | `migrate` | `keyword_extract` | `merge.multi_query` | 4 |
+
+D2 的 4 种策略：`none`, `extract.triple`, `transform.summarize`, `score.importance`
+
+##### B2: 固定 D2/D4/D5，探索 D3
+
+| 实验组 | D1 | D2 固定 | D3 变化 | D4 固定 | D5 固定 | 实验数 |
+|-------|----|---------|---------|---------|---------| ------|
+| TiM-D3 | `lsh_hash` | `extract.triple` | 4种 | `embedding` | `none` | 4 |
+| Mem0g-D3 | `semantic_inverted_knowledge_graph` | `extract.triple` | 4种 | `embedding` | `none` | 4 |
+| MemoryOS-D3 | `feature_queue_segment_combination` | `none` | 4种 | `keyword_extract` | `merge.multi_query` | 4 |
+
+D3 的 4 种策略：`none`, `distillation`, `crud`, `migrate`
+
+##### B3: 固定 D2/D3/D5，探索 D4
+
+| 实验组 | D1 | D2 固定 | D3 固定 | D4 变化 | D5 固定 | 实验数 |
+|-------|----|---------|---------|---------|---------| ------|
+| TiM-D4 | `lsh_hash` | `extract.triple` | `distillation` | 4种 | `none` | 4 |
+| Mem0g-D4 | `semantic_inverted_knowledge_graph` | `extract.triple` | `crud` | 4种 | `none` | 4 |
+| MemoryOS-D4 | `feature_queue_segment_combination` | `none` | `migrate` | 4种 | `merge.multi_query` | 4 |
+
+D4 的 4 种策略：`embedding`, `validate`, `keyword_extract`, `decompose`
+
+##### B4: 固定 D2/D3/D4，探索 D5
+
+| 实验组 | D1 | D2 固定 | D3 固定 | D4 固定 | D5 变化 | 实验数 |
+|-------|----|---------|---------|---------|---------| ------|
+| TiM-D5 | `lsh_hash` | `extract.triple` | `distillation` | `embedding` | 4种 | 4 |
+| Mem0g-D5 | `semantic_inverted_knowledge_graph` | `extract.triple` | `crud` | `embedding` | 4种 | 4 |
+| MemoryOS-D5 | `feature_queue_segment_combination` | `none` | `migrate` | `keyword_extract` | 4种 | 4 |
+
+D5 的 4 种策略：`none`, `rerank.weighted`, `filter.token_budget`, `merge.multi_query`
+---
+
+**方案 C：全维度正交实验**（完整探索，不推荐，256个实验）
+- 所有维度的代表性策略全排列
+- 组合爆炸：4^4 × 3 = 768，筛选后约 256 个有效组合
+- 时间成本过高，不推荐
+
+---
+
+### 5.2 推荐实验方案对比
+
+| 方案 | 实验数 | 时间成本 | 适用场景 | 优缺点 |
+|------|-------|---------|---------|--------|
+| **方案 A** | 3 | 低（~150h） | 论文复现验证 | ✅ 快速验证<br>❌ 无探索价值 |
+| **方案 B** | 48 | 中（~2400h） | 单维度深度探索 | ✅ 控制变量清晰<br>✅ 可并行执行<br>✅ 结论可解释 |
+| **方案 C** | 256 | 高（~12800h） | 完整参数空间搜索 | ✅ 覆盖全面<br>❌ 时间成本过高<br>❌ 结论难解释 |
+
+**推荐选择**：**方案 B**（单维度探索实验）
+
+### 5.3 方案 B 实验矩阵详情
+
+#### 实验命名规范
+
 ```
-5 × 4 × 3 × 3 × 3 = 540 种组合
+<数据结构>_<维度>_<策略>
+例如：TiM_D2_triple, Mem0g_D5_rerank, MemoryOS_D3_migrate
 ```
 
-通过**控制变量法**，可以从 540 种组合中筛选出最优配置。
+#### B1 组：探索 D2 (PreInsert) - 12 个实验
 
-### 5.3 实际应用场景映射
+| ID | 数据结构 | D2 (变化) | D3 (固定) | D4 (固定) | D5 (固定) |
+|----|---------|----------|----------|----------|----------|
+| B1-1 | TiM | `none` | `distillation` | `embedding` | `none` |
+| B1-2 | TiM | `extract.triple` ✅论文 | `distillation` | `embedding` | `none` |
+| B1-3 | TiM | `transform.summarize` | `distillation` | `embedding` | `none` |
+| B1-4 | TiM | `score.importance` | `distillation` | `embedding` | `none` |
+| B1-5 | Mem0ᵍ | `none` | `crud` | `embedding` | `none` |
+| B1-6 | Mem0ᵍ | `extract.triple` ✅论文 | `crud` | `embedding` | `none` |
+| B1-7 | Mem0ᵍ | `transform.summarize` | `crud` | `embedding` | `none` |
+| B1-8 | Mem0ᵍ | `score.importance` | `crud` | `embedding` | `none` |
+| B1-9 | MemoryOS | `none` ✅论文 | `migrate` | `keyword_extract` | `merge.multi_query` |
+| B1-10 | MemoryOS | `extract.triple` | `migrate` | `keyword_extract` | `merge.multi_query` |
+| B1-11 | MemoryOS | `transform.summarize` | `migrate` | `keyword_extract` | `merge.multi_query` |
+| B1-12 | MemoryOS | `score.importance` | `migrate` | `keyword_extract` | `merge.multi_query` |
+
+#### B2 组：探索 D3 (PostInsert) - 12 个实验
+
+| ID | 数据结构 | D2 (固定) | D3 (变化) | D4 (固定) | D5 (固定) |
+|----|---------|----------|----------|----------|----------|
+| B2-1 | TiM | `extract.triple` | `none` | `embedding` | `none` |
+| B2-2 | TiM | `extract.triple` | `distillation` ✅论文 | `embedding` | `none` |
+| B2-3 | TiM | `extract.triple` | `crud` | `embedding` | `none` |
+| B2-4 | TiM | `extract.triple` | `migrate` | `embedding` | `none` |
+| B2-5 | Mem0ᵍ | `extract.triple` | `none` | `embedding` | `none` |
+| B2-6 | Mem0ᵍ | `extract.triple` | `distillation` | `embedding` | `none` |
+| B2-7 | Mem0ᵍ | `extract.triple` | `crud` ✅论文 | `embedding` | `none` |
+| B2-8 | Mem0ᵍ | `extract.triple` | `migrate` | `embedding` | `none` |
+| B2-9 | MemoryOS | `none` | `none` | `keyword_extract` | `merge.multi_query` |
+| B2-10 | MemoryOS | `none` | `distillation` | `keyword_extract` | `merge.multi_query` |
+| B2-11 | MemoryOS | `none` | `crud` | `keyword_extract` | `merge.multi_query` |
+| B2-12 | MemoryOS | `none` | `migrate` ✅论文 | `keyword_extract` | `merge.multi_query` |
+
+#### B3 组：探索 D4 (PreRetrieval) - 12 个实验
+
+| ID | 数据结构 | D2 (固定) | D3 (固定) | D4 (变化) | D5 (固定) |
+|----|---------|----------|----------|----------|----------|
+| B3-1 | TiM | `extract.triple` | `distillation` | `embedding` ✅论文 | `none` |
+| B3-2 | TiM | `extract.triple` | `distillation` | `validate` | `none` |
+| B3-3 | TiM | `extract.triple` | `distillation` | `keyword_extract` | `none` |
+| B3-4 | TiM | `extract.triple` | `distillation` | `decompose` | `none` |
+| B3-5 | Mem0ᵍ | `extract.triple` | `crud` | `embedding` ✅论文 | `none` |
+| B3-6 | Mem0ᵍ | `extract.triple` | `crud` | `validate` | `none` |
+| B3-7 | Mem0ᵍ | `extract.triple` | `crud` | `keyword_extract` | `none` |
+| B3-8 | Mem0ᵍ | `extract.triple` | `crud` | `decompose` | `none` |
+| B3-9 | MemoryOS | `none` | `migrate` | `embedding` | `merge.multi_query` |
+| B3-10 | MemoryOS | `none` | `migrate` | `validate` | `merge.multi_query` |
+| B3-11 | MemoryOS | `none` | `migrate` | `keyword_extract` ✅论文 | `merge.multi_query` |
+| B3-12 | MemoryOS | `none` | `migrate` | `decompose` | `merge.multi_query` |
+
+#### B4 组：探索 D5 (PostRetrieval) - 12 个实验
+
+| ID | 数据结构 | D2 (固定) | D3 (固定) | D4 (固定) | D5 (变化) |
+|----|---------|----------|----------|----------|----------|
+| B4-1 | TiM | `extract.triple` | `distillation` | `embedding` | `none` ✅论文 |
+| B4-2 | TiM | `extract.triple` | `distillation` | `embedding` | `rerank.weighted` |
+| B4-3 | TiM | `extract.triple` | `distillation` | `embedding` | `filter.token_budget` |
+| B4-4 | TiM | `extract.triple` | `distillation` | `embedding` | `merge.multi_query` |
+| B4-5 | Mem0ᵍ | `extract.triple` | `crud` | `embedding` | `none` ✅论文 |
+| B4-6 | Mem0ᵍ | `extract.triple` | `crud` | `embedding` | `rerank.weighted` |
+| B4-7 | Mem0ᵍ | `extract.triple` | `crud` | `embedding` | `filter.token_budget` |
+| B4-8 | Mem0ᵍ | `extract.triple` | `crud` | `embedding` | `merge.multi_query` |
+| B4-9 | MemoryOS | `none` | `migrate` | `keyword_extract` | `none` |
+| B4-10 | MemoryOS | `none` | `migrate` | `keyword_extract` | `rerank.weighted` |
+| B4-11 | MemoryOS | `none` | `migrate` | `keyword_extract` | `filter.token_budget` |
+| B4-12 | MemoryOS | `none` | `migrate` | `keyword_extract` | `merge.multi_query` ✅论文 |
+
+### 5.4 实验规模估算
+
+**方案 B 总实验数**：
+```
+B1 (12) + B2 (12) + B3 (12) + B4 (12) = 48
+```
+
+**方案 B 总时间估算**：
+```
+48 实验 × 50 任务 × 3 小时 ≈ 7200 小时（300 天单线程）
+并行执行（10 台机器）：约 30 天
+```
+
+### 5.5 实验价值分析
+
+#### 核心研究问题（按实验组）
+
+**B1 组（D2 PreInsert 探索）**：
+1. 预处理策略对数据质量的影响
+   - 原始对话 vs 结构化提取（三元组）vs 摘要压缩
+   - 重要性评分是否能提升后续检索效果
+2. 不同数据结构对预处理的敏感度
+   - LSH 索引是否需要结构化输入
+   - 图谱索引是否必须三元组提取
+
+**B2 组（D3 PostInsert 探索）**：
+1. 后处理策略对记忆质量的影响
+   - 无后处理 vs 蒸馏合并 vs CRUD 决策 vs 热度迁移
+   - 哪种策略更适合长期记忆管理
+2. 不同数据结构对后处理的适配性
+   - LSH 快速索引是否适合频繁 CRUD
+   - 图谱结构是否更适合迁移操作
+
+**B3 组（D4 PreRetrieval 探索）**：
+1. 查询优化策略对检索精度的影响
+   - 无优化 vs 向量化 vs 关键词提取 vs 查询分解
+   - 复杂查询是否需要分解
+2. 不同数据结构对查询优化的需求
+   - LSH 近似检索是否受益于关键词
+   - 三索引融合如何平衡不同查询策略
+
+**B4 组（D5 PostRetrieval 探索）**：
+1. 后检索优化对最终效果的影响
+   - 无后处理 vs 重排序 vs 过滤 vs 合并
+   - Token 控制对长上下文任务的重要性
+2. 不同数据结构对后检索优化的响应
+   - LSH 近似结果是否需要重排序
+   - 多索引融合与多查询合并的协同效应
+
+#### 横向对比价值
+
+**同一维度，不同数据结构**（例如 B4 组）：
+- TiM (LSH) + `rerank.weighted`：近似索引能否通过重排提升精度？
+- Mem0ᵍ (SIKG) + `rerank.weighted`：图谱检索是否需要重排？
+- MemoryOS (FQS) + `rerank.weighted`：三索引融合后重排的边际收益？
+
+**同一数据结构，不同维度**（例如 TiM 的 B1-B4）：
+- 哪个维度对 TiM 效果影响最大？
+- 是否存在"瓶颈维度"（改进该维度收益最高）？
+**每个实验**（以 LoCoMo 数据集为例）：
+- 任务数：50+ 个会话
+- 每个任务：300-2000 轮对话
+- 测试分段：10 次
+- 估计时间：2-4 小时/任务
+
+**总时间估算**：
+```
+20 实验 × 50 任务 × 3 小时 = 3000 小时
+（可并行执行，实际时间取决于计算资源）
+```
+
+### 5.4 实验价值分析
+
+#### 核心研究问题
+
+1. **PostRetrieval 策略对检索效果的影响**
+   - 不同重排序算法的精度差异
+   - 过滤策略对上下文质量的影响
+   - 合并策略对多源检索的优化效果
+
+2. **数据结构与 PostRetrieval 策略的适配性**
+   - LSH（近似）vs 精确索引在重排后的效果
+   - 图结构是否能从 `merge.link_expand` 中获益
+   - 三索引融合与多层级合并的协同效应
+
+3. **控制变量实验的对比意义**
+   - 同一数据结构下，不同 D5 策略的横向对比
+   - 不同数据结构下，相同 D5 策略的纵向对比
+   - 论文原配置（Baseline）vs 优化配置的改进幅度
+
+### 5.5 实际应用场景映射
 
 | 数据结构 | 典型场景 | 数据规模 | 性能要求 |
 |---------|---------|---------|---------|
-| FIFO Queue | 客服对话历史、短期上下文 | 10-100条 | 极低延迟（<1ms） |
-| LSH Hash | 大规模文档检索、去重 | 100万+ | 高吞吐量 |
-| Feature-Queue-Vector | FAQ系统、智能问答 | 1万-10万 | 平衡延迟与精度 |
-| Linknote Graph | 知识管理、笔记系统 | 1万-10万 | 关联推荐 |
-| Semantic Inverted KG | 企业知识库、复杂推理 | 10万+ | 高精度检索 |
+| TiM (LSH Hash) | 大规模文档检索、快速去重 | 100万+ | 高吞吐量，O(1)近似 |
+| Mem0ᵍ (SIKG) | 企业知识库、实体关系推理 | 10万+ | 高精度检索，图遍历 |
+| MemoryOS (FQS) | 对话系统、上下文管理 | 1万-10万 | 平衡延迟与精度 |
 
-### 5.4 选择合理性总结
+### 5.6 选择合理性总结
 
-**为什么是这 5 个？**
+**为什么选择 TiM、Mem0ᵍ、MemoryOS 这 3 个？**
 
 1. **覆盖底层分类**：
-   - Partitional（扁平化+索引组合）→ 3个
-   - Hierarchical（结构关系+演化）→ 2个
+   - Partitional（扁平化+索引组合）→ 2个（TiM、MemoryOS）
+   - Hierarchical（结构关系+演化）→ 1个（Mem0ᵍ）
 
-2. **覆盖索引数量维度**：
-   - 单索引（FIFO、LSH）→ 2个
-   - 多索引（Feature-Queue-Vector）→ 1个
-   - 图索引（Linknote、Semantic KG）→ 2个
+2. **覆盖索引复杂度**：
+   - 单索引（TiM: LSH）→ 1个
+   - 三索引融合（MemoryOS: BM25+FIFO+Segment）→ 1个
+   - 三层图谱（Mem0ᵍ: Semantic+Inverted+KG）→ 1个
 
-3. **覆盖复杂度梯度**：
-   - 从 O(1) 到 O(N+E)，便于性能对比
+3. **覆盖论文代表性**：
+   - TiM：近似检索范式
+   - Mem0ᵍ：图记忆范式
+   - MemoryOS：分段管理范式
 
-4. **覆盖论文算法**：
-   - 每个结构都对应明确的论文，实验可复现
-
-5. **实际应用价值**：
-   - 都有明确的生产场景，非纯理论构造
+4. **实验效率优化**：
+   - 从 11 个服务缩减到 3 个
+   - 从 540 种全排列缩减到 20 种控制变量实验
+   - 聚焦 PostRetrieval 策略优化（最接近应用层）
 
 **实验设计原则**：
-- ✅ 最小代表集：5个结构覆盖11个服务的核心能力
-- ✅ 最大对比度：每个结构都有独特的设计特点
-- ✅ 最优实验效率：540种组合可通过控制变量法优化
+- ✅ **最小代表集**：3个结构覆盖核心能力
+- ✅ **控制变量法**：固定 D2-D4，只变化 D5
+- ✅ **最优实验效率**：20 个实验 vs 原 540 个（节省 96% 时间）
+- ✅ **论文复现**：保持论文原配置，确保对比公平
 
 ---
 
