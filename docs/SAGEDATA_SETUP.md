@@ -152,7 +152,7 @@ cd ../neuromem && pip install -e .[dev,benchmark]
 ```
 isage-neuromem (neuromem 仓库)
 ├── isage-common  (已在 PyPI)
-├── isagedb       (已在 PyPI)
+├── isage-vdb       (已在 PyPI)
 └── [benchmark] → isage-data  (需要发布)
                   └── isage-common
 ```

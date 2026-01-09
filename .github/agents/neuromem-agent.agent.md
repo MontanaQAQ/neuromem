@@ -51,7 +51,7 @@ Use `@neuromem-agent` when working on:
 - **Layered Architecture**: Understands separation between MemoryManager → UnifiedCollection → Services → Storage
 - **Factory Patterns**: Can work with IndexFactory and MemoryServiceRegistry
 - **Type Systems**: Proficient with Python 3.10+ type hints and annotations
-- **SAGE Ecosystem**: Familiar with isage-common and isagedb integration
+- **SAGE Ecosystem**: Familiar with isage-common and isage-vdb integration
 
 ### Development Tasks
 
@@ -90,7 +90,7 @@ Use `@neuromem-agent` when working on:
 ### What This Agent Won't Do
 
 ❌ **Out of Scope**
-- Modify SAGE core dependencies (isage-common, isagedb)
+- Modify SAGE core dependencies (isage-common, isage-vdb)
 - Rewrite entire modules without clear requirements
 - Make breaking API changes without discussion
 - Deploy or publish to PyPI

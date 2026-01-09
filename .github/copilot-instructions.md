@@ -220,7 +220,7 @@ indexes:
 
 NeuroMem is part of the SAGE project and uses:
 - `isage-common`: Logging, embeddings, utilities
-- `isagedb`: SageDB vector database backend
+- `isage-vdb`: SageDB vector database backend
 
 ### Optional Dependencies
 

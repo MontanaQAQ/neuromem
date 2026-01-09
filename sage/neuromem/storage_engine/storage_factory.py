@@ -244,7 +244,7 @@ class SageDBStorage(StorageBackend):
             from sagedb import SageDB
         except ImportError as e:
             raise ImportError(
-                "sagedb package is required for SageDBStorage. Install it with: pip install isagedb"
+                "sagedb package is required for SageDBStorage. Install it with: pip install isage-vdb"
             ) from e
 
         self.config = config or {}
