@@ -1,0 +1,96 @@
+# ============================================================
+# PreRetrieval 实验: MemoryOS + Decompose
+# 记忆体结构: MemoryOS (三层STM/MTM/LPM架构)
+# PreRetrieval 策略: decompose
+# 配置名称: MemoryOS_locomo_decompose_pre_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: locomo
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 10
+  service_timeout: 600.0
+
+  prompt_template: |
+    Based on the above context, answer the following question concisely.
+
+    Question: {question}
+    Answer:
+
+  prompt_template_category5: |
+    Based on the above context, answer the following question.
+
+    Question: {question}
+    Answer:
+
+  # LLM 配置
+  # api_key: token-abc123
+  # base_url: http://sage2:8000/v1
+  # model_name: /home/cyb/Llama-3.1-8B-Instruct
+  # max_tokens: 256
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: MemoryOS-decompose
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "migrate"
+    migrate_strategy: "time_based"
+    stm_threshold: 20
+    mtm_threshold: 50
+    heat_score_enabled: true
+    heat_decay_factor: 0.9
+
+  pre_retrieval:
+    action: enhancement.decompose
+    decompose_strategy: "llm"
+    max_sub_queries: 3
+    sub_query_action: "sequential"
+    embed_sub_queries: false
+    decompose_prompt: |
+      Decompose this complex question into 2-3 simpler sub-questions that can be answered by retrieving related knowledge triples.
+      Each sub-question should focus on one specific entity or relationship.
+
+      Question: {query}
+
+      Return a JSON array of sub-questions. Example: ["sub-question 1", "sub-question 2"]
+      Sub-questions:
+
+  post_retrieval:
+    action: "merge.multi_query"
+    merge_strategy: "weighted"
+    diversify_results: true
+    deduplication_threshold: 0.90

@@ -1,6 +1,6 @@
 #!/bin/bash
-# 运行 TiM Locomo PreRetrieval 实验 - rewrite
-# 使用方法: bash script/query_formulation_strategy/run_tim_locomo_rewrite.sh
+# 运行 MemoryOS Locomo PreRetrieval 实验 - validate
+# 使用方法: bash script/query_formulation_strategy/run_memoryos_locomo_validate.sh
 
 set -e  # 遇到错误立即退出
 
@@ -11,31 +11,31 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # 配置文件路径
-CONFIG_FILE="$SCRIPT_DIR/../../config/query_formulation_strategy/TiM_locomo_rewrite_pre_retrieval_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/query_formulation_strategy/MemoryOS_locomo_validate_pre_retrieval_pipeline.yaml"
 
 # 定义所有任务 ID
 TASK_IDS=(
   "conv-26"
-  "conv-30"
-  "conv-41"
-  "conv-42"
-  "conv-43"
-  "conv-44"
-  "conv-47"
-  "conv-48"
-  "conv-49"
-  "conv-50"
+  # "conv-30"
+  # "conv-41"
+  # "conv-42"
+  # "conv-43"
+  # "conv-44"
+  # "conv-47"
+  # "conv-48"
+  # "conv-49"
+  # "conv-50"
 )
 
 # 创建日志目录结构
 DATASET="locomo"
 DATE=$(date +%Y%m%d)
-MEMORY_NAME="TiM-rewrite"
+MEMORY_NAME="MemoryOS-validate"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "TiM Locomo PreRetrieval 实验 - rewrite"
+echo "MemoryOS Locomo PreRetrieval 实验 - validate"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"
@@ -76,6 +76,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "🎉 所有任务执行完毕 - TiM-rewrite"
+echo "🎉 所有任务执行完毕 - MemoryOS-validate"
 echo "📁 所有日志已保存到: $LOG_BASE_DIR"
 echo "========================================================================"

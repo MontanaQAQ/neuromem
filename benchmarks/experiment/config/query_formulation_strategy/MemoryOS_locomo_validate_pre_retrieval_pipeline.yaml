@@ -1,0 +1,98 @@
+# ============================================================
+# PreRetrieval 实验: MemoryOS + Validate
+# 记忆体结构: MemoryOS (三层STM/MTM/LPM架构)
+# PreRetrieval 策略: validate
+# 配置名称: MemoryOS_locomo_validate_pre_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: locomo
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 10
+  service_timeout: 600.0
+
+  prompt_template: |
+    Based on the above context, answer the following question concisely.
+
+    Question: {question}
+    Answer:
+
+  prompt_template_category5: |
+    Based on the above context, answer the following question.
+
+    Question: {question}
+    Answer:
+
+  # LLM 配置
+  # api_key: token-abc123
+  # base_url: http://sage2:8000/v1
+  # model_name: /home/cyb/Llama-3.1-8B-Instruct
+  # max_tokens: 256
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: MemoryOS-validate
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "migrate"
+    migrate_strategy: "time_based"
+    stm_threshold: 20
+    mtm_threshold: 50
+    heat_score_enabled: true
+    heat_decay_factor: 0.9
+
+  pre_retrieval:
+    action: validate
+    rules:
+    - type: length
+      min_length: 3
+      max_length: 500
+    - type: empty
+      check_empty: true
+    - type: safety
+      blocked_patterns: []
+    on_fail: default
+    default_query: "Hello"
+    preprocessing:
+      strip_whitespace: true
+      lowercase: false
+      remove_punctuation: false
+
+  post_retrieval:
+    action: "merge.multi_query"
+    merge_strategy: "weighted"
+    diversify_results: true
+    deduplication_threshold: 0.90
