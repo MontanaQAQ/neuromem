@@ -1,0 +1,71 @@
+﻿---
+# MemoryOS (pre_insert=transform.chunking) - locomo 变体
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 10
+  prompt_template: |
+    Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: "MemoryOS"
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "transform.chunking"
+    transform_type: "chunking"
+    chunk_size: 512
+    chunk_overlap: 50
+    chunk_strategy: "fixed"
+
+  post_insert:
+    action: "migrate"
+    migrate_policy: "heat"
+    heat_threshold: 5.0
+    cold_threshold: 0.3
+    session_gap: 3600
+    tier_capacities:
+      stm: 20
+      mtm: 200
+    upgrade_transform: "multi_summary"
+    enable_keywords: true
+    enable_summary: true
+    enable_profile_extraction: true
+    enable_knowledge_extraction: true
+    reset_heat_after_extraction: true
+
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+    extractor: "spacy"
+    spacy_model: "en_core_web_sm"
+    extract_types: ["NOUN", "PROPN", "VERB"]
+    max_keywords: 10
+
+  post_retrieval:
+    action: "merge"
+    merge_type: "multi_query"
+    conversation_format_prompt: |
+      The following is relevant context from different memory tiers.

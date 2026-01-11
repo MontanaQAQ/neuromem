@@ -1,0 +1,52 @@
+﻿---
+# Mem0ᵍ (pre_insert=score.heat) - locomo 变体
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 10
+  prompt_template: |
+    Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: "Mem0g"
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "hierarchical.semantic_inverted_knowledge_graph"
+  semantic_inverted_knowledge_graph:
+    vector_dim: 1024
+    hierarchy_levels: 3
+    routing_strategy: "parallel"
+    enable_cross_layer_query: true
+    max_hops: 3
+    default_index: "semantic_index"
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "score.heat"
+    score_type: "heat"
+    importance_prompt: |
+      Rate the expected heat (1-10) for this memory considering recency and potential reuse.
+
+  post_insert:
+    action: "crud"
+    top_k: 10
+    debug_summary_only: true
+    decision_prompt: |
+      You are a JSON decision API. Output ONLY a single minified JSON object.
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"
+    top_k: 10
+    conversation_format_prompt: |
+      The following is relevant context retrieved from memory.
