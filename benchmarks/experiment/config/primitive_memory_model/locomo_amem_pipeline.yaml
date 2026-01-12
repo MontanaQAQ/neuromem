@@ -110,7 +110,7 @@ operators:
   # A-Mem 的核心：建立链接 + 更新相关记忆
   # ----------------------------------------------------------
   post_insert:
-    action: "link_evolution"
+    action: "structure_enrichment.link_evolution"
     link_policy: "auto_link"          # 自动建立链接
     knn_k: 10
     similarity_threshold: 0.7

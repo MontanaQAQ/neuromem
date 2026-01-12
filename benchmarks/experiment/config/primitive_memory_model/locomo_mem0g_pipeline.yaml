@@ -96,7 +96,7 @@ operators:
   # Mem0ᵍ 的核心：LLM 决定对已有记忆的操作；图索引的链接在其他算子中维护
   # ----------------------------------------------------------
   post_insert:
-    action: "crud"
+    action: "conflict_resolution.llm_crud"
     top_k: 10
     debug_summary_only: true        # 仅输出 LLM 调用汇总行（抑制其他 CRUD 调试输出）
     decision_prompt: |

@@ -3,16 +3,28 @@ PostInsert Action Registry
 ===========================
 
 Central registry for all PostInsert action strategies.
+
+Strategy Types:
+- conflict_resolution: Mem0, Mem0ᵍ, TiM, MemGPT (LLM CRUD / semantic consolidation)
+- decay_eviction: MemoryBank, LD-Agent (forgetting curve / time decay)
+- structure_enrichment: A-Mem, HippoRAG (link evolution / graph construction)
+- tier_migration: MemoryOS (heat-based layer migration)
 """
 
 from .base import BasePostInsertAction
-from .crud import CRUDAction
-from .distillation import DistillationAction
-from .enhance.profile_extraction import ProfileExtractionAction
-from .forgetting import ForgettingAction
-from .link_evolution import LinkEvolutionAction
-from .migrate import MigrateAction, TimeBasedMigrateAction
+
+# New strategy-based imports
+from .conflict_resolution import LLMCRUDAction, SemanticConsolidationAction
+from .decay_eviction import ForgettingCurveAction, TimeDecayAction
+
+# Legacy imports - REMOVED (code moved to backup_legacy_actions/ for archive only)
+# Old action classes are no longer imported or registered
+# Use new strategy-based actions: conflict_resolution.*, decay_eviction.*, structure_enrichment.*, tier_migration.*
+# Keep NoneAction at top level (like other action modules)
 from .none_action import NoneAction
+from .structure_enrichment import GraphConstructionAction
+from .structure_enrichment import LinkEvolutionAction as NewLinkEvolutionAction
+from .tier_migration import HeatMigrationAction
 
 
 class PostInsertActionRegistry:
@@ -93,25 +105,26 @@ class PostInsertActionRegistry:
 # [A] Passthrough - No post-processing
 PostInsertActionRegistry.register("none", NoneAction)
 
-# [B] Distillation - Memory merging (TiM, MemGPT, SeCom)
-PostInsertActionRegistry.register("distillation", DistillationAction)
+# ========================= Strategy-Based Registration =========================
 
-# [C] CRUD - Decision making (Mem0, Mem0ᵍ)
-PostInsertActionRegistry.register("crud", CRUDAction)
+# [1] Conflict Resolution (Mem0, Mem0ᵍ, TiM, MemGPT)
+PostInsertActionRegistry.register("conflict_resolution.llm_crud", LLMCRUDAction)
+PostInsertActionRegistry.register(
+    "conflict_resolution.semantic_consolidation", SemanticConsolidationAction
+)
 
-# [D] Link Evolution - Graph edge creation (A-Mem, HippoRAG)
-PostInsertActionRegistry.register("link_evolution", LinkEvolutionAction)
+# [2] Decay Eviction (MemoryBank, LD-Agent)
+PostInsertActionRegistry.register("decay_eviction.forgetting_curve", ForgettingCurveAction)
+PostInsertActionRegistry.register("decay_eviction.time_decay", TimeDecayAction)
 
-# [E] Migrate - Layer migration (MemoryOS, LD-Agent)
-PostInsertActionRegistry.register("migrate", MigrateAction)
-PostInsertActionRegistry.register("migrate.time_based", TimeBasedMigrateAction)
+# [3] Structure Enrichment (A-Mem, HippoRAG)
+PostInsertActionRegistry.register("structure_enrichment.link_evolution", NewLinkEvolutionAction)
+PostInsertActionRegistry.register(
+    "structure_enrichment.graph_construction", GraphConstructionAction
+)
 
-# [F] Forgetting - Active forgetting (MemoryBank, MemoryOS, LD-Agent)
-PostInsertActionRegistry.register("forgetting", ForgettingAction)
-
-# [G] Profile Extraction - Extract user profile and knowledge (MemoryOS)
-PostInsertActionRegistry.register("enhance.profile_extraction", ProfileExtractionAction)
-
+# [4] Tier Migration (MemoryOS)
+PostInsertActionRegistry.register("tier_migration.heat_migration", HeatMigrationAction)
 
 # ========================= Helper Functions =========================
 

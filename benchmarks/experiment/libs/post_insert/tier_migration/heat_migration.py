@@ -1,47 +1,48 @@
 """
-Migrate Action - Memory layer migration
-========================================
+Heat Migration Action - MemoryOS Layer Migration
+=================================================
 
-Used by: MemoryOS
+Papers: MemoryOS
+Strategy Type: tier_migration
+Trigger Mechanism: threshold (heat-based) + hybrid (capacity + heat)
 
-This action implements heat-based memory migration across layers
-(STM → MTM → LPM) following MemoryOS paper design:
-- STM→MTM: Multi-summary generation with LLM
-- MTM→LPM: Profile/Knowledge extraction when Heat ≥ threshold
+Implements heat-based memory migration across layers:
+- STM → MTM: Multi-summary generation on FIFO overflow
+- MTM → LPM: Profile/Knowledge extraction when Heat ≥ threshold
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostInsertAction, PostInsertInput, PostInsertOutput
 
 
-class MigrateAction(BasePostInsertAction):
-    """Layer migration strategy for hierarchical memory systems (MemoryOS Paper).
+class HeatMigrationAction(BasePostInsertAction):
+    """Heat-based layer migration action for hierarchical memory systems.
 
     Implementation logic (MemoryOS Algorithm 1 & 2):
-    1. STM→MTM: FIFO overflow, generate multi-summary, calculate Fscore
-    2. MTM→LPM: Heat-based trigger (τ=5.0), extract Profile/Knowledge with LLM
+    1. STM→MTM: FIFO overflow triggers multi-summary generation
+    2. MTM→LPM: Heat threshold triggers profile/knowledge extraction
 
     Config Parameters:
         migrate_policy (str): Migration policy (default: "heat")
         heat_threshold (float): Heat threshold for MTM→LPM (default: 5.0)
-        cold_threshold (float): Unused in MemoryOS
+        stm_capacity (int): STM capacity for overflow detection (default: 20)
         upgrade_transform (str): "multi_summary" or "none" (default: "none")
-        enable_keywords (bool): Extract keywords for Fscore (default: true)
-        enable_summary (bool): Generate segment summary (default: true)
-        enable_profile_extraction (bool): Extract user profile (default: true)
-        enable_knowledge_extraction (bool): Extract knowledge (default: true)
-        reset_heat_after_extraction (bool): Reset heat after extraction (default: true)
+        enable_profile_extraction (bool): Extract user profile (default: True)
+        enable_knowledge_extraction (bool): Extract knowledge (default: True)
+        reset_heat_after_extraction (bool): Reset heat after extraction (default: True)
     """
 
+    STRATEGY_TYPE = "tier_migration"
+    TRIGGER_MECHANISM = "threshold"
+    AVAILABLE_ACTIONS = ["MIGRATE", "EXTRACT", "NOOP"]
+
     def _init_action(self) -> None:
-        """Initialize migrate action configuration."""
+        """Initialize heat migration action configuration."""
         self.migrate_policy = self._get_config("migrate_policy", "heat")
         self.heat_threshold = self._get_config("heat_threshold", 5.0)
-        self.cold_threshold = self._get_config("cold_threshold", 0.3)
+        self.stm_capacity = self._get_config("stm_capacity", 20)
         self.upgrade_transform = self._get_config("upgrade_transform", "none")
-        self.enable_keywords = self._get_config("enable_keywords", True)
-        self.enable_summary = self._get_config("enable_summary", True)
         self.enable_profile_extraction = self._get_config("enable_profile_extraction", True)
         self.enable_knowledge_extraction = self._get_config("enable_knowledge_extraction", True)
         self.reset_heat_after_extraction = self._get_config("reset_heat_after_extraction", True)
@@ -50,9 +51,9 @@ class MigrateAction(BasePostInsertAction):
         self,
         input_data: PostInsertInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostInsertOutput:
-        """Execute layer migration action (MemoryOS Algorithm 1 & 2).
+        """Execute heat-based layer migration action.
 
         Args:
             input_data: Input data with newly inserted memories
@@ -66,7 +67,7 @@ class MigrateAction(BasePostInsertAction):
         if not hasattr(service, "_migrate_stm_to_mtm_batch"):
             return PostInsertOutput(
                 success=False,
-                action="migrate",
+                action="heat_migration",
                 details={
                     "error": "Service does not support MemoryOS migration (missing _migrate_stm_to_mtm_batch)"
                 },
@@ -77,14 +78,11 @@ class MigrateAction(BasePostInsertAction):
             details = {}
 
             # ===== Step 1: STM→MTM Migration (Algorithm 1) =====
-            # Check if STM overflow triggers migration
-            stm_capacity = self._get_config("tier_capacities", {}).get("stm", 20)
             stm_count = getattr(service, "_tier_counts", {}).get("stm", 0)
 
-            if stm_count > stm_capacity:
-                overflow_count = stm_count - stm_capacity
+            if stm_count > self.stm_capacity:
+                overflow_count = stm_count - self.stm_capacity
 
-                # Prepare config for multi-summary generation
                 stm_config = {
                     "enable_multi_summary": self.upgrade_transform == "multi_summary",
                     "llm_generator": llm,
@@ -101,7 +99,6 @@ class MigrateAction(BasePostInsertAction):
                 }
 
             # ===== Step 2: MTM→LPM Profile Extraction (Algorithm 2) =====
-            # Extract profile/knowledge when Heat ≥ threshold
             if self.enable_profile_extraction or self.enable_knowledge_extraction:
                 if not hasattr(service, "analyze_mtm_sessions_for_long_term"):
                     details["mtm_to_lpm"] = {
@@ -112,11 +109,7 @@ class MigrateAction(BasePostInsertAction):
                         "llm_generator": llm,
                         "enable_heat_analysis": True,
                         "heat_threshold": self.heat_threshold,
-                        "user_id": (
-                            input_data.metadata.get("user_id", "default")
-                            if input_data.metadata
-                            else "default"
-                        ),
+                        "user_id": input_data.data.get("user_id", "default"),
                     }
 
                     extracted_count = service.analyze_mtm_sessions_for_long_term(config=mtm_config)
@@ -130,8 +123,10 @@ class MigrateAction(BasePostInsertAction):
 
             return PostInsertOutput(
                 success=True,
-                action="migrate",
+                action="heat_migration",
                 details={
+                    "strategy_type": self.STRATEGY_TYPE,
+                    "trigger_mechanism": self.TRIGGER_MECHANISM,
                     "total_migrated": total_migrated,
                     "policy": self.migrate_policy,
                     **details,
@@ -143,6 +138,6 @@ class MigrateAction(BasePostInsertAction):
 
             return PostInsertOutput(
                 success=False,
-                action="migrate",
+                action="heat_migration",
                 details={"error": str(e), "traceback": traceback.format_exc()},
             )

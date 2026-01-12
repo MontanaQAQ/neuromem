@@ -77,7 +77,7 @@ operators:
       Triples:
 
   post_insert:
-    action: "crud"
+    action: "conflict_resolution.llm_crud"
     top_k: 10
     debug_summary_only: true
     decision_prompt: |

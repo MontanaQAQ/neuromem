@@ -125,7 +125,7 @@ operators:
       Sub-questions:
 
   post_insert:
-    action: "distillation"  # 插入后操作
+    action: "conflict_resolution.semantic_consolidation"  # 插入后操作
     # TiM 数据量驱动的蒸馏策略（不依赖底层服务阈值实现）
     retrieve_count: 10      # 检索候选记忆的数量（降低以减少处理时间）
     min_merge_count: 5      # 最少需要多少条相似记忆才执行蒸馏（降低阈值，更早触发合并）

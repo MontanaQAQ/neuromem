@@ -146,7 +146,7 @@ operators:
   # PostInsert: Synonym Edge 建立（与基础版相同）
   # ----------------------------------------------------------
   post_insert:
-    action: "link_evolution"
+    action: "structure_enrichment.link_evolution"
     link_policy: "synonym_edge"
     knn_k: 10
     similarity_threshold: 0.7
