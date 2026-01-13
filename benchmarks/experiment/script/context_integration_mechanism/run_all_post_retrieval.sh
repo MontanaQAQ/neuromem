@@ -40,8 +40,7 @@ TASK_IDS=(
 
 # 创建日志目录
 DATASET="locomo"
-DATE=$(date +%Y%m%d)
-LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/post_retrieval_experiment"
+LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/post_retrieval_experiment"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
@@ -73,11 +72,13 @@ for config_file in "${CONFIG_FILES[@]}"; do
   # 遍历所有任务
   for task_id in "${TASK_IDS[@]}"; do
     TIMESTAMP=$(date +%H%M%S)
-    LOG_FILE="$CONFIG_LOG_DIR/${task_id}_${TIMESTAMP}.log"
+    LOG_DIR="$CONFIG_LOG_DIR/${task_id}_${TIMESTAMP}"
+    mkdir -p "$LOG_DIR"
+    LOG_FILE="$LOG_DIR/terminal.log"
 
-    echo "  📝 任务 $task_id -> $LOG_FILE"
+    echo "  📝 任务 $task_id -> $LOG_DIR"
 
-    PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" \
+    PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" PROCESS_LOG_DIR="$LOG_DIR" python "$PYTHON_SCRIPT" \
       --config "$CONFIG_PATH" \
       --task_id "$task_id" 2>&1 | tee "$LOG_FILE"
 

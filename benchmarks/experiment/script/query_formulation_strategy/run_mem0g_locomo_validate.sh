@@ -29,9 +29,8 @@ TASK_IDS=(
 
 # 创建日志目录结构
 DATASET="locomo"
-DATE=$(date +%Y%m%d)
 MEMORY_NAME="Mem0g-validate"
-LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/$MEMORY_NAME"
+LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
@@ -55,20 +54,22 @@ for i in "${!TASK_IDS[@]}"; do
 
   # 生成带时间戳的日志文件名
   TIMESTAMP=$(date +%H%M%S)
-  LOG_FILE="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}.log"
+  LOG_DIR="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}"
+  mkdir -p "$LOG_DIR"
+  LOG_FILE="$LOG_DIR/terminal.log"
 
   echo "--------------------------------------------------------------------"
   echo "🚀 开始运行任务 [$TASK_NUM/${#TASK_IDS[@]}]: $TASK_ID"
-  echo "📝 日志文件: $LOG_FILE"
+  echo "📝 日志目录: $LOG_DIR"
   echo "--------------------------------------------------------------------"
 
   # 运行任务并将输出重定向到日志文件（同时显示到终端）
-  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" PROCESS_LOG_DIR="$LOG_DIR" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
 
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    echo "✅ 任务 $TASK_ID 完成,日志已保存到: $LOG_FILE"
+    echo "✅ 任务 $TASK_ID 完成,日志已保存到: $LOG_DIR"
   else
-    echo "❌ 任务 $TASK_ID 失败，日志已保存到: $LOG_FILE"
+    echo "❌ 任务 $TASK_ID 失败，日志已保存到: $LOG_DIR"
     exit 1
   fi
 

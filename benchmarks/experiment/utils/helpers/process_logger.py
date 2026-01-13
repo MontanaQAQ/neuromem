@@ -144,14 +144,7 @@ class ProcessLogger:
                 self._qa_file.write(f"Category: {category}\n")
 
         if full_prompt:
-            self._qa_file.write(
-                f"\n--- Full Prompt to LLM ---\n{full_prompt}\n--- End Prompt ---\n"
-            )
-
-        if context:
-            self._qa_file.write(
-                f"\n--- Context (from PostRetrieval) ---\n{context}\n--- End Context ---\n"
-            )
+            self._qa_file.write(f"\n{full_prompt}\n")
 
         self._qa_file.write("\n" + "=" * 60 + "\n\n")
         self._qa_file.flush()
