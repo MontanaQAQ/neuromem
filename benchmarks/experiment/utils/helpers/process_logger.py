@@ -49,17 +49,24 @@ class ProcessLogger:
         Returns:
             日志目录路径
         """
-        project_root = get_project_root()
-        timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
+        # 优先使用环境变量中的目录（由 shell 脚本创建）
+        env_log_dir = os.environ.get("PROCESS_LOG_DIR")
+        if env_log_dir:
+            self._output_dir = env_log_dir
+            os.makedirs(self._output_dir, exist_ok=True)
+        else:
+            # 默认自动生成目录路径
+            project_root = get_project_root()
+            timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
 
-        self._output_dir = os.path.join(
-            project_root,
-            ".sage/output/benchmarks/benchmark_memory",
-            dataset,
-            memory_name,
-            f"{task_id}_{timestamp}",
-        )
-        os.makedirs(self._output_dir, exist_ok=True)
+            self._output_dir = os.path.join(
+                project_root,
+                ".sage/output/benchmarks/benchmark_memory",
+                dataset,
+                memory_name,
+                f"{task_id}_{timestamp}",
+            )
+            os.makedirs(self._output_dir, exist_ok=True)
 
         self._service_log_path = os.path.join(self._output_dir, "memory_service.log")
         self._qa_log_path = os.path.join(self._output_dir, "memory_qa.log")
@@ -108,6 +115,7 @@ class ProcessLogger:
         answer: str,
         context: str | None = None,
         metadata: dict[str, Any] | None = None,
+        full_prompt: str | None = None,
     ) -> None:
         """记录问答对
 
@@ -117,6 +125,7 @@ class ProcessLogger:
             answer: 生成的答案
             context: 检索到的上下文（可选）
             metadata: 问题元数据（可选）
+            full_prompt: 送给 LLM 的完整 prompt（可选）
         """
         if self._qa_file is None:
             return
@@ -134,8 +143,15 @@ class ProcessLogger:
             if category:
                 self._qa_file.write(f"Category: {category}\n")
 
+        if full_prompt:
+            self._qa_file.write(
+                f"\n--- Full Prompt to LLM ---\n{full_prompt}\n--- End Prompt ---\n"
+            )
+
         if context:
-            self._qa_file.write(f"\n--- Context ---\n{context}\n--- End Context ---\n")
+            self._qa_file.write(
+                f"\n--- Context (from PostRetrieval) ---\n{context}\n--- End Context ---\n"
+            )
 
         self._qa_file.write("\n" + "=" * 60 + "\n\n")
         self._qa_file.flush()

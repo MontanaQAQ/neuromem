@@ -308,7 +308,7 @@ class PipelineCaller(MapFunction):
 
         # 达到阈值，触发测试
         if self.memory_test_verbose:
-            print(f"\n{'+' * 60}", flush=True)
+            print(f"{'+' * 60}", flush=True)
             if self.test_based_on_facts:
                 print("【QA】：Facts数量驱动测试触发", flush=True)
                 print(f">> 已插入facts数：{self.total_dialogs_inserted}", flush=True)

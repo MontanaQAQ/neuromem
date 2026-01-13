@@ -116,6 +116,7 @@ Answer:""",
             answer=answer_text,
             context=history_text,
             metadata=question_metadata,
+            full_prompt=full_prompt,
         )
 
         # 记录阶段耗时
