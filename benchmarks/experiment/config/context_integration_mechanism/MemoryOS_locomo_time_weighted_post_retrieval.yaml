@@ -62,7 +62,7 @@ operators:
     action: embedding
 
   post_insert:
-    action: tier_migration.heat_migration
+    action: structure_enrichment.heat_migration
     migrate_policy: "heat"
     heat_threshold: 5.0
     stm_capacity: 20

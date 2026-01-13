@@ -1,8 +1,8 @@
 # ============================================================
-# PostInsert 实验: MemoryOS + None (Baseline)
+# PostInsert 实验: MemoryOS + LLM CRUD
 # 记忆体结构: MemoryOS (三层 STM/MTM/LTM)
-# PostInsert 策略: none
-# 配置名称: MemoryOS_locomo_none_post_insert_pipeline.yaml
+# PostInsert 策略: conflict_resolution.llm_crud
+# 配置名称: MemoryOS_locomo_llm_crud_post_insert.yaml
 # ============================================================
 
 runtime:
@@ -29,7 +29,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: PostInsert_MemoryOS_none
+  memory_name: PostInsert_MemoryOS_llm_crud
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
@@ -60,7 +60,9 @@ operators:
     action: embedding
 
   post_insert:
-    action: none
+    action: conflict_resolution.llm_crud
+    similarity_threshold: 0.8
+    top_k: 5
 
   post_retrieval:
     action: none

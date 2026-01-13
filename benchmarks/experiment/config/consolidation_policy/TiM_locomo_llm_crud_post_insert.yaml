@@ -1,8 +1,8 @@
 # ============================================================
-# PostInsert 实验: TiM + Semantic Consolidation
+# PostInsert 实验: TiM + LLM CRUD
 # 记忆体结构: TiM (LSH哈希桶 + 向量检索)
-# PostInsert 策略: conflict_resolution.semantic_consolidation
-# 配置名称: TiM_locomo_semantic_consolidation_post_insert.yaml
+# PostInsert 策略: conflict_resolution.llm_crud
+# 配置名称: TiM_locomo_llm_crud_post_insert.yaml
 # ============================================================
 
 runtime:
@@ -26,12 +26,10 @@ runtime:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  llm_base_url: "http://172.17.0.1:1040/v1"
-  llm_model: "pangu_embedded_1b"
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: TiM-postinsert-consolidation
+  memory_name: PostInsert_TiM_llm_crud
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
@@ -82,31 +80,9 @@ operators:
     action: embedding
 
   post_insert:
-    action: conflict_resolution.semantic_consolidation
-    retrieve_count: 10
-    min_merge_count: 5
-    merge_prompt: |
-      You are a memory consolidation expert. Given a list of facts about a person, your job is to:
-      1. REMOVE duplicates and near-duplicates (same meaning, different wording)
-      2. MERGE related facts into more complete statements
-      3. REMOVE logically subsumed facts (if A contains B's meaning, remove B)
-
-      EXAMPLES of what to consolidate:
-      - "Alice likes coffee" + "Alice likes coffee a lot" → keep only "Alice likes coffee a lot"
-      - "Bob works at Google" + "Bob works at Google as engineer" → keep only "Bob works at Google as engineer"
-      - "Carol plans to travel" + "Carol plans to travel to Japan" → keep only "Carol plans to travel to Japan"
-
-      RULES:
-      - to_delete: List EXACT original texts to remove (duplicates, subsumed facts)
-      - to_insert: Only if you need to CREATE a new merged fact not in original list
-      - Prefer keeping the most informative version rather than creating new text
-      - If a fact appears multiple times, delete all but one
-
-      Facts:
-      {memories}
-
-      Respond with JSON only:
-      {"to_delete": ["exact text 1", "exact text 2"], "to_insert": []}
+    action: conflict_resolution.llm_crud
+    similarity_threshold: 0.8
+    top_k: 5
 
   post_retrieval:
     action: none

@@ -90,7 +90,7 @@ ______________________________________________________________________
 **固定配置**:
 - `pre_insert: score.heat`
 - `pre_retrieval: embedding`
-- `post_insert: tier_migration.heat_migration`
+- `post_insert: structure_enrichment.heat_migration`
 
 **适合测试的 PostRetrieval 策略**：
 - `none`: 无后处理基线
@@ -227,7 +227,7 @@ operators:
     action: embedding
 
   post_insert:
-    action: tier_migration.heat_migration
+    action: structure_enrichment.heat_migration
     migration_threshold: 0.7
 
   post_retrieval:

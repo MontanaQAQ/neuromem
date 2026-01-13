@@ -5,13 +5,9 @@
 """
 
 from sage.common.core import MapFunction
-from sage.data.sources.locomo.dataloader import LocomoDataLoader
-from sage.data.sources.longmemeval import LongMemEvalDataLoader
-from sage.data.sources.memagentbench.conflict_resolution_loader import (
-    ConflictResolutionDataLoader,
-)
 
 from benchmarks.experiment.utils import (
+    DataLoaderFactory,
     ProgressBar,
     calculate_test_thresholds,
 )
@@ -47,15 +43,8 @@ class PipelineCaller(MapFunction):
         # 注意：这个超时必须 >= pipeline_service_timeout，否则调用方会先超时
         self.service_timeout = config.get("runtime.service_timeout", 300.0)
 
-        # 根据数据集类型初始化加载器
-        if self.dataset == "locomo":
-            self.loader = LocomoDataLoader()
-        elif self.dataset == "conflict_resolution":
-            self.loader = ConflictResolutionDataLoader()
-        elif self.dataset == "longmemeval":
-            self.loader = LongMemEvalDataLoader()
-        else:
-            raise ValueError(f"Unsupported dataset: {self.dataset}")
+        # 根据数据集类型初始化加载器（使用工厂模式）
+        self.loader = DataLoaderFactory.create(self.dataset)
 
         # 进度条将在第一个数据包到达时初始化（因为需要从数据中获取总数）
         self.progress_bar = None

@@ -138,7 +138,7 @@ post_insert/
 | `decay_eviction.time_decay` | 衰减淘汰 | LDAgent |
 | `structure_enrichment.link_evolution` | 结构增强 | A-Mem |
 | `structure_enrichment.graph_construction` | 结构增强 | HippoRAG |
-| `tier_migration.heat_migration` | 层级迁移 | MemoryOS |
+| `structure_enrichment.heat_migration` | 层级迁移 | MemoryOS |
 
 **配置示例**：
 
@@ -385,7 +385,7 @@ print(PostInsertActionRegistry.list_actions())
 # ['none', 'conflict_resolution.llm_crud', 'conflict_resolution.semantic_consolidation',
 #  'decay_eviction.forgetting_curve', 'decay_eviction.time_decay',
 #  'structure_enrichment.link_evolution', 'structure_enrichment.graph_construction',
-#  'tier_migration.heat_migration']
+#  'structure_enrichment.heat_migration']
 ```
 
 **PreRetrieval**:

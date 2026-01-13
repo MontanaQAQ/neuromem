@@ -7,8 +7,7 @@ Central registry for all PostInsert action strategies.
 Strategy Types:
 - conflict_resolution: Mem0, Mem0ᵍ, TiM, MemGPT (LLM CRUD / semantic consolidation)
 - decay_eviction: MemoryBank, LD-Agent (forgetting curve / time decay)
-- structure_enrichment: A-Mem, HippoRAG (link evolution / graph construction)
-- tier_migration: MemoryOS (heat-based layer migration)
+- structure_enrichment: A-Mem, HippoRAG, MemoryOS (link evolution / graph construction / heat migration)
 """
 
 from .base import BasePostInsertAction
@@ -19,12 +18,11 @@ from .decay_eviction import ForgettingCurveAction, TimeDecayAction
 
 # Legacy imports - REMOVED (code moved to backup_legacy_actions/ for archive only)
 # Old action classes are no longer imported or registered
-# Use new strategy-based actions: conflict_resolution.*, decay_eviction.*, structure_enrichment.*, tier_migration.*
+# Use new strategy-based actions: conflict_resolution.*, decay_eviction.*, structure_enrichment.*
 # Keep NoneAction at top level (like other action modules)
 from .none_action import NoneAction
-from .structure_enrichment import GraphConstructionAction
+from .structure_enrichment import GraphConstructionAction, HeatMigrationAction
 from .structure_enrichment import LinkEvolutionAction as NewLinkEvolutionAction
-from .tier_migration import HeatMigrationAction
 
 
 class PostInsertActionRegistry:
@@ -117,14 +115,12 @@ PostInsertActionRegistry.register(
 PostInsertActionRegistry.register("decay_eviction.forgetting_curve", ForgettingCurveAction)
 PostInsertActionRegistry.register("decay_eviction.time_decay", TimeDecayAction)
 
-# [3] Structure Enrichment (A-Mem, HippoRAG)
+# [3] Structure Enrichment (A-Mem, HippoRAG, MemoryOS)
 PostInsertActionRegistry.register("structure_enrichment.link_evolution", NewLinkEvolutionAction)
 PostInsertActionRegistry.register(
     "structure_enrichment.graph_construction", GraphConstructionAction
 )
-
-# [4] Tier Migration (MemoryOS)
-PostInsertActionRegistry.register("tier_migration.heat_migration", HeatMigrationAction)
+PostInsertActionRegistry.register("structure_enrichment.heat_migration", HeatMigrationAction)
 
 # ========================= Helper Functions =========================
 

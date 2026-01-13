@@ -1,7 +1,7 @@
 # ============================================================
 # PostInsert 实验: MemoryOS + Heat Migration
 # 记忆体结构: MemoryOS (三层 STM/MTM/LTM)
-# PostInsert 策略: tier_migration.heat_migration
+# PostInsert 策略: structure_enrichment.heat_migration
 # 配置名称: MemoryOS_locomo_heat_migration_post_insert.yaml
 # ============================================================
 
@@ -26,12 +26,10 @@ runtime:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  llm_base_url: "http://172.17.0.1:1040/v1"
-  llm_model: "pangu_embedded_1b"
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: MemoryOS-postinsert-migration
+  memory_name: PostInsert_MemoryOS_heat_migration
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
@@ -62,7 +60,7 @@ operators:
     action: embedding
 
   post_insert:
-    action: tier_migration.heat_migration
+    action: structure_enrichment.heat_migration
     migrate_policy: "heat"
     heat_threshold: 5.0                # 论文 τ=5.0
     stm_capacity: 20                   # STM容量阈值

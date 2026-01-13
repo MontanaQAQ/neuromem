@@ -234,7 +234,7 @@ post_insert/
 ├── structure_enrichment/           # 结构增强策略
 │   ├── link_evolution.py           # 链接演化
 │   └── graph_construction.py       # 图构建
-└── tier_migration/                 # 分层迁移策略
+└── structure_enrichment/                 # 分层迁移策略
     └── heat_migration.py           # 热度迁移
 ```
 
@@ -254,7 +254,7 @@ post_insert/
 | `structure_enrichment.link_evolution` | 链接演化（关联强化） | A-Mem |
 | `structure_enrichment.graph_construction` | 图结构构建 | HippoRAG |
 | **分层迁移 (Tier Migration)** | | |
-| `tier_migration.heat_migration` | 热度分层迁移 | MemoryOS |
+| `structure_enrichment.heat_migration` | 热度分层迁移 | MemoryOS |
 
 ##### PreRetrieval 策略（记忆检索前预处理）
 

@@ -94,7 +94,7 @@ operators:
   #   - 重置已提取 Session 的热度
   # ----------------------------------------------------------
   post_insert:
-    action: "tier_migration.heat_migration"
+    action: "structure_enrichment.heat_migration"
     migrate_policy: "heat"
     heat_threshold: 5.0                # 论文 τ=5.0
     stm_capacity: 20                   # STM容量阈值

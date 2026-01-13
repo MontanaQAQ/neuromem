@@ -1,18 +1,19 @@
 # Post-Insert Actions 设计维度
 
-## 维度总览（5个策略维度）
+## 维度总览（4个策略维度）
 
 | 策略维度 | 设计意图 | Action数量 | 代表系统 |
 |---------|---------|-----------|---------|
 | **None (透传)** | 无后续维护操作 | 1 | HippoRAG2, SCM |
-| Conflict Resolution | 解决记忆冲突和重复 | 2 | Mem0, MemGPT, TiM |
-| Decay Eviction | 遗忘过时记忆 | 2 | MemoryBank, LD-Agent |
-| Structure Enrichment | 增强记忆结构 | 2 | A-Mem, HippoRAG |
-| Tier Migration | 分层记忆迁移 | 1 | MemoryOS |
+| Conflict Resolution | 解决记忆冲突和重复 | 1 | Mem0, MemGPT |
+| Decay Eviction | 遗忘过时记忆 | 1 | MemoryBank |
+| Structure Enrichment | 增强记忆结构 | 3 | A-Mem, HippoRAG, MemoryOS |
 
 > **设计理念**: Post-Insert采用"策略分类"而非"功能分类"，因为这些操作的触发机制和执行逻辑高度依赖系统的整体记忆管理策略。
 >
 > **💡 透传操作**: `none_action.py` 用于不需要后插入维护的系统，插入后不做任何处理。
+>
+> **💡 维度调整**: 原 Tier Migration 维度合并入 Structure Enrichment，因为热度迁移本质上也是结构增强的一种形式。
 
 ---
 
@@ -23,7 +24,6 @@
 | Action | 决策方式 | 可用操作 | 触发机制 |
 |--------|---------|---------|---------|
 | **llm_crud.py** | LLM判断 | ADD, UPDATE, DELETE, NOOP | 检索相似记忆后 |
-| **semantic_consolidation.py** | 语义合并 | MERGE, NOOP | 相似度超过阈值 |
 
 **LLM CRUD决策流程**:
 ```python
@@ -114,12 +114,15 @@ if score < threshold:
 
 ## 3. Structure Enrichment（结构增强）
 
-**策略意图**: 构建记忆间的关联结构（链接、图）
+**策略意图**: 构建记忆间的关联结构（链接、图、层级迁移）
 
-| Action | 结构类型 | 可用操作 | 触发机制 |
-|--------|---------|---------|---------|
-| **link_evolution.py** | 记忆链接 | LINK, NOOP | 插入后检索相关记忆 |
-| **graph_construction.py** | 知识图谱 | ADD_NODE, ADD_EDGE, NOOP | 插入后提取实体关系 |
+| Action | 结构类型 | 可用操作 | 触发机制 | 代表系统 |
+|--------|---------|---------|---------|---------|
+| **link_evolution.py** | 记忆链接 | LINK, NOOP | 插入后检索相关记忆 | A-Mem |
+| **graph_construction.py** | 知识图谱 | ADD_NODE, ADD_EDGE, NOOP | 插入后提取实体关系 | HippoRAG |
+| **heat_migration.py** | 层级迁移 | MIGRATE, EXTRACT, NOOP | 热度变化或定期扫描 | MemoryOS |
+
+### 3.1 Link Evolution（链接演化）
 
 **Link Evolution流程**:
 ```python
@@ -133,6 +136,8 @@ if score < threshold:
                create_link(memory_new, neighbor, relation_type)
 ```
 
+### 3.2 Graph Construction（图构建）
+
 **Graph Construction流程**:
 ```python
 # HippoRAG图构建
@@ -145,28 +150,7 @@ if score < threshold:
 5. 计算图属性（PageRank, Community等）
 ```
 
-**应用系统对比**:
-
-| 系统 | 结构 | 检索方式 |
-|------|------|---------|
-| **A-Mem** | 记忆链接网络 | 链接传播 + KNN |
-| **HippoRAG** | 知识图谱 | PPR (Personalized PageRank) |
-| **HippoRAG2** | 双层图（记忆+实体） | 协同检索 |
-
-**链接类型**:
-- **语义链接**: 基于内容相似度
-- **时序链接**: 基于时间邻近性
-- **因果链接**: 基于逻辑关系
-
----
-
-## 4. Tier Migration（层级迁移）
-
-**策略意图**: 根据访问热度在不同存储层间迁移记忆
-
-| Action | 迁移策略 | 可用操作 | 触发机制 |
-|--------|---------|---------|---------|
-| **heat_migration.py** | 热度阈值 | MIGRATE, EXTRACT, NOOP | 热度变化或定期扫描 |
+### 3.3 Heat Migration（热度迁移）
 
 **MemoryOS三层架构**:
 ```
@@ -209,6 +193,20 @@ if migrating_to_LTM:
 - **访问触发**: 每次访问后更新热度，检查是否需要迁移
 - **定期扫描**: 批量检查所有记忆的热度
 
+### 应用系统对比
+
+| 系统 | 结构 | 检索方式 |
+|------|------|---------|
+| **A-Mem** | 记忆链接网络 | 链接传播 + KNN |
+| **HippoRAG** | 知识图谱 | PPR (Personalized PageRank) |
+| **HippoRAG2** | 双层图（记忆+实体） | 协同检索 |
+| **MemoryOS** | STM/MTM/LTM三层 | 热度优先检索 |
+
+**链接类型**:
+- **语义链接**: 基于内容相似度
+- **时序链接**: 基于时间邻近性
+- **因果链接**: 基于逻辑关系
+
 ---
 
 ## 策略组合模式
@@ -237,18 +235,15 @@ post_insert:
 ### 模式4: MemoryOS风格（分层优先）
 ```yaml
 post_insert:
-  - tier_migration.heat_migration     # 热度迁移
-  - decay_eviction.time_decay         # 低热度删除
-  # 结合迁移和遗忘
+  - structure_enrichment.heat_migration  # 热度迁移
+  # 结合迁移
 ```
 
-### 模式5: 综合策略（全功能）
+### 模式5: A-Mem风格（链接优先）
 ```yaml
 post_insert:
-  - conflict_resolution.llm_crud           # 处理冲突
-  - structure_enrichment.link_evolution    # 建立链接
-  - tier_migration.heat_migration          # 分层迁移
-  - decay_eviction.forgetting_curve        # 遗忘过时
+  - structure_enrichment.link_evolution  # 自动链接
+  # 建立记忆关联
 ```
 
 ---
@@ -259,8 +254,8 @@ post_insert:
 |---------|---------|---------|---------|
 | **Retrieval触发** | Conflict Resolution | 插入后立即检索并决策 | 中等（需要检索） |
 | **Temporal触发** | Decay Eviction | 定期扫描或容量触发 | 低（批量处理） |
-| **Semantic触发** | Structure Enrichment | 插入后提取+构建 | 高（需要LLM） |
-| **Threshold触发** | Tier Migration | 热度变化时 | 低（简单判断） |
+| **Semantic触发** | Structure Enrichment (link/graph) | 插入后提取+构建 | 高（需要LLM） |
+| **Threshold触发** | Structure Enrichment (heat) | 热度变化时 | 低（简单判断） |
 
 ---
 
@@ -278,8 +273,6 @@ Decay Eviction:
 Structure Enrichment:
   - 构建图 → Retrieval可用图遍历（PPR）
   - 建立链接 → Retrieval可链接传播
-
-Tier Migration:
   - 分层存储 → Retrieval优先查高层（速度快）
 ```
 
@@ -292,4 +285,3 @@ Tier Migration:
 | **Conflict Resolution** | 无冗余、一致性高 | LLM调用昂贵 | 高质量记忆系统 |
 | **Decay Eviction** | 自动清理、节省空间 | 可能删除有用记忆 | 长期运行系统 |
 | **Structure Enrichment** | 增强关联、提升检索 | 构建成本高 | 知识密集型应用 |
-| **Tier Migration** | 性能优化、成本控制 | 复杂度高 | 大规模记忆系统 |

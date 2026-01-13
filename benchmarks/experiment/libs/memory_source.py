@@ -5,12 +5,8 @@
 """
 
 from sage.common.core import BatchFunction
-from sage.data.sources.longmemeval import LongMemEvalDataLoader
 
-from sage.data.sources.locomo.dataloader import LocomoDataLoader
-from sage.data.sources.memagentbench.conflict_resolution_loader import (
-    ConflictResolutionDataLoader,
-)
+from benchmarks.experiment.utils.dataloader import DataLoaderFactory
 
 
 class MemorySource(BatchFunction):
@@ -37,15 +33,8 @@ class MemorySource(BatchFunction):
         self.dataset = config.get("dataset")
         self.task_id = config.get("task_id")
 
-        # Create data loader
-        if self.dataset == "locomo":
-            self.loader = LocomoDataLoader()
-        elif self.dataset == "conflict_resolution":
-            self.loader = ConflictResolutionDataLoader()
-        elif self.dataset == "longmemeval":
-            self.loader = LongMemEvalDataLoader()
-        else:
-            raise ValueError(f"Unsupported dataset: {self.dataset}")
+        # Create data loader (使用工厂模式)
+        self.loader = DataLoaderFactory.create(self.dataset)
 
         # 获取数据集核心信息
         self.turns = self.loader.get_turn(self.task_id)
@@ -53,13 +42,13 @@ class MemorySource(BatchFunction):
         # 统计总的dialog数量和数据包数量
         self.total_dialogs = sum((max_dialog_idx + 1) for _, max_dialog_idx in self.turns)
 
-        # Calculate total packets based on dataset type
-        # - conflict_resolution: 1 fact per packet (increment by 1)
-        # - locomo: 2 dialogs per packet (increment by 2)
-        if self.dataset == "conflict_resolution":
-            self.total_packets = self.total_dialogs  # Each fact is one packet
-        else:
-            self.total_packets = sum((max_dialog_idx // 2) + 1 for _, max_dialog_idx in self.turns)
+        # 使用 loader 的方法计算数据包数量（不同数据集增量不同）
+        self.total_packets = sum(
+            self.loader.get_packet_count(max_dialog_idx) for _, max_dialog_idx in self.turns
+        )
+
+        # 获取 dialog 增量（用于后续指针移动）
+        self.dialog_increment = self.loader.get_dialog_increment()
 
         # 打印当前任务信息
         print(f"📊 样本 {self.task_id} 统计信息:")
@@ -115,10 +104,7 @@ class MemorySource(BatchFunction):
         )
 
         # 计算下一个 dialog_ptr (用于判断是否为 session 最后一个包)
-        if self.dataset == "conflict_resolution":
-            next_dialog_ptr = self.dialog_ptr + 1
-        else:
-            next_dialog_ptr = self.dialog_ptr + 2
+        next_dialog_ptr = self.dialog_ptr + self.dialog_increment
 
         # 判断是否为当前 session 的最后一个数据包
         is_session_end = next_dialog_ptr > max_dialog_idx
@@ -135,13 +121,8 @@ class MemorySource(BatchFunction):
             "is_session_end": is_session_end,  # 是否为当前 session 的最后一个包
         }
 
-        # Move pointer to next dialog
-        # For conflict_resolution: each dialog has 1 fact, so increment by 1
-        # For locomo: each dialog has 2 turns (Q&A), so increment by 2
-        if self.dataset == "conflict_resolution":
-            self.dialog_ptr += 1  # Single fact per dialog
-        else:
-            self.dialog_ptr += 2  # Pair of dialogs (Q&A)
+        # 移动指针到下一个 dialog（使用 loader 定义的增量）
+        self.dialog_ptr += self.dialog_increment
 
         self.packet_idx += 1  # Packet index increment
 

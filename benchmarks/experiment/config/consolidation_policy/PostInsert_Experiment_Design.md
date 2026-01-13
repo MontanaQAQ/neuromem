@@ -21,7 +21,7 @@ ______________________________________________________________________
 |                                          | `decay_eviction.time_decay`                  | 时间线性衰减                   | LD-Agent              |
 | **4. 结构增强 (Structure Enrichment)**   | `structure_enrichment.link_evolution`        | 自动链接演化                   | A-Mem                 |
 |                                          | `structure_enrichment.graph_construction`    | 知识图谱构建                   | HippoRAG              |
-| **5. 层级迁移 (Tier Migration)**         | `tier_migration.heat_migration`              | 基于热度的层级迁移             | MemoryOS              |
+| **5. 层级迁移 (Tier Migration)**         | `structure_enrichment.heat_migration`              | 基于热度的层级迁移             | MemoryOS              |
 
 **分类设计原则**：
 
@@ -37,7 +37,7 @@ ______________________________________________________________________
 | 冲突解决       | `conflict_resolution.semantic_consolidation` | 更通用，不依赖额外 LLM 调用        |
 | 衰减淘汰       | `decay_eviction.forgetting_curve`            | 符合人类记忆规律，应用广泛         |
 | 结构增强       | `structure_enrichment.link_evolution`        | 相比 graph_construction 更轻量     |
-| 层级迁移       | `tier_migration.heat_migration`              | 唯一选项                           |
+| 层级迁移       | `structure_enrichment.heat_migration`              | 唯一选项                           |
 
 ______________________________________________________________________
 
@@ -49,7 +49,7 @@ ______________________________________________________________________
 | ------------------------------------------- | --------------------------- | -------------------------------------------------- |
 | `structure_enrichment.link_evolution`       | `graph_memory` / `hybrid`   | ❌ 必须有图结构才能建立链接                        |
 | `structure_enrichment.graph_construction`   | `graph_memory` / `hybrid`   | ❌ 必须有图结构才能添加节点和边                    |
-| `tier_migration.heat_migration`             | `hierarchical_memory`       | ❌ 必须有多层结构才能迁移                          |
+| `structure_enrichment.heat_migration`             | `hierarchical_memory`       | ❌ 必须有多层结构才能迁移                          |
 | `conflict_resolution.*`                     | 任意                        | ✅ 通用策略，适用于所有结构                        |
 | `decay_eviction.*`                          | 任意                        | ✅ 通用策略，适用于所有结构                        |
 
@@ -60,7 +60,7 @@ ______________________________________________________________________
 | PostInsert 策略                            | PreInsert 依赖               | 说明                               |
 | ------------------------------------------ | ---------------------------- | ---------------------------------- |
 | `structure_enrichment.graph_construction`  | `extract.triple`             | 需要三元组作为图的边               |
-| `tier_migration.heat_migration`            | `score.heat`                 | 需要热度评分作为迁移依据           |
+| `structure_enrichment.heat_migration`            | `score.heat`                 | 需要热度评分作为迁移依据           |
 | `decay_eviction.forgetting_curve`          | `score.importance`（可选）   | 重要性可影响记忆稳定性             |
 
 ______________________________________________________________________
@@ -94,7 +94,7 @@ ______________________________________________________________________
 
 **适合测试的 PostInsert 策略**：
 - `none`: 无后处理基线
-- `tier_migration.heat_migration`: 热度迁移（MemoryOS 原生策略）
+- `structure_enrichment.heat_migration`: 热度迁移（MemoryOS 原生策略）
 - `decay_eviction.forgetting_curve`: 遗忘曲线淘汰
 
 ### 1.3 图结构 - Mem0ᵍ
@@ -128,7 +128,7 @@ ______________________________________________________________________
 | 配置ID | 配置文件                                                     | 内存名称                          | PostInsert 策略                   |
 | ------ | ------------------------------------------------------------ | --------------------------------- | --------------------------------- |
 | **M1** | `MemoryOS_locomo_none_post_insert_pipeline.yaml`             | `MemoryOS-postinsert-none`        | `none`                            |
-| **M2** | `MemoryOS_locomo_heat_migration_post_insert.yaml`            | `MemoryOS-postinsert-migration`   | `tier_migration.heat_migration`   |
+| **M2** | `MemoryOS_locomo_heat_migration_post_insert.yaml`            | `MemoryOS-postinsert-migration`   | `structure_enrichment.heat_migration`   |
 | **M3** | `MemoryOS_locomo_forgetting_curve_post_insert.yaml`          | `MemoryOS-postinsert-forgetting`  | `decay_eviction.forgetting_curve` |
 
 ### 2.3 Mem0ᵍ 系列实验
@@ -224,7 +224,7 @@ operators:
     action: embedding
 
   post_insert:
-    action: tier_migration.heat_migration
+    action: structure_enrichment.heat_migration
     migration_threshold: 0.7     # 热度低于此值时迁移
     check_interval: 100          # 每 100 次插入检查一次
 

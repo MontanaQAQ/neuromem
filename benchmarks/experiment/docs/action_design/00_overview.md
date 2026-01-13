@@ -108,7 +108,7 @@
 #### 3.5 Tier Migration 策略（1个）
 | Action配置名 | 功能说明 | 代表系统 |
 |-------------|---------|---------|
-| `tier_migration.heat_migration` | 基于热度的层级迁移 | MemoryOS |
+| `structure_enrichment.heat_migration` | 基于热度的层级迁移 | MemoryOS |
 
 ---
 

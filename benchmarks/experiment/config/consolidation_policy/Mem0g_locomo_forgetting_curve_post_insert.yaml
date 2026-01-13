@@ -1,8 +1,8 @@
 # ============================================================
-# PostInsert 实验: Mem0g + Link Evolution
+# PostInsert 实验: Mem0g + Forgetting Curve
 # 记忆体结构: Mem0g (向量 + 知识图谱)
-# PostInsert 策略: structure_enrichment.link_evolution
-# 配置名称: Mem0g_locomo_link_evolution_post_insert.yaml
+# PostInsert 策略: decay_eviction.forgetting_curve
+# 配置名称: Mem0g_locomo_forgetting_curve_post_insert.yaml
 # ============================================================
 
 runtime:
@@ -29,7 +29,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: PostInsert_Mem0g_link_evolution
+  memory_name: PostInsert_Mem0g_forgetting_curve
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
@@ -71,14 +71,10 @@ operators:
     action: embedding
 
   post_insert:
-    action: structure_enrichment.link_evolution
-    link_top_k: 5                     # 为新记忆链接 Top-5 相关记忆
-    similarity_threshold: 0.75        # 链接的相似度阈值
-    link_types:                       # 链接类型
-      - "related_to"
-      - "elaborates"
-      - "contradicts"
-    enable_bidirectional: true        # 双向链接
+    action: decay_eviction.forgetting_curve
+    stability_factor: 1.0
+    retention_threshold: 0.3
+    scan_interval: 3600
 
   post_retrieval:
     action: none

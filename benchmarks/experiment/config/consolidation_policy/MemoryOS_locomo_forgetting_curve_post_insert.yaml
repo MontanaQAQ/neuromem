@@ -26,12 +26,10 @@ runtime:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  llm_base_url: "http://172.17.0.1:1040/v1"
-  llm_model: "pangu_embedded_1b"
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: MemoryOS-postinsert-forgetting
+  memory_name: PostInsert_MemoryOS_forgetting_curve
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1

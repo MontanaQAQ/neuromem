@@ -4,6 +4,7 @@ import os
 from sage.common.core import SinkFunction
 
 from benchmarks.experiment.utils import (
+    DataLoaderFactory,
     get_project_root,
     get_runtime_timestamp,
 )
@@ -49,44 +50,7 @@ class MemorySink(SinkFunction):
         self.all_memory_stats = []
 
         # 初始化 DataLoader（用于获取统计信息）
-        self.loader = self._init_loader(self.dataset)
-
-    def _init_loader(self, dataset):
-        """根据数据集类型初始化 DataLoader
-
-        Args:
-            dataset: 数据集名称
-
-        Returns:
-            DataLoader 实例
-        """
-        if dataset == "locomo":
-            from sage.data.sources.locomo.dataloader import LocomoDataLoader
-
-            return LocomoDataLoader()
-        if dataset == "conflict_resolution":
-            from sage.data.sources.memagentbench.conflict_resolution_loader import (
-                ConflictResolutionDataLoader,
-            )
-
-            return ConflictResolutionDataLoader()
-        if dataset == "conflict_resolution_v1":
-            from sage.data.sources.memagentbench.conflict_resolution_loader_v1 import (
-                ConflictResolutionDataLoaderV1,
-            )
-
-            return ConflictResolutionDataLoaderV1()
-        if dataset == "conflict_resolution_v2":
-            from sage.data.sources.memagentbench.conflict_resolution_loader_v2 import (
-                ConflictResolutionDataLoaderV2,
-            )
-
-            return ConflictResolutionDataLoaderV2()
-        if dataset == "longmemeval":
-            from sage.data.sources.longmemeval import LongMemEvalDataLoader
-
-            return LongMemEvalDataLoader()
-        raise ValueError(f"不支持的数据集: {dataset}")
+        self.loader = DataLoaderFactory.create(self.dataset)
 
     def execute(self, data):
         """接收并处理测试结果
