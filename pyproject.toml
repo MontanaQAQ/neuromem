@@ -99,6 +99,7 @@ benchmark = [
     # NLP 和 LLM
     "nltk>=3.8.0",                      # 自然语言处理工具
     "openai>=1.0.0",                    # OpenAI API 客户端
+    "spacy>=3.0.0",                     # 工业级 NLP 库（关键词提取等）
 
     # 系统监控
     "psutil>=5.9.0",                    # 系统资源监控
