@@ -226,9 +226,21 @@ class LLMGenerator:
             if end_idx > 0:
                 response_cleaned = response_cleaned[:end_idx]
 
-            return json.loads(response_cleaned)
+            # 尝试直接解析
+            try:
+                return json.loads(response_cleaned)
+            except json.JSONDecodeError:
+                # LLM 可能返回单引号的 Python dict 格式，尝试用 ast.literal_eval
+                import ast
 
-        except json.JSONDecodeError as e:
+                try:
+                    return ast.literal_eval(response_cleaned)
+                except (ValueError, SyntaxError):
+                    # 最后尝试将单引号替换为双引号
+                    response_fixed = response_cleaned.replace("'", '"')
+                    return json.loads(response_fixed)
+
+        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
             print(f"[WARNING] JSON parsing error: {e}")
             return default
 
