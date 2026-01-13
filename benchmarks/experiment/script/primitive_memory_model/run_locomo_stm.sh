@@ -27,12 +27,10 @@ TASK_IDS=(
   # "conv-50"
 )
 
-# 创建日志目录结构
+# 日志目录基础路径（与 Python ProcessLogger 保持一致）
 DATASET="locomo"
-DATE=$(date +%Y%m%d)
-MEMORY_NAME="STM"
-LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/$MEMORY_NAME"
-mkdir -p "$LOG_BASE_DIR"
+MEMORY_NAME="stm"
+LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 
 echo "========================================================================"
 echo "Locomo 长轮对话记忆实验 - 短期记忆（STM）批量测试"
@@ -41,7 +39,7 @@ echo ""
 echo "项目根目录: $PROJECT_ROOT"
 echo "Python 脚本: $(realpath "$PYTHON_SCRIPT")"
 echo "配置文件: $(realpath "$CONFIG_FILE")"
-echo "日志目录: $LOG_BASE_DIR"
+echo "日志基础目录: $LOG_BASE_DIR"
 echo "总任务数: ${#TASK_IDS[@]}"
 echo ""
 
@@ -53,22 +51,25 @@ for i in "${!TASK_IDS[@]}"; do
   TASK_ID="${TASK_IDS[$i]}"
   TASK_NUM=$((i + 1))
 
-  # 生成带时间戳的日志文件名
+  # 生成带时间戳的目录名（与 Python ProcessLogger 相同格式）
   TIMESTAMP=$(date +%H%M%S)
-  LOG_FILE="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}.log"
+  LOG_DIR="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}"
+  mkdir -p "$LOG_DIR"
+  LOG_FILE="$LOG_DIR/terminal.log"
 
   echo "--------------------------------------------------------------------"
   echo "🚀 开始运行任务 [$TASK_NUM/${#TASK_IDS[@]}]: $TASK_ID"
-  echo "📝 日志文件: $LOG_FILE"
+  echo "📝 日志目录: $LOG_DIR"
   echo "--------------------------------------------------------------------"
 
   # 运行任务并将输出重定向到日志文件（同时显示到终端）
-  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
+  # 通过环境变量 PROCESS_LOG_DIR 传递日志目录给 Python
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" PROCESS_LOG_DIR="$LOG_DIR" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
 
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
-    echo "✅ 任务 $TASK_ID 完成，日志已保存到: $LOG_FILE"
+    echo "✅ 任务 $TASK_ID 完成，日志已保存到: $LOG_DIR"
   else
-    echo "❌ 任务 $TASK_ID 失败，日志已保存到: $LOG_FILE"
+    echo "❌ 任务 $TASK_ID 失败，日志已保存到: $LOG_DIR"
     exit 1
   fi
 

@@ -3,11 +3,17 @@ PostInsert Action Base Classes
 ===============================
 
 Provides unified interface for all PostInsert actions.
+
+Strategy Classification:
+- conflict_resolution: Mem0, Mem0ᵍ, TiM, MemGPT (LLM CRUD / semantic consolidation)
+- decay_eviction: MemoryBank, LD-Agent (forgetting curve / time decay)
+- structure_enrichment: A-Mem, HippoRAG (link evolution / graph construction)
+- tier_migration: MemoryOS (heat-based layer migration)
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -48,11 +54,21 @@ class BasePostInsertAction(ABC):
     """Base class for all PostInsert actions.
 
     PostInsert actions handle memory optimization and maintenance after insertion,
-    including deduplication, CRUD decisions, link evolution, migration, and forgetting.
+    including conflict resolution, decay/eviction, structure enrichment, and tier migration.
+
+    Strategy Type Classification:
+    - STRATEGY_TYPE: conflict_resolution | decay_eviction | structure_enrichment | tier_migration
+    - TRIGGER_MECHANISM: retrieval | temporal | threshold | semantic | hybrid
+    - AVAILABLE_ACTIONS: List of actions this strategy can perform (e.g., ["ADD", "UPDATE", "DELETE", "NOOP"])
 
     Attributes:
         config: Action-specific configuration dictionary
     """
+
+    # Strategy classification attributes (subclasses should override)
+    STRATEGY_TYPE: str = ""
+    TRIGGER_MECHANISM: str = ""
+    AVAILABLE_ACTIONS: list[str] = []
 
     def __init__(self, config: dict[str, Any]):
         """Initialize PostInsert action.
@@ -74,14 +90,13 @@ class BasePostInsertAction(ABC):
 
         Subclasses must implement this method.
         """
-        pass
 
     @abstractmethod
     def execute(
         self,
         input_data: PostInsertInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostInsertOutput:
         """Execute PostInsert action logic.
 
@@ -95,7 +110,6 @@ class BasePostInsertAction(ABC):
 
         Subclasses must implement this method.
         """
-        pass
 
     def _get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value with fallback.
@@ -117,3 +131,7 @@ class BasePostInsertAction(ABC):
                 return default
 
         return value
+
+
+# Backward compatibility alias
+BasePostInsertStrategy = BasePostInsertAction

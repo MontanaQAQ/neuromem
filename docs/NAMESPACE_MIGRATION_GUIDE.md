@@ -411,6 +411,116 @@ warnings.warn(
 )
 ```
 
+---
+
+## CollectionConfig 配置迁移
+
+### 新增统一配置类
+
+从 v0.2.x 开始，NeuroMem 引入了 `CollectionConfig` 类来统一管理集合配置，替代分散的配置方式。
+
+### 从旧的 Collection 类迁移
+
+**之前（legacy）**：
+
+```python
+from sage.neuromem.memory_collection import Collection
+
+collection = Collection(
+    name="my_data",
+    collection_type="vectordb",
+    storage_backend="memory"
+)
+
+collection.create_index(
+    index_name="main",
+    index_type="faiss",
+    config={"dim": 768}
+)
+```
+
+**之后（推荐）**：
+
+```python
+from sage.neuromem.config import CollectionConfig, IndexConfig
+
+config = CollectionConfig(
+    name="my_data",
+    storage_backend="memory",
+    indexes=[
+        IndexConfig(
+            name="main",
+            index_type="faiss",
+            config={"dim": 768}
+        )
+    ]
+)
+
+collection = config.create_collection()
+```
+
+### YAML 配置文件兼容性
+
+**无需修改现有 YAML 文件！** `CollectionConfig` 自动兼容以下格式：
+
+#### 兼容性映射
+
+1. **存储类型**：
+   - `storage.type: "simple"` → 自动映射为 `storage_backend: "memory"`
+
+2. **索引参数**：
+   - `dimension: 768` → 自动转换为 `dim: 768`（FAISS 索引）
+   - `type: "faiss"` 和 `index_type: "faiss"` 均支持
+
+3. **索引位置**：
+   - 顶层 `indexes: [...]` → 自动合并到 `collection.indexes`
+   - 嵌套 `collection.indexes: [...]` → 优先使用
+
+#### 示例：旧格式 YAML 自动兼容
+
+```yaml
+# config/legacy_collection.yaml
+version: "2.0"
+service:
+  name: "my_service"
+  type: "hierarchical.property_graph"
+
+collection:
+  name: "my_collection"
+  storage:
+    type: "simple"  # ✓ 自动映射为 "memory"
+    config:
+      persist_dir: "~/.local/share/sage/memory"
+
+indexes:  # ✓ 顶层 indexes 自动合并
+  - name: "main_index"
+    type: "faiss"  # ✓ 支持 "type" 字段名
+    config:
+      dimension: 768  # ✓ 自动转换为 "dim"
+      metric: "cosine"
+```
+
+**使用方式（无需修改 YAML）**：
+
+```python
+from sage.neuromem.config import CollectionConfig
+
+# 直接加载旧格式 YAML
+config = CollectionConfig.from_yaml("config/legacy_collection.yaml")
+collection = config.create_collection()
+
+# 所有兼容性转换已自动完成
+print(f"Storage backend: {config.storage_backend}")  # "memory"
+print(f"Index dimension: {config.indexes[0].config['dim']}")  # 768
+```
+
+### 详细文档
+
+完整的 CollectionConfig 使用指南，请参阅：
+- **[CollectionConfig 使用指南](COLLECTION_CONFIG_GUIDE.md)**
+
+---
+
 ## 故障排除
 
 ### 问题 1: 导入失败 `ModuleNotFoundError: No module named 'sage'`

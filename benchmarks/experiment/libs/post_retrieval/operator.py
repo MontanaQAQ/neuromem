@@ -90,9 +90,6 @@ class PostRetrieval(MapFunction):
 
     def execute(self, data: dict[str, Any]) -> dict[str, Any]:
         start_time = time.perf_counter()
-        print(f"\n{'=' * 80}")
-        print(f"🎯 [PostRetrieval] 开始执行 action={self.action_name}")
-        print(f"{'=' * 80}")
 
         input_data = PostRetrievalInput(
             data=data,
@@ -119,8 +116,13 @@ class PostRetrieval(MapFunction):
             data.setdefault("metadata", {}).update(output.metadata)
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         data.setdefault("stage_timings", {})["post_retrieval_ms"] = elapsed_ms
-        print(f"⏱️  [PostRetrieval] 总耗时: {elapsed_ms:.2f}ms")
-        print(f"{'=' * 80}\n")
+
+        # 简洁终端输出
+        items_count = len(output.memory_items) if output.memory_items else 0
+        print(
+            f"  [PostRetrieval] 动作: {self.action_name} | 处理: {items_count}条 | 耗时: {elapsed_ms:.2f}ms",
+            flush=True,
+        )
 
         return data
 

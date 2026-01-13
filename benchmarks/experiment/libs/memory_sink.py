@@ -6,7 +6,6 @@ from sage.common.core import SinkFunction
 from benchmarks.experiment.utils import (
     get_project_root,
     get_runtime_timestamp,
-    get_time_filename,
 )
 
 
@@ -27,11 +26,10 @@ class MemorySink(SinkFunction):
         # 获取项目根目录
         project_root = get_project_root()
 
-        # 创建时间戳目录结构，包含 memory_name
-        time_str = get_time_filename()
+        # 创建目录结构（移除日期层级）
         self.output_dir = os.path.join(
             project_root,
-            f".sage/benchmarks/benchmark_memory/{self.dataset}/{time_str}/{self.memory_name}",
+            f".sage/benchmarks/benchmark_memory/{self.dataset}/{self.memory_name}",
         )
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -66,30 +64,29 @@ class MemorySink(SinkFunction):
             from sage.data.sources.locomo.dataloader import LocomoDataLoader
 
             return LocomoDataLoader()
-        elif dataset == "conflict_resolution":
+        if dataset == "conflict_resolution":
             from sage.data.sources.memagentbench.conflict_resolution_loader import (
                 ConflictResolutionDataLoader,
             )
 
             return ConflictResolutionDataLoader()
-        elif dataset == "conflict_resolution_v1":
+        if dataset == "conflict_resolution_v1":
             from sage.data.sources.memagentbench.conflict_resolution_loader_v1 import (
                 ConflictResolutionDataLoaderV1,
             )
 
             return ConflictResolutionDataLoaderV1()
-        elif dataset == "conflict_resolution_v2":
+        if dataset == "conflict_resolution_v2":
             from sage.data.sources.memagentbench.conflict_resolution_loader_v2 import (
                 ConflictResolutionDataLoaderV2,
             )
 
             return ConflictResolutionDataLoaderV2()
-        elif dataset == "longmemeval":
+        if dataset == "longmemeval":
             from sage.data.sources.longmemeval import LongMemEvalDataLoader
 
             return LongMemEvalDataLoader()
-        else:
-            raise ValueError(f"不支持的数据集: {dataset}")
+        raise ValueError(f"不支持的数据集: {dataset}")
 
     def execute(self, data):
         """接收并处理测试结果
@@ -121,23 +118,10 @@ class MemorySink(SinkFunction):
             # 收集时间数据（无论是否有 answers）
             if "stage_timings" in data:
                 stage_timings = data["stage_timings"]
-                print(f"[DEBUG MemorySink] stage_timings keys: {stage_timings.keys()}")
 
                 # 收集插入阶段的时间（插入阶段的值是列表，需要展开后合并）
                 if "insert" in stage_timings:
                     insert_timing = stage_timings["insert"]
-                    print(f"[DEBUG MemorySink] insert_timing type: {type(insert_timing)}")
-                    print(
-                        f"[DEBUG MemorySink] insert_timing keys: {insert_timing.keys() if isinstance(insert_timing, dict) else 'not a dict'}"
-                    )
-                    if isinstance(insert_timing, dict) and insert_timing:
-                        first_key = next(iter(insert_timing.keys()))
-                        first_value = insert_timing[first_key]
-                        print(
-                            f"[DEBUG MemorySink] first_key={first_key}, value type={type(first_value)}, is_list={isinstance(first_value, list)}"
-                        )
-                        if isinstance(first_value, list):
-                            print(f"[DEBUG MemorySink] list length={len(first_value)}")
 
                     # 将插入阶段的列表格式数据展开为单独的timing记录
                     # insert_timing = {"pre_insert_ms": [0.01, 0.01], "memory_insert_ms": [3.2, 3.5], ...}
@@ -151,11 +135,9 @@ class MemorySink(SinkFunction):
                             for i in range(list_len):
                                 single_timing = {k: v[i] for k, v in insert_timing.items()}
                                 self.all_insert_timings.append(single_timing)
-                            print(f"[DEBUG MemorySink] Expanded {list_len} insert timings")
                         else:
                             # 如果不是列表格式，直接添加（向后兼容）
                             self.all_insert_timings.append(insert_timing)
-                            print("[DEBUG MemorySink] Added 1 insert timing (not list format)")
 
                 # 收集测试阶段的时间（现在是每次测试的平均值字典）
                 if "test" in stage_timings:
@@ -164,26 +146,16 @@ class MemorySink(SinkFunction):
                         # test_timing 是一个字典，包含本次测试的平均值
                         # {"pre_retrieval_ms": 0.03, "memory_retrieval_ms": 3.5, ...}
                         self.all_test_timings.append(test_timing)
-                        print(
-                            "[DEBUG MemorySink] Added 1 test timing (average of multiple questions)"
-                        )
 
             # 收集记忆体统计数据（现在在 stage_timings 内部）
             if "stage_timings" in data and "memory_stats" in data["stage_timings"]:
                 memory_stats = data["stage_timings"]["memory_stats"]
                 if memory_stats:
                     self.all_memory_stats.append(memory_stats)
-                    print("[DEBUG MemorySink] Added 1 memory_stats")
 
         # 检查是否完成
-        print(
-            f"\n[DEBUG MemorySink] 收到数据: completed={data.get('completed')}, keys={list(data.keys())}"
-        )
         if data.get("completed", False):
-            print("[DEBUG MemorySink] completed=True，调用 _save_results")
             self._save_results(data)
-        else:
-            print("[DEBUG MemorySink] completed=False，不保存")
 
     def _save_results(self, data):
         """保存最终结果

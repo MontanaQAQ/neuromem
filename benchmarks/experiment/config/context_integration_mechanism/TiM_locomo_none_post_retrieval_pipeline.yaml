@@ -1,0 +1,81 @@
+# ============================================================
+# PostRetrieval 实验: TiM + None (Baseline)
+# 记忆体结构: TiM (LSH哈希桶 + 向量检索)
+# PostRetrieval 策略: none
+# 配置名称: TiM_locomo_none_post_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: locomo
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 10
+  service_timeout: 600.0
+  prompt_template: |
+    Based on the above context, answer the following question concisely.
+
+    Question: {question}
+    Answer:
+  prompt_template_category5: |
+    Based on the above context, answer the following question.
+
+    Question: {question}
+    Answer:
+
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: TiM-postretrieval-none
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.lsh_hash"
+  lsh_hash:
+    vector_dim: 1024
+    lsh_nbits: 128
+    lsh_rotate_data: true
+    lsh_train_thresholds: false
+    retrieval_top_k: 10
+  memory_retrieval_adapter: none
+
+operators:
+  pre_insert:
+    action: extract.triple
+    extraction_method: llm
+    max_triplets: 10
+    keep_original: false
+    triple_extraction_prompt: |
+      You are a factual knowledge extractor.
+      Analyze the dialogue below and extract all subject–predicate–object triples.
+
+      Guidelines:
+      - Map "I", "me", "my" to the name of the speaker provided in the dialogue log.
+      - Resolve pronouns to specific entities.
+      - Use natural-language predicates in active voice.
+
+      Output ONLY in this format:
+      (Subject, Predicate, Object)
+      ...
+
+      Dialogue:
+      {dialogue}
+
+  pre_retrieval:
+    action: embedding
+
+  post_insert:
+    action: conflict_resolution.semantic_consolidation
+    retrieve_count: 10
+    min_merge_count: 5
+
+  post_retrieval:
+    action: none

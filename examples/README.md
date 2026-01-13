@@ -1,21 +1,21 @@
-# neuromem Examples
+# Examples
 
-This directory contains examples demonstrating the core functionality of the neuromem sub-project.
+## Chat with Memory
 
-These examples show how to use neuromem directly, without the SAGE service layer.
+Interactive chatbot with memory management.
 
-## Available Examples
-
-### 1. `basic_neuromem.py`
-Basic usage of neuromem's core components (MemoryManager, Collections, etc.).
-
-## Running Examples
-
+**Run:**
 ```bash
-cd neuromem/examples
-python basic_neuromem.py
+python examples/sage_chat.py
 ```
 
-## Note
+**Configure your LLM** in `sage_chat.py`:
 
-For examples showing how to use neuromem within the SAGE framework, see the `../examples/` directory at the sage-mem component level.
+```python
+PIPELINE_CONFIG = {
+    "api_key": "your-api-key",
+    "base_url": "http://your-llm-endpoint/v1",
+    "model_name": "your-model-name",
+    # ... other settings
+}
+```

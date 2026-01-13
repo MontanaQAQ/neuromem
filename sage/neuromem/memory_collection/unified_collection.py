@@ -26,32 +26,99 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class _StorageProxy:
+    """
+    存储代理 - 向后兼容 raw_data 字典接口
+
+    将在 v0.4.0.0 中移除，请使用 collection.storage 替代。
+    """
+
+    def __init__(self, storage):
+        self._storage = storage
+
+    def __getitem__(self, key: str) -> dict[str, Any]:
+        result = self._storage.get(key)
+        if result is None:
+            raise KeyError(key)
+        return result
+
+    def __setitem__(self, key: str, value: dict[str, Any]) -> None:
+        self._storage.put(key, value)
+
+    def __delitem__(self, key: str) -> None:
+        self._storage.delete(key)
+
+    def __contains__(self, key: str) -> bool:
+        return self._storage.get(key) is not None
+
+    def __len__(self) -> int:
+        return len(self._storage)
+
+    def get(self, key: str, default=None):
+        result = self._storage.get(key)
+        return result if result is not None else default
+
+    def keys(self):
+        return self._storage.keys()
+
+    def items(self):
+        for key in self._storage:
+            value = self._storage.get(key)
+            if value is not None:
+                yield key, value
+
+    def values(self):
+        for key in self._storage:
+            value = self._storage.get(key)
+            if value is not None:
+                yield value
+
+
 class UnifiedCollection:
     """
     统一数据容器 - 管理原始数据 + 多种索引
 
     Attributes:
         name: Collection 名称
-        raw_data: 原始数据存储 {data_id: {text, metadata, created_at}}
+        storage: 可插拔存储后端 (Memory/Redis/SageDB)
+        raw_data: 原始数据存储 {data_id: {text, metadata, created_at}} (向后兼容，将弃用)
         indexes: 索引容器 {index_name: IndexObject}
         index_metadata: 索引配置信息 {index_name: {type, config, created_at}}
     """
 
-    def __init__(self, name: str, config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        name: str,
+        storage_backend: str = "memory",
+        storage_config: dict[str, Any] | None = None,
+        config: dict[str, Any] | None = None,
+    ):
         """
         初始化 UnifiedCollection
 
         Args:
             name: Collection 名称
-            config: 可选配置字典（预留用于持久化路径等）
+            storage_backend: 存储后端类型 ("memory", "redis", "sagedb")
+            storage_config: 存储后端配置字典
+            config: 其他配置（预留用于持久化路径等）
         """
         self.name = name
         self.config = config or {}
-        self.raw_data: dict[str, dict[str, Any]] = {}
-        self.indexes: dict[str, Any] = {}  # 索引对象容器 (T1.2 会用到)
-        self.index_metadata: dict[str, dict[str, Any]] = {}  # 索引配置信息 (T1.2 会用到)
+        self._is_unified_collection = True  # Marker for Mixin compatibility
 
-        logger.info(f"Created UnifiedCollection: {name}")
+        # 创建可插拔存储后端
+        from ..storage_engine import StorageFactory
+
+        self.storage = StorageFactory.create(storage_backend, storage_config)
+
+        # 向后兼容：raw_data 作为 storage 的别名
+        # 将在 v0.4.0.0 中移除
+        self.raw_data = _StorageProxy(self.storage)
+
+        self.indexes: dict[str, Any] = {}  # 索引对象容器
+        self.index_metadata: dict[str, dict[str, Any]] = {}  # 索引配置信息
+
+        logger.info(f"Created UnifiedCollection: {name} with {storage_backend} storage")
 
     # ==================== 数据操作 (T1.1 任务) ====================
 
@@ -79,15 +146,18 @@ class UnifiedCollection:
         """
         data_id = self._generate_id(text, metadata)
 
-        # 存储原始数据
-        self.raw_data[data_id] = {
-            "text": text,
-            "metadata": metadata or {},
-            "created_at": time.time(),
-        }
+        # 存储原始数据到可插拔后端
+        self.storage.put(
+            data_id,
+            {
+                "text": text,
+                "metadata": metadata or {},
+                "created_at": time.time(),
+            },
+        )
 
         # T1.2: 将数据加入指定索引
-        target_indexes = index_names or list(self.indexes.keys())
+        target_indexes = list(self.indexes.keys()) if index_names is None else index_names
         for idx_name in target_indexes:
             if idx_name in self.indexes:
                 self.indexes[idx_name].add(data_id, text, metadata or {})
@@ -102,7 +172,7 @@ class UnifiedCollection:
         Args:
             data_id: 数据 ID
 
-        Returns:
+        Returns:storage
             数据字典 {text, metadata, created_at}，不存在则返回 None
         """
         return self.raw_data.get(data_id)
@@ -388,11 +458,18 @@ class UnifiedCollection:
             **params: 查询参数
 
         Returns:
-            匹配的完整数据列表 [{text, metadata, created_at}, ...]
+            匹配的完整数据列表 [{id, text, metadata, created_at}, ...]
 
         Note:
             - 等价于 [get(id) for id in query_by_index(...)]
             - 自动过滤掉已删除的数据
+            - 返回结果包含 id 字段以支持 Mixin 功能
         """
         data_ids = self.query_by_index(index_name, query, **params)
-        return [self.raw_data[id_] for id_ in data_ids if id_ in self.raw_data]
+        results = []
+        for id_ in data_ids:
+            if id_ in self.raw_data:
+                data = self.raw_data[id_].copy()
+                data["id"] = id_  # Add id field for Mixin compatibility
+                results.append(data)
+        return results

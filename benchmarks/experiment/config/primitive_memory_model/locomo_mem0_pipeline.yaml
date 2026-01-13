@@ -86,7 +86,7 @@ operators:
   # Mem0 的核心：LLM 决定对已有记忆的操作
   # ----------------------------------------------------------
   post_insert:
-    action: "crud"
+    action: "conflict_resolution.llm_crud"
     top_k: 10
     debug_summary_only: true
     decision_prompt: |

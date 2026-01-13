@@ -17,8 +17,9 @@ will be migrated to sage-libs in the future for better modularity.
 
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import psutil
@@ -94,7 +95,7 @@ def create_test_vectors(n: int, dim: int) -> list[np.ndarray]:
 
 def benchmark_backend(backend_name: str, dim: int = 128, n_vectors: int = 10000):
     """基准测试一个后端"""
-    from sage.neuromem.search_engine.vdb_index import create_index
+    from sage.neuromem.memory_collection.indexes import FAISSIndex
 
     print(f"\n{'=' * 60}")
     print(f"Benchmarking {backend_name} backend")
@@ -102,9 +103,9 @@ def benchmark_backend(backend_name: str, dim: int = 128, n_vectors: int = 10000)
     print(f"Dimension: {dim}, Vectors: {n_vectors}")
 
     # 创建索引
-    config = {"name": f"test_{backend_name.lower()}", "dim": dim, "backend_type": backend_name}
+    config = {"name": f"test_{backend_name.lower()}", "dim": dim, "metric": "cosine"}
 
-    index = create_index(config)
+    index = FAISSIndex(config)
 
     # 准备测试数据
     vectors = create_test_vectors(n_vectors, dim)
@@ -142,9 +143,9 @@ def benchmark_backend(backend_name: str, dim: int = 128, n_vectors: int = 10000)
     for k in [1, 5, 10, 50]:
         print(f"3️⃣  Search benchmark (k={k})...")
 
-        def search_k():
+        def search_k(topk=k):
             for query in query_vectors:
-                index.search(query, topk=k)
+                index.search(query, topk=topk)
 
         results[f"search_k{k}"] = benchmark_operation(
             search_k, f"Search (k={k}, 100 queries)", warmup=1, iterations=3
@@ -168,7 +169,7 @@ def print_comparison_table(faiss_results: dict, sagedb_results: dict):
     print("-" * 80)
 
     # 对比每个操作
-    for op_name in faiss_results.keys():
+    for op_name in faiss_results:
         faiss_result = faiss_results[op_name]
         sagedb_result = sagedb_results.get(op_name)
 
@@ -220,7 +221,7 @@ def main():
 
         # 计算平均加速比
         speedups = []
-        for op_name in faiss_results.keys():
+        for op_name in faiss_results:
             faiss_time = faiss_results[op_name].avg_time
             sagedb_time = sagedb_results[op_name].avg_time
             if sagedb_time > 0:

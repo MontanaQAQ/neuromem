@@ -6,6 +6,15 @@
 
 from __future__ import annotations
 
+from sage.common.utils.logging.custom_logger import CustomLogger
+from sage.kernel.api.local_environment import LocalEnvironment
+from sage.kernel.api.service import (
+    PipelineBridge,
+    PipelineService,
+    PipelineServiceSink,
+    PipelineServiceSource,
+)
+
 from benchmarks.experiment.libs.memory_evaluation import (
     MemoryEvaluation,
 )
@@ -22,15 +31,7 @@ from benchmarks.experiment.libs.post_insert import PostInsert
 from benchmarks.experiment.libs.post_retrieval import PostRetrieval
 from benchmarks.experiment.libs.pre_insert import PreInsert
 from benchmarks.experiment.libs.pre_retrieval import PreRetrieval
-from benchmarks.experiment.utils import RuntimeConfig, parse_args
-from sage.common.utils.logging.custom_logger import CustomLogger
-from sage.kernel.api.local_environment import LocalEnvironment
-from sage.kernel.api.service import (
-    PipelineBridge,
-    PipelineService,
-    PipelineServiceSink,
-    PipelineServiceSource,
-)
+from benchmarks.experiment.utils import RuntimeConfig, parse_args, process_logger
 from sage.neuromem.services import NeuromemServiceFactory
 
 
@@ -41,6 +42,12 @@ def main():
     # 解析命令行参数并加载配置
     args = parse_args()
     config = RuntimeConfig.load(args.config, args.task_id)
+
+    # 初始化过程日志
+    dataset = config.get("runtime.dataset", "default")
+    task_id = config.get("task_id", "unknown")
+    memory_name = config.get("runtime.memory_name", "default")
+    process_logger.setup(dataset, memory_name, task_id)
 
     # 创建环境
     env = LocalEnvironment("memory_test_experiment")
@@ -108,6 +115,9 @@ def main():
 
     # 启动并等待完成
     env.submit(autostop=True)
+
+    # 关闭过程日志
+    process_logger.close()
 
 
 if __name__ == "__main__":

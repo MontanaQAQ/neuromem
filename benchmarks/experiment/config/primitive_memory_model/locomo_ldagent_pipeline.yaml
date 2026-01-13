@@ -111,12 +111,9 @@ operators:
   #   - 检测时间间隔并触发 STM → LTM 迁移
   # ----------------------------------------------------------
   post_insert:
-    action: "migrate"
-    migrate_type: "time_based"        # 基于时间间隔的迁移
-    time_gap_threshold: 3600          # 1小时 = 3600秒
-    source_tier: "stm"                # 源层级
-    target_tier: "ltm"                # 目标层级
-    clear_source: true                # 迁移后清空源层级
+    action: "decay_eviction.time_decay"
+    max_age_hours: 1.0                # 1小时 = 3600秒
+    importance_weight: false          # 不使用重要性加权
     only_on_session_end: true         # 仅在会话结束时检查并迁移
 
   # ----------------------------------------------------------
@@ -207,7 +204,7 @@ operators:
 #
 # 关键配置参数：
 #   - tier_mode="two_tier": 双层架构（STM/LTM）
-#   - time_gap_threshold=3600: 会话间隔阈值（秒）
+#   - max_age_hours=1.0: 记忆老化阈值（1小时）
 #   - transform_type="conditional_summarize": 条件触发的摘要生成
 #   - extract_types=["NOUN", "PROPN"]: 名词和专有名词
 #   - rerank factors: relevance(0.4) + recency(0.3, rate=1e-7) + topic(0.3)

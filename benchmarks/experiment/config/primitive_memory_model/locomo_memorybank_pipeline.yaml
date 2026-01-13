@@ -101,7 +101,7 @@ operators:
   # MemoryBank 使用遗忘曲线管理记忆强度
   # ----------------------------------------------------------
   post_insert:
-    action: "forgetting"
+    action: "decay_eviction.forgetting_curve"
     strategy: "ebbinghaus"            # 遗忘策略：ebbinghaus | heat_based | time_based
     forget_threshold: 0.1             # 遗忘阈值 (R < 0.1 时删除)
     only_on_session_end: true         # 仅在会话结束时执行遗忘
@@ -167,7 +167,7 @@ operators:
 # │ PreInsert          │ Event Summarization  │ transform    │
 # │  - 对话摘要        │ Daily Event Summary  │ summarize    │
 # │  - Embedding       │ 摘要向量化           │ BGE-M3       │
-# │  - 主动插入标记    │ target_tier="ltm"    │ insert_mode  │
+# │  - 主动插入标记    │ insert_to_ltm=true   │ insert_mode  │
 # ├─────────────────────────────────────────────────────────┤
 # │ MemoryInsert       │ Multi-tier Insert    │ Hierarchical │
 # │  - STM: 原始对话   │ 存入短期记忆         │ capacity=50  │

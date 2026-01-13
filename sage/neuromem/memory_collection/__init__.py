@@ -1,52 +1,22 @@
 """
-Memory Collection Module - Core memory collection implementations
+Memory Collection Module - 统一数据容器
 
-设计原则：
-- Collection = 一份数据 (text_storage + metadata_storage) + 多种类型的索引
-- 三种基础 Collection 类型：VDB、KV、Graph
-- 组合型 Collection：HybridCollection（一份数据 + 多种类型索引）
-- Service : Collection = 1 : 1
+v0.2.1+ 架构更新:
+- 推荐使用 UnifiedCollection（统一实现）
+- 支持可插拔存储后端（Memory/Redis/SageDB）
+- 旧 Collection 类已删除
 
-论文特性支持（Part 5）：
-- 5.0 Note structure (A-Mem) - Note 结构
-- 5.1 Triple storage (TiM) - 三元组存储
-- 5.2 Link evolution (A-Mem) - 链接演化
-- 5.3 Ebbinghaus forgetting (MemoryBank) - 遗忘曲线
-- 5.3.1 User Portrait (MemoryBank) - 用户画像
-- 5.4 Heat score migration (MemoryOS) - 热度迁移
-- 5.4.1 MemGPT Three-tier storage - 三层存储
-- 5.4.2 Segment-Page architecture (MemoryOS) - 分段页架构
-- 5.4.3 Long-term Personal Memory (MemoryOS) - 长期个人记忆
-- 5.5 Token budget filtering (SCM) - Token 预算
-- 5.6 Conflict detection (Mem0) - 冲突检测
-- 5.7 Phrase/Passage distinction (HippoRAG) - 短语/段落节点区分
-- 5.8 Graph-enhanced memory (Mem0g) - 图增强记忆
+迁移指南: docs/dev-note/MIGRATION_GUIDE.md
+API参考: docs/COLLECTION_CONFIG_GUIDE.md
 """
 
-# Re-export SimpleGraphIndex from search_engine for backward compatibility
-from ..search_engine.graph_index import SimpleGraphIndex
-from .base_collection import BaseMemoryCollection, IndexType
-
-# Enhanced collections with paper features
-from .enhanced_collections import (
-    EnhancedGraphCollection,
-    EnhancedHybridCollection,
-    EnhancedVDBCollection,
-    GraphMemoryCollectionWithFeatures,
-    HybridCollectionWithFeatures,
-    VDBMemoryCollectionWithFeatures,
-)
-from .graph_collection import GraphMemoryCollection
-from .hybrid_collection import HybridCollection
-from .kv_collection import KVMemoryCollection
-
-# Paper feature utilities
+# Paper feature utilities (Mixins and helper classes)
 from .paper_features import (
     AgentPersona,
     # 5.0 A-Mem Note Structure
     AMemNote,
     AMemNoteMixin,
-    # 5.6 Conflict Detection (Mem0)
+    # 5.6 Conflict detection (Mem0)
     ConflictConfig,
     ConflictDetectionMixin,
     ConflictDetector,
@@ -57,7 +27,6 @@ from .paper_features import (
     EntityAttributeExtractor,
     ForgettingConfig,
     ForgettingMixin,
-    # Combined Mixins
     GraphPaperFeaturesMixin,
     # 5.4 Heat Score Migration (MemoryOS)
     HeatConfig,
@@ -83,12 +52,13 @@ from .paper_features import (
     MemoryOSPage,
     MemoryOSSegment,
     NodeType,
+    # Combined Mixins
     PaperFeaturesMixin,
-    # 5.4.2 MemoryOS Segment-Page
+    # 5.4.2 Segment-Page architecture (MemoryOS)
     SegmentPageMixin,
-    # 5.5 Token Budget (SCM)
     SimpleTokenCounter,
     TiktokenCounter,
+    # 5.5 Token Budget filtering (SCM)
     TokenBudgetConfig,
     TokenBudgetFilter,
     TokenBudgetMixin,
@@ -101,25 +71,10 @@ from .paper_features import (
     UserPortraitMixin,
 )
 from .unified_collection import UnifiedCollection
-from .vdb_collection import VDBMemoryCollection
 
 __all__ = [
-    # Base classes
-    "BaseMemoryCollection",
-    "IndexType",
-    # Basic collections
-    "VDBMemoryCollection",
-    "KVMemoryCollection",
-    "GraphMemoryCollection",
-    "HybridCollection",
+    # Core
     "UnifiedCollection",
-    # Enhanced collections with paper features
-    "VDBMemoryCollectionWithFeatures",
-    "GraphMemoryCollectionWithFeatures",
-    "HybridCollectionWithFeatures",
-    "EnhancedVDBCollection",
-    "EnhancedGraphCollection",
-    "EnhancedHybridCollection",
     # Paper feature utilities - 5.0 A-Mem Note
     "AMemNote",
     "AMemNoteMixin",
@@ -177,6 +132,4 @@ __all__ = [
     "PaperFeaturesMixin",
     "GraphPaperFeaturesMixin",
     "HierarchicalPaperFeaturesMixin",
-    # Backward compatibility
-    "SimpleGraphIndex",
 ]

@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # Module-level constants for package structure
-REQUIRED_SUBMODULES = ["memory_collection", "search_engine", "storage_engine", "utils"]
+REQUIRED_SUBMODULES = ["memory_collection", "storage_engine", "utils"]
 REQUIRED_ROOT_FILES = ["__init__.py", "memory_manager.py", "pyproject.toml", "README.md"]
 
 

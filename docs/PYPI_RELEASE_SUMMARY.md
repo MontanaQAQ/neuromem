@@ -238,7 +238,7 @@ cd ../neuromem && pip install -e .[dev,benchmark]
 ```
 isage-neuromem (neuromem repo)
 ├── isage-common  ✅ (PyPI)
-├── isagedb       ✅ (PyPI)
+├── isage-vdb       ✅ (PyPI)
 └── [benchmark]
     └── isage-data ✅ (PyPI, v0.1.1)
         ├── isage-common

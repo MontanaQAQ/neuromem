@@ -103,7 +103,7 @@ operators:
   post_insert:
     action: "none"
     # 禁用 distillation（会导致所有 segments 被合并成一个）
-    # action: "distillation"
+    # action: "conflict_resolution.semantic_consolidation"
     # retrieve_count: 5
     # min_merge_count: 3
     # merge_summary_only: true

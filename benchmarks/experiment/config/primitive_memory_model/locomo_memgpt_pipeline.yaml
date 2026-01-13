@@ -84,7 +84,7 @@ operators:
 
   # PostInsert: 记忆蒸馏(distillation)
   post_insert:
-    action: "distillation"
+    action: "conflict_resolution.semantic_consolidation"
     min_merge_count: 100  # 提高阈值,减少 LLM 合并调用
 
   # PreRetrieval: 关键词提取（optimize.keyword_extract）

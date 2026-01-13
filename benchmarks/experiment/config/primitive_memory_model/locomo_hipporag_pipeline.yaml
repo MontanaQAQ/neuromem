@@ -114,7 +114,7 @@ operators:
   # 现在 PostInsert 会自动检测：仅在 session 结束或最后一个 packet 时执行
   # ----------------------------------------------------------
   post_insert:
-    action: "link_evolution"
+    action: "structure_enrichment.link_evolution"
     link_policy: "synonym_edge"
     knn_k: 10
     similarity_threshold: 0.7
