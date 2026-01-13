@@ -5,15 +5,15 @@
 """
 
 from sage.common.core import MapFunction
+from sage.data.sources.locomo.dataloader import LocomoDataLoader
 from sage.data.sources.longmemeval import LongMemEvalDataLoader
+from sage.data.sources.memagentbench.conflict_resolution_loader import (
+    ConflictResolutionDataLoader,
+)
 
 from benchmarks.experiment.utils import (
     ProgressBar,
     calculate_test_thresholds,
-)
-from sage.data.sources.locomo.dataloader import LocomoDataLoader
-from sage.data.sources.memagentbench.conflict_resolution_loader import (
-    ConflictResolutionDataLoader,
 )
 
 
@@ -198,9 +198,8 @@ class PipelineCaller(MapFunction):
                     "completed": True,
                     "warning": f"最后一包 memory_insert 超时: {e}",
                 }
-            else:
-                # 非最后一包超时，重新抛出异常
-                raise
+            # 非最后一包超时，重新抛出异常
+            raise
 
         # 收集并累积插入阶段的时间数据
         if insert_result and "stage_timings" in insert_result:
@@ -295,38 +294,39 @@ class PipelineCaller(MapFunction):
                             "test": [],  # 最后一包没有测试结果
                         },
                     }
-                else:
-                    # 没有剩余数据，返回简单的完成信号
-                    return {
-                        "dataset": self.dataset,
-                        "task_id": task_id,
-                        "completed": True,
-                    }
+                # 没有剩余数据，返回简单的完成信号
+                return {
+                    "dataset": self.dataset,
+                    "task_id": task_id,
+                    "completed": True,
+                }
 
             if self.memory_test_verbose:
-                print(f"{'=' * 60}\n")
+                print(f"{'=' * 60}")
             # 不触发测试时，不发送数据给 Sink
             return None
 
         # 达到阈值，触发测试
         if self.memory_test_verbose:
-            print(f"\n{'+' * 60}")
+            print(f"\n{'+' * 60}", flush=True)
             if self.test_based_on_facts:
-                print("【QA】：Facts数量驱动测试触发")
-                print(f">> 已插入facts数：{self.total_dialogs_inserted}")
-                print(f">> 当前可见问题数：{current_count}/{self.total_questions}")
-                print(f">> 已测试问题数：{self.last_tested_count}")
+                print("【QA】：Facts数量驱动测试触发", flush=True)
+                print(f">> 已插入facts数：{self.total_dialogs_inserted}", flush=True)
+                print(f">> 当前可见问题数：{current_count}/{self.total_questions}", flush=True)
+                print(f">> 已测试问题数：{self.last_tested_count}", flush=True)
                 print(
-                    f">> 触发阈值：{next_threshold} facts（第 {self.next_threshold_idx + 1}/{len(self.test_thresholds)} 个阈值）"
+                    f">> 触发阈值：{next_threshold} facts（第 {self.next_threshold_idx + 1}/{len(self.test_thresholds)} 个阈值）",
+                    flush=True,
                 )
             else:
-                print("【QA】：问题驱动测试触发")
-                print(f">> 当前可见问题数：{current_count}/{self.total_questions}")
-                print(f">> 已测试问题数：{self.last_tested_count}")
+                print("【QA】：问题驱动测试触发", flush=True)
+                print(f">> 当前可见问题数：{current_count}/{self.total_questions}", flush=True)
+                print(f">> 已测试问题数：{self.last_tested_count}", flush=True)
                 print(
-                    f">> 触发阈值：{next_threshold}（第 {self.next_threshold_idx + 1}/{len(self.test_thresholds)} 个阈值）"
+                    f">> 触发阈值：{next_threshold}（第 {self.next_threshold_idx + 1}/{len(self.test_thresholds)} 个阈值）",
+                    flush=True,
                 )
-            print(f">> 测试范围：问题 1 到 {current_count}")
+            print(f">> 测试范围：问题 1 到 {current_count}", flush=True)
 
         # 获取记忆体统计信息
         memory_stats = None
@@ -399,8 +399,8 @@ class PipelineCaller(MapFunction):
 
                 # 打印问答
                 if self.memory_test_verbose:
-                    print(f">> Question {q_idx + 1}：{question}")
-                    print(f">> Answer：{result['answer']}")
+                    print(f">> Question {q_idx + 1}：{question}", flush=True)
+                    print(f">> Answer：{result['answer']}", flush=True)
 
         # 计算本次测试的平均 timing（一次测试一个值）
         avg_test_timing = {}

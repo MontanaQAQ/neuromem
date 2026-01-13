@@ -83,6 +83,8 @@ from typing import Any
 
 from sage.common.core import MapFunction
 
+from benchmarks.experiment.utils import process_logger
+
 # ==============================================================================
 # 数据模型
 # ==============================================================================
@@ -206,6 +208,11 @@ class MemoryInsert(MapFunction):
                     }
                 )
 
+                # 记录到过程日志
+                process_logger.log_service(
+                    "INSERT", f"ID: {entry_id}\nText: {entry.get('text', '')[:200]}"
+                )
+
                 if self.verbose:
                     self._log_insert(entry, entry_id)
 
@@ -224,7 +231,8 @@ class MemoryInsert(MapFunction):
 
         # 简洁输出插入结果（一行）
         print(
-            f"  [MemoryInsert] 插入: {stats.inserted}条 | 失败: {stats.failed}条 | 耗时: {batch_elapsed_ms:.2f}ms"
+            f"  [MemoryInsert] 插入: {stats.inserted}条 | 失败: {stats.failed}条 | 耗时: {batch_elapsed_ms:.2f}ms",
+            flush=True,
         )
 
         # 将统计信息转为字典并添加到数据中

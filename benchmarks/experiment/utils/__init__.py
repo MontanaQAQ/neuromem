@@ -27,10 +27,12 @@ from .config import RuntimeConfig, get_required_config, parse_args
 
 # === [C] 辅助工具 ===
 from .helpers import (
+    ProcessLogger,
     calculate_test_thresholds,
     get_project_root,
     get_runtime_timestamp,
     get_time_filename,
+    process_logger,
 )
 from .llm import EmbeddingGenerator, LLMGenerator
 
@@ -50,6 +52,8 @@ __all__ = [
     "get_project_root",
     "get_runtime_timestamp",
     "get_time_filename",
+    "ProcessLogger",
+    "process_logger",
     # UI 组件
     "ProgressBar",
 ]

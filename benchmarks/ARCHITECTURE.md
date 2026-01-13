@@ -221,26 +221,40 @@ operators:
 
 ```
 post_insert/
-├── operator.py         # PostInsert 主算子
-├── registry.py         # Action 注册表
-├── none_action.py      # 透传策略
-├── distillation/       # 摘要压缩策略
-├── forgetting/         # 遗忘机制策略
-├── link_evolution/     # 链接演化策略（A-Mem）
-├── crud/               # 增删改查策略
-├── enhance/            # 记忆增强策略
-└── migrate/            # 记忆迁移策略
+├── operator.py                     # PostInsert 主算子
+├── registry.py                     # Action 注册表
+├── base.py                         # 基类和数据模型
+├── none_action.py                  # 透传策略
+├── conflict_resolution/            # 冲突解决策略
+│   ├── llm_crud.py                 # LLM 驱动的 CRUD 操作
+│   └── semantic_consolidation.py   # 语义合并
+├── decay_eviction/                 # 衰减与淘汰策略
+│   ├── forgetting_curve.py         # 遗忘曲线
+│   └── time_decay.py               # 时间衰减
+├── structure_enrichment/           # 结构增强策略
+│   ├── link_evolution.py           # 链接演化
+│   └── graph_construction.py       # 图构建
+└── tier_migration/                 # 分层迁移策略
+    └── heat_migration.py           # 热度迁移
 ```
 
-**支持的 Actions**:
+**支持的 Actions（策略分类）**:
 
-| Action | 说明 | 应用场景 |
+| Action | 说明 | 应用算法 |
 |--------|------|----------|
-| `none` | 无后处理 | 大多数算法 |
-| `summarize` | 生成摘要 | MemoryBank, LD-Agent |
-| `time_decay` | 时间衰减 | 遗忘机制 |
-| `link_evolution` | 链接演化 | A-Mem 算法 |
-| `deduplication` | 去重 | 数据清洗 |
+| **基础策略** | | |
+| `none` | 无后处理（透传） | 大多数算法 |
+| **冲突解决 (Conflict Resolution)** | | |
+| `conflict_resolution.llm_crud` | LLM 驱动的增删改查 | Mem0, Mem0ᵍ, MemGPT |
+| `conflict_resolution.semantic_consolidation` | 语义合并去重 | TiM |
+| **衰减淘汰 (Decay Eviction)** | | |
+| `decay_eviction.forgetting_curve` | 遗忘曲线机制 | MemoryBank |
+| `decay_eviction.time_decay` | 时间衰减淘汰 | LD-Agent |
+| **结构增强 (Structure Enrichment)** | | |
+| `structure_enrichment.link_evolution` | 链接演化（关联强化） | A-Mem |
+| `structure_enrichment.graph_construction` | 图结构构建 | HippoRAG |
+| **分层迁移 (Tier Migration)** | | |
+| `tier_migration.heat_migration` | 热度分层迁移 | MemoryOS |
 
 ##### PreRetrieval 策略（记忆检索前预处理）
 

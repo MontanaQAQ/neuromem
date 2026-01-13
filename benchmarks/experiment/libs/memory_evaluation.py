@@ -4,7 +4,7 @@ import time
 
 from sage.common.core import MapFunction
 
-from benchmarks.experiment.utils import LLMGenerator
+from benchmarks.experiment.utils import LLMGenerator, process_logger
 
 
 class MemoryEvaluation(MapFunction):
@@ -99,39 +99,33 @@ Answer:""",
 
         prompt = full_prompt
 
-        # ============ DEBUG: Prompt和答案打印 ============
-        print("\n" + "=" * 80)
-        print("📝 [MemoryEvaluation] 生成答案")
-        # print("=" * 80)
-        # print(f"问题: {question}")
-        # print(f"Prompt 长度: {len(prompt)} 字符")
-        print("\n完整 Prompt:")
-        print("-" * 80)
-        print(prompt)
-        print("-" * 80)
-        # ============ DEBUG END ============
-
         # 调用 LLM 生成答案
         llm_start = time.perf_counter()
         answer_text = self.generator.generate(prompt)
         llm_elapsed = (time.perf_counter() - llm_start) * 1000
-        print(f"⏱️  [MemoryEvaluation] LLM 答案生成耗时: {llm_elapsed:.2f}ms")
-
-        # ============ DEBUG: 答案打印 ============
-        print(f"\n✅ 生成的答案: {answer_text}")
-        print("=" * 80)
-        # ============ DEBUG END ============
-
-        # answer_text = "yes"
 
         # 返回答案和元数据
         data["answer"] = answer_text
         data["question_metadata"] = question_metadata
 
+        # 记录问答对到过程日志
+        question_idx = data.get("question_index", 0)
+        process_logger.log_qa(
+            question_idx=question_idx,
+            question=question,
+            answer=answer_text,
+            context=history_text,
+            metadata=question_metadata,
+        )
+
         # 记录阶段耗时
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         data.setdefault("stage_timings", {})["memory_evaluation_ms"] = elapsed_ms
-        print(f"⏱️  [MemoryEvaluation] 总耗时: {elapsed_ms:.2f}ms (包含 LLM: {llm_elapsed:.2f}ms)")
-        print("=" * 80 + "\n")
+
+        # 简洁终端输出
+        print(
+            f"  [MemoryEvaluation] LLM: {llm_elapsed:.2f}ms | 总耗时: {elapsed_ms:.2f}ms",
+            flush=True,
+        )
 
         return data

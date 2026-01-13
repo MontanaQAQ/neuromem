@@ -1,4 +1,4 @@
-# Memory Pipeline Actions 设计维度总览
+# Memory Pipeline Actions 配置手册
 
 ## 四个阶段的定位
 
@@ -9,137 +9,195 @@
 | **Post-Insert** | 数据插入后 | 记忆维护、优化 | 已存储数据 | 维护操作决策 |
 | **Post-Retrieval** | 检索执行后 | 结果优化、排序 | 检索结果集 | 优化后的结果 |
 
-> **💡 透传操作（Passthrough）**: 在整个设计中，`embedding` 和 `none` 是两种特殊的透传操作：
+> **💡 透传操作（Passthrough）**: `embedding` 和 `none` 是两种特殊的透传操作：
 > - **`embedding`**: 向量化透传（Pre-Retrieval阶段）- 仅做基础向量化，不进行复杂优化
 > - **`none`**: 无操作透传（所有阶段）- 直接传递数据，不做任何处理
 
 ---
 
-## 维度设计对比
+## 可用 Actions 配置列表
 
-### Pre-Insert（4个维度）
-| 维度 | 功能 | Action数量 | 代表系统 |
-|------|------|-----------|---------|
-| **None (透传)** | 无操作 | 1 | HippoRAG2, SCM |
-| **Extract** | 信息提取 | 6 | 所有系统 |
-| **Score** | 重要性评分 | 2 | MemoryOS, MemoryBank |
-| **Transform** | 格式转换 | 2 | HippoRAG, A-Mem |
+### 1. Pre-Insert Actions（14个）
 
-### Pre-Retrieval（5个维度）
-| 维度 | 功能 | Action数量 | 代表系统 |
-|------|------|-----------|---------|
-| **Embedding (透传)** | 向量化 | 1 | 所有向量检索系统 |
-| **None (透传)** | 无操作 | 1 | 纯文本检索系统 |
-| **Enhancement** | 查询增强 | 3 | HippoRAG, Multi-Query |
-| **Optimize** | 查询优化 | 3 | 所有系统 |
-| **Validate** | 合法性检查 | 1 | 所有系统 |
+#### 1.1 透传类（1个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `none` | 无操作透传 |
 
-### Post-Insert（5个策略维度）
-| 维度（策略） | 功能 | Action数量 | 代表系统 |
-|-------------|------|-----------|---------|
-| **None (透传)** | 无操作 | 1 | HippoRAG2, SCM |
-| **Conflict Resolution** | 冲突解决 | 2 | Mem0, MemGPT, TiM |
-| **Decay Eviction** | 衰减驱逐 | 2 | MemoryBank, LD-Agent |
-| **Structure Enrichment** | 结构增强 | 2 | A-Mem, HippoRAG |
-| **Tier Migration** | 层级迁移 | 1 | MemoryOS |
+#### 1.2 Transform 类（5个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `transform.chunking` | 文本分块 |
+| `transform.summarize` | 文本摘要 |
+| `transform.segment` | 主题分段 |
+| `transform.segment_denoise` | 分段去噪 |
+| `transform.continuity_check` | 连续性检查 |
 
-### Post-Retrieval（5个维度）
-| 维度 | 功能 | Action数量 | 代表系统 |
-|------|------|-----------|---------|
-| **None (透传)** | 无操作 | 1 | 简单检索系统 |
-| **Filter** | 结果过滤 | 3 | 所有系统 |
-| **Rerank** | 重排序 | 4 | PPR, 时间加权 |
-| **Merge** | 结果合并 | 4 | Multi-Query, SCM |
-| **Augment** | 结果增强 | 1 | Reinforce |
+#### 1.3 Extract 类（5个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `extract.keyword` | 关键词提取 |
+| `extract.entity` | 实体提取 |
+| `extract.noun` | 名词提取 |
+| `extract.triple` | 三元组提取 |
+| `extract.multi_summary` | 多级摘要提取 |
 
----
+#### 1.4 Score 类（2个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `score.importance` | 重要性评分 |
+| `score.heat` | 热度评分 |
 
-## 设计原则总结
-
-### 1. 维度正交性
-- 各维度功能独立，可组合使用
-- 例：Pre-Insert可同时使用Extract + Score + Transform
-
-### 2. 接口统一性
-所有Action遵循统一基类：
-```python
-class BaseXxxAction(ABC):
-    def _init_action(self) -> None: ...
-    def execute(self, input_data, service, llm) -> Output: ...
-```
-
-### 3. 可配置性
-通过YAML配置选择Action组合：
-```yaml
-pre_insert:
-  - extract.entity
-  - score.importance
-post_insert:
-  - conflict_resolution.llm_crud
-```
-
-### 4. 分类演进
-
-| 分类方式 | 适用阶段 | 优势 |
-|---------|---------|------|
-| **按功能分类** | Pre-Insert, Pre-Retrieval, Post-Retrieval | 直观易懂 |
-| **按策略分类** | Post-Insert | 反映设计意图，便于论文对齐 |
+#### 1.5 已废弃别名
+| Action配置名 | 功能说明 | 替代方案 |
+|-------------|---------|---------|
+| `tri_embed` | 三元组提取（已废弃） | 使用 `extract.triple` |
 
 ---
 
-## 典型组合模式
+### 2. Pre-Retrieval Actions（9个）
 
-### 模式1: 长文档存储 + 检索
+#### 2.1 基础类（3个）
+| Action配置名 | 功能说明 | 典型用例 |
+|-------------|---------|---------|
+| `none` | 无操作透传 | 不做任何预处理，直接使用原始查询 |
+| `embedding` | 查询向量化 | 将查询文本转换为向量表示 |
+| `validate` | 查询验证 | 验证查询是否需要检索或是否有效 |
+
+#### 2.2 Optimize 类（3个）
+| Action配置名 | 功能说明 | 典型用例 |
+|-------------|---------|---------|
+| `optimize.keyword_extract` | 关键词提取 | "Tell me about Python programming" → ["Python", "programming"] |
+| `optimize.expand` | 查询扩展 | "Python" → "Python programming language features syntax" |
+| `optimize.rewrite` | 查询改写 | "How to use it?" → "How to use Python?" (消歧义) |
+
+#### 2.3 Enhancement 类（3个）
+| Action配置名 | 功能说明 | 典型用例 |
+|-------------|---------|---------|
+| `enhancement.decompose` | 复杂查询分解 | "早餐吃了什么和天气如何?" → ["早餐吃了什么?", "天气如何?"] |
+| `enhancement.route` | 检索路由 | 根据查询类型路由到不同的检索目标（知识库/长期记忆） |
+| `enhancement.multi_embed` | 多维向量化 | 从多个维度（语义/情感/实体）生成查询向量 |
+
+---
+
+### 3. Post-Insert Actions（9个，按策略分类）
+
+#### 3.1 透传类（1个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `none` | 无操作透传 |
+
+#### 3.2 Conflict Resolution 策略（2个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `conflict_resolution.llm_crud` | LLM驱动的CRUD操作 | Mem0, MemGPT, TiM |
+| `conflict_resolution.semantic_consolidation` | 语义合并 | Mem0ᵍ |
+
+#### 3.3 Decay Eviction 策略（2个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `decay_eviction.forgetting_curve` | 遗忘曲线驱逐 | MemoryBank |
+| `decay_eviction.time_decay` | 时间衰减驱逐 | LD-Agent |
+
+#### 3.4 Structure Enrichment 策略（2个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `structure_enrichment.link_evolution` | 链接演化 | A-Mem |
+| `structure_enrichment.graph_construction` | 图构建 | HippoRAG |
+
+#### 3.5 Tier Migration 策略（1个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `tier_migration.heat_migration` | 基于热度的层级迁移 | MemoryOS |
+
+---
+
+### 4. Post-Retrieval Actions（16个）
+
+#### 4.1 透传类（1个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `none` | 无操作透传 |
+
+#### 4.2 Rerank 类（4个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `rerank.semantic` | 语义重排序 | 所有系统 |
+| `rerank.time_weighted` | 时间加权重排序 | 对话系统 |
+| `rerank.ppr` | PageRank重排序 | HippoRAG |
+| `rerank.weighted` | 多因子加权重排序 | 综合系统 |
+
+#### 4.3 Filter 类（3个）
+| Action配置名 | 功能说明 |
+|-------------|---------|
+| `filter.token_budget` | Token预算过滤 |
+| `filter.threshold` | 阈值过滤 |
+| `filter.top_k` | Top-K过滤 |
+
+#### 4.4 Merge 类（4个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `merge.link_expand` | 链接扩展合并 | A-Mem |
+| `merge.multi_query` | 多查询合并 | Multi-Query系统 |
+| `merge.multi_tier` | 多层融合 | MemGPT |
+| `scm_three_way` | SCM三路合并 | SCM |
+
+#### 4.5 Augment 类（2个）
+| Action配置名 | 功能说明 | 代表系统 |
+|-------------|---------|---------|
+| `augment` | 结果增强（添加 persona/traits/summary） | 所有系统 |
+| `augment.reinforce` | 记忆强化（更新记忆强度） | MemoryBank |
+
+---
+
+## 配置示例
+
+### 最小化配置（仅透传）
 ```yaml
 pre_insert:
-  - extract.multi_summary
-  - transform.chunking
-  - score.importance
+  - none
 
 pre_retrieval:
-  - enhancement.decompose
-  - optimize.rewrite
-  - embedding.base
-
-post_retrieval:
-  - rerank.semantic
-  - filter.top_k
-```
-
-### 模式2: 对话记忆系统
-```yaml
-pre_insert:
-  - extract.entity
-  - score.heat
+  - embedding
 
 post_insert:
-  - conflict_resolution.llm_crud
-  - tier_migration.heat_migration
+  - none
+
+post_retrieval:
+  - none
+```
+
+### 典型向量检索配置
+```yaml
+pre_insert:
+  - transform.chunking
+  - extract.keyword
 
 pre_retrieval:
   - optimize.keyword_extract
-  - embedding.base
+  - embedding
 
 post_retrieval:
-  - rerank.time_weighted
-  - filter.token_budget
+  - filter.top_k
 ```
 
-### 模式3: 知识图谱 + RAG
+### 高级图谱 + RAG 配置
 ```yaml
 pre_insert:
   - extract.triple
   - extract.entity
+  - score.importance
 
 post_insert:
   - structure_enrichment.graph_construction
   - structure_enrichment.link_evolution
 
 pre_retrieval:
-  - enhancement.route  # 路由到图检索/向量检索
-  - embedding.base
+  - enhancement.route
+  - embedding
 
 post_retrieval:
   - merge.multi_query
-  - rerank.ppr  # PageRank重排
+  - rerank.ppr
+  - filter.token_budget
 ```
