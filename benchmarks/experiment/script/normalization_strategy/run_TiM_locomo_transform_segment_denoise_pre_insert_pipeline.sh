@@ -23,9 +23,8 @@ TASK_IDS=(
 )
 
 DATASET="locomo"
-DATE=$(date +%Y%m%d)
-MEMORY_NAME="TiM-segment-denoise"
-LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/$MEMORY_NAME"
+MEMORY_NAME="PreInsert_TiM_transform_segment_denoise"
+LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
@@ -45,14 +44,16 @@ for i in "${!TASK_IDS[@]}"; do
   TASK_ID="${TASK_IDS[$i]}"
   TASK_NUM=$((i + 1))
   TIMESTAMP=$(date +%H%M%S)
-  LOG_FILE="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}.log"
+  LOG_DIR="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}"
+  mkdir -p "$LOG_DIR"
+  LOG_FILE="$LOG_DIR/terminal.log"
 
   echo "--------------------------------------------------------------------"
   echo "🚀 开始运行任务 [$TASK_NUM/${#TASK_IDS[@]}]: $TASK_ID"
   echo "📝 日志文件: $LOG_FILE"
   echo "--------------------------------------------------------------------"
 
-  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
+  PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" PROCESS_LOG_DIR="$LOG_DIR" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
 
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "✅ 任务 $TASK_ID 完成，日志已保存到: $LOG_FILE"
