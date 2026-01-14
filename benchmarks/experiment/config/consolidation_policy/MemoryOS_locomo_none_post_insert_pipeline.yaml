@@ -10,15 +10,18 @@ runtime:
   test_segments: 5
   service_timeout: 600.0
   prompt_template: |
-    Based on the above context, answer the following question concisely.
-    Question: {question}
-    Answer:
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
 
+    Q: {question}
+    A:
   # LLM 配置
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  max_tokens: 256
+  max_tokens: 32
   temperature: 0
   seed: 42
   memory_name: PostInsert_MemoryOS_none

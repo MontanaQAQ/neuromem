@@ -86,9 +86,9 @@ class PipelineCaller(MapFunction):
         # 跟踪已发送的 timing 位置（只返回增量）
         self.sent_insert_timing_count = 0
 
-        # 调试打印开关（默认False）
+        # 调试打印开关（默认：insert=False, test=True）
         self.memory_insert_verbose = config.get("runtime.memory_insert_verbose", False)
-        self.memory_test_verbose = config.get("runtime.memory_test_verbose", False)
+        self.memory_test_verbose = config.get("runtime.memory_test_verbose", True)
 
     def execute(self, data):
         """调用服务处理对话
