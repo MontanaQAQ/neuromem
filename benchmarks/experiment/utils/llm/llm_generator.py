@@ -138,7 +138,7 @@ class LLMGenerator:
         Args:
             prompt: 输入的 Prompt
             default: 解析失败时的默认值，如果为 None 则返回空字典
-            **override_params: 覆盖默认参数的临时参数
+            **override_params: 覆盖默认参数的临时参数（不包括 default）
 
         Returns:
             解析后的 JSON 对象（dict 或 list）
@@ -148,6 +148,9 @@ class LLMGenerator:
             >>> print(result)
             {'name': 'Alice', 'age': 25}
         """
+        # 从 override_params 中移除 default（如果存在），避免传递给 API
+        override_params.pop("default", None)
+
         response = self.generate(prompt, **override_params)
         return self._parse_json(response, default)
 

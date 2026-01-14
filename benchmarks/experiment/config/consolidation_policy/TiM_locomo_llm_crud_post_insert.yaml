@@ -83,6 +83,33 @@ operators:
     action: conflict_resolution.llm_crud
     similarity_threshold: 0.8
     top_k: 5
+    debug_summary_only: true
+    decision_prompt: |
+      You are a JSON decision API. Output ONLY a single minified JSON object, no prose, no markdown, no code fences.
+
+      Schema:
+      {
+        "action": "ADD|UPDATE|DELETE|NOOP",
+        "to_delete": ["<id>", ...],
+        "reason": "<short explanation>"
+      }
+
+      Rules:
+      - Use UPPERCASE for action exactly as one of ADD, UPDATE, DELETE, NOOP.
+      - Use double quotes for all JSON strings (not single quotes).
+      - If uncertain, default to {"action":"ADD","to_delete":[],"reason":"insufficient evidence"}.
+      - "to_delete" must contain only IDs present in the Existing facts list (the values inside square brackets []).
+      - UPDATE or DELETE: put the affected existing fact IDs into to_delete.
+      - NOOP: to_delete must be [].
+
+      Inputs:
+      New fact:
+      {new_memory}
+
+      Existing facts:
+      {existing_memories}
+
+      Now respond with ONLY the JSON object.
 
   post_retrieval:
     action: none
