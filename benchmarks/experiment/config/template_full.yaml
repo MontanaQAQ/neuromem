@@ -31,10 +31,6 @@ runtime:
   # 测试 Prompt 模板
   prompt_template: |
     Based on the above context, answer the following question concisely using exact words from the context whenever possible. If the information is not mentioned in the conversation, respond with "Not mentioned in the conversation".
-
-    Question: {question}
-    Answer:
-
 # ============================================================
 # 服务配置
 # ============================================================

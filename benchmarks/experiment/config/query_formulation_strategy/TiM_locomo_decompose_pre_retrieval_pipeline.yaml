@@ -16,17 +16,6 @@ runtime:
   # Prompt 模板配置（阶段二：MemoryTest）
   prompt_template: |
     Based on the above context, answer the following question concisely.
-
-    Question: {question}
-    Answer:
-
-  # 第五类问题专用 Prompt（选择题格式，更简洁）
-  prompt_template_category5: |
-    Based on the above context, answer the following question.
-
-    Question: {question}
-    Answer:
-
   # LLM 配置
   # api_key: token-abc123
   # base_url: http://sage2:8000/v1

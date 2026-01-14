@@ -11,12 +11,6 @@ runtime:
   service_timeout: 600.0
   prompt_template: |
     Based on the above context, answer the following question concisely.
-
-    Question: {question}
-    Answer:
-  prompt_template_category5: |
-    Based on the above context, answer the following question.
-
     Question: {question}
     Answer:
 
