@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from typing import Any
@@ -156,14 +157,12 @@ class FactExtractAction(BasePreInsertAction):
             entries.append(entry)
 
         # 调试输出：参考 KeywordExtractAction，打印 LLM 调用与事实数量
-        try:
+        with contextlib.suppress(Exception):
             print(
                 f"[DEBUG Fact] LLM called={llm_called} method={used_method}"
                 f" model={llm_model or '-'} base={llm_base_url or '-'}"
                 f" facts={len(facts)}" + (f" error={llm_error}" if llm_error else "")
             )
-        except Exception:
-            pass
 
         return PreInsertOutput(
             memory_entries=entries,
@@ -242,8 +241,7 @@ class FactExtractAction(BasePreInsertAction):
         # 去除前缀 role/speaker:
         s = re.sub(r"^(user|assistant|system|[A-Za-z]+):\s*", "", s)
         # 压缩空白
-        s = re.sub(r"\s+", " ", s)
-        return s
+        return re.sub(r"\s+", " ", s)
 
     def _dedup_list(self, items: list[str]) -> list[str]:
         seen: set[str] = set()

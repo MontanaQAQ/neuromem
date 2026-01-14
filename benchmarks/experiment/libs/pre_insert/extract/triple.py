@@ -5,6 +5,8 @@
 适用于 TiM, HippoRAG, HippoRAG2 等基于知识图谱的记忆体。
 """
 
+import contextlib
+
 from ..base import BasePreInsertAction, PreInsertInput, PreInsertOutput
 
 
@@ -133,8 +135,7 @@ class TripleExtractAction(BasePreInsertAction):
         """
         if self.extraction_method == "llm":
             return self._extract_by_llm(text)
-        else:
-            return self._extract_simple(text)
+        return self._extract_simple(text)
 
     def _extract_simple(self, text: str) -> list[dict[str, str]]:
         """简单的三元组提取
@@ -204,10 +205,8 @@ class TripleExtractAction(BasePreInsertAction):
         if not self.llm_generator:
             print("[WARNING] LLM not available, falling back to simple extraction")
             # 调试：明确说明跳过 LLM 的原因
-            try:
+            with contextlib.suppress(Exception):
                 print("[DEBUG Triple] llm_skipped cause=no_llm")
-            except Exception:
-                pass
             return self._extract_simple(text)
 
         if not self.triple_extraction_prompt:
@@ -215,10 +214,8 @@ class TripleExtractAction(BasePreInsertAction):
                 "[WARNING] No triple_extraction_prompt configured, falling back to simple extraction"
             )
             # 调试：明确说明跳过 LLM 的原因
-            try:
+            with contextlib.suppress(Exception):
                 print("[DEBUG Triple] llm_skipped cause=no_prompt")
-            except Exception:
-                pass
             return self._extract_simple(text)
 
         try:
@@ -244,12 +241,10 @@ class TripleExtractAction(BasePreInsertAction):
             triplets = self._parse_llm_response(response)
 
             # 调试：打印调用情况
-            try:
+            with contextlib.suppress(Exception):
                 print(
                     f"[DEBUG Triple] LLM called=True model={llm_model or '-'} base={llm_base_url or '-'} triplets={len(triplets)}"
                 )
-            except Exception:
-                pass
 
             # 若解析为空，稳健回退到启发式提取，避免下游无三元组
             if not triplets:
@@ -273,12 +268,10 @@ class TripleExtractAction(BasePreInsertAction):
                 )
             except Exception:
                 llm_base_url = None
-            try:
+            with contextlib.suppress(Exception):
                 print(
                     f"[DEBUG Triple] LLM called=False error={type(e).__name__}: {e} model={llm_model or '-'} base={llm_base_url or '-'}"
                 )
-            except Exception:
-                pass
             print(f"[ERROR] LLM extraction failed: {e}, falling back to simple extraction")
             return self._extract_simple(text)
 

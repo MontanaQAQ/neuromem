@@ -225,8 +225,7 @@ class EntityExtractAction(BasePreInsertAction):
         """
         if self.method == "spacy" and self._nlp:
             return self._extract_by_spacy(text)
-        else:
-            return self._extract_simple(text)
+        return self._extract_simple(text)
 
     def _extract_by_spacy(self, text: str) -> list[dict[str, str]]:
         """使用 spaCy 抽取实体

@@ -1,30 +1,35 @@
 ﻿#!/bin/bash
-# 运行 Normalization Strategy - Mem0g score_importance pre_insert
-# 使用方法: bash script/normalization_strategy/run_Mem0g_locomo_score_importance_pre_insert_pipeline.sh
+# 运行 Normalization Strategy - TiM extract_triple pre_insert
+# 使用方法: bash script/normalization_strategy/run_TiM_locomo_extract_triple_pre_insert_pipeline.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
-CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/Mem0g_locomo_score_importance_pre_insert_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/TiM_locomo_extract_triple_pre_insert_pipeline.yaml"
 
 TASK_IDS=(
-  "conv-42"
-  "conv-43"
-  "conv-48"
-  "conv-49"
-  "conv-50"
+  "conv-26"
+#   "conv-30"
+#   "conv-41"
+#   "conv-42"
+#   "conv-43"
+#   "conv-44"
+#   "conv-47"
+#   "conv-48"
+#   "conv-49"
+#   "conv-50"
 )
 
 DATASET="locomo"
 DATE=$(date +%Y%m%d)
-MEMORY_NAME="Mem0g-score-importance"
+MEMORY_NAME="TiM-extract-triple"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$DATE/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Normalization Strategy: Mem0g score_importance pre_insert"
+echo "Normalization Strategy: TiM extract_triple pre_insert"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"

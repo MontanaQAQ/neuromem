@@ -6,15 +6,11 @@
 from .entity import EntityExtractAction
 from .fact import FactExtractAction
 from .keyword import KeywordExtractAction
-from .multi_summary import MultiSummaryAction
-from .noun import NounExtractAction
 from .triple import TripleExtractAction
 
 __all__ = [
     "KeywordExtractAction",
     "EntityExtractAction",
-    "NounExtractAction",
     "TripleExtractAction",
     "FactExtractAction",
-    "MultiSummaryAction",
 ]

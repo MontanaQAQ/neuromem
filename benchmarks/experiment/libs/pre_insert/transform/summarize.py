@@ -16,8 +16,8 @@
     - only_on_session_end: False（默认每轮即可生成摘要）
 """
 
+import contextlib
 import logging
-from typing import Optional
 
 from benchmarks.experiment.utils import LLMGenerator
 
@@ -47,7 +47,7 @@ class SummarizeAction(BasePreInsertAction):
         )
 
         # 初始化 LLM 生成器 (将由 operator 注入)
-        self._llm_generator: Optional[LLMGenerator] = None
+        self._llm_generator: LLMGenerator | None = None
         self._use_llm = self.config.get("use_llm", True)  # 默认使用 LLM
 
         # 兼容 SCM 的可配置项（设置默认值以避免影响其他算子）
@@ -205,7 +205,7 @@ class SummarizeAction(BasePreInsertAction):
         entry["insert_method"] = "summarize_insert"
 
         # 控制台调试输出
-        try:
+        with contextlib.suppress(Exception):
             print(
                 f"[DEBUG Summarize] threshold={self.summary_threshold or 'none'} "
                 f"should_summarize={should_summarize} embed_summary={self.embed_summary} "
@@ -214,8 +214,6 @@ class SummarizeAction(BasePreInsertAction):
                 f"model={(llm_model if 'llm_model' in locals() and llm_model else '-')} "
                 f"base={(llm_base_url if 'llm_base_url' in locals() and llm_base_url else '-')}"
             )
-        except Exception:
-            pass
 
         return PreInsertOutput(
             memory_entries=[entry],
@@ -281,8 +279,7 @@ class SummarizeAction(BasePreInsertAction):
                 if summary.strip():
                     logger.debug(f"[LLM 摘要] 原文长度: {len(text)}, 摘要长度: {len(summary)}")
                     return summary.strip()
-                else:
-                    logger.warning("[LLM 摘要] LLM 返回空字符串，降级为截断策略")
+                logger.warning("[LLM 摘要] LLM 返回空字符串，降级为截断策略")
             except Exception as e:
                 logger.warning(f"[LLM 摘要] 调用失败: {e}，降级为截断策略")
 

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from collections import Counter
@@ -165,14 +166,12 @@ class KeywordExtractAction(BasePreInsertAction):
         if llm_error is not None:
             entry["metadata"]["llm_error"] = llm_error
 
-        try:
+        with contextlib.suppress(Exception):
             print(
                 f"[DEBUG Keyword] LLM called={llm_called} method={used_method}"
                 f" model={llm_model or '-'} base={llm_base_url or '-'}"
                 f" keywords={len(keywords)}" + (f" error={llm_error}" if llm_error else "")
             )
-        except Exception:
-            pass
 
         return PreInsertOutput(
             memory_entries=[entry],

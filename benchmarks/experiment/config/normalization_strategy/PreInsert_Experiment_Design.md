@@ -17,21 +17,20 @@ _____________________________________________________________________
 
 ______________________________________________________________________
 
-## 📋 PreInsert 算子分类体系（四类）
+## 📋 PreInsert 算子分类体系（三类）
 
-本实验采用与代码实现一致的四类算子体系（参考 `benchmark_memory/experiment/libs/pre_insert`）：
+本实验采用与代码实现一致的三类算子体系（参考 `benchmark_memory/experiment/libs/pre_insert`）：
 
 | 类别                 | action 前缀       | 子算子示例                             | 功能定位                                     | 适用场景                         |
 | -------------------- | ----------------- | -------------------------------------- | -------------------------------------------- | -------------------------------- |
 | **1. 无处理**        | `none`            | `none`                                 | 透传原始内容，不做任何归一化                 | 作为基准线/排除副作用           |
-| **2. 结构变换**      | `transform.*`     | `segment`、`segment_denoise`、`chunking`、`summarize`、`continuity_check` | 片段化、降噪、摘要化，统一内容结构           | 长文本插入、质量不一的输入       |
-| **3. 语义抽取**      | `extract.*`       | `keyword`、`entity`、`noun`、`triple`、`fact`、`multi_summary`           | 把原文转化为语义单元（词/实体/三元组/事实）   | 图/三元组记忆、结构化检索       |
-| **4. 重要性/热度评估** | `score.*`         | `importance`、`heat`                   | 依据重要性/热度打分与筛选，控制插入与层级迁移 | 分层记忆、容量受限/需主动淘汰   |
+| **2. 结构变换**      | `transform.*`     | `segment_denoise`、`summarize` | 片段化、降噪、摘要化，统一内容结构           | 长文本插入、质量不一的输入       |
+| **3. 语义抽取**      | `extract.*`       | `keyword`、`entity`、`triple`、`fact`           | 把原文转化为语义单元（词/实体/三元组/事实）   | 图/三元组记忆、结构化检索       |
 
 设计原则：
 
-- 功能正交，四类算子分别针对“是否处理/结构变换/语义抽取/重要性评估”。
-- 层次递进，支持按类别或组合（变换→抽取→打分）构建流水线，但本实验以“单类为主”的主效应对比为核心，组合作为扩展实验。
+- 功能正交，三类算子分别针对“是否处理/结构变换/语义抽取”。
+- 层次递进，支持按类别或组合（变换→抽取）构建流水线，但本实验以“单类为主”的主效应对比为核心，组合作为扩展实验。
 
 ______________________________________________________________________
 
@@ -41,9 +40,9 @@ ______________________________________________________________________
 
 | 记忆体结构                         | 插入约束与建议                                                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **TiM** (vector_memory / hash)     | 向量检索对片段边界与语义密度敏感，推荐使用 `transform.segment(+denoise)` 控制片段长度与重叠；`extract.triple` 适用于结构化检索协同。 |
-| **MemoryOS** (hierarchical_memory) | 分层容量与主动迁移策略依赖“打分信号”，`score.heat`/`score.importance` 可提升迁移质量；过度摘要可能损失细节。               |
-| **Mem0ᵍ** (hybrid graph)           | 图场景中 `extract.entity/triple/fact` 直接提升可图化程度；`continuity_check` 可以避免破坏关系上下文。                     |
+| **TiM** (vector_memory / hash)     | 向量检索对片段边界与语义密度敏感，推荐使用 `transform.segment_denoise` 控制片段长度与重叠；`extract.triple` 适用于结构化检索协同。 |
+| **MemoryOS** (hierarchical_memory) | 分层容量与主动迁移策略需谨慎调参；过度摘要可能损失细节。               |
+| **Mem0ᵍ** (hybrid graph)           | 图场景中 `extract.entity/triple/fact` 直接提升可图化程度。                     |
 
 实验影响：
 
@@ -112,24 +111,7 @@ pre_insert:
   keep_original: false
 ```
 
-### 2.4 重要性/热度评估：`score.heat`
 
-- 配置文件：`TiM_locomo_score_heat_pre_insert_pipeline.yaml`
-- 内存名称：`TiM-preinsert-heat`
-- 操作：对片段或抽取单元打热度分，低于阈值不入库或入低层级。
-- 关键参数：
-  - `heat_window`: [3, 5, 7]
-  - `min_heat_threshold`: [0.3, 0.5, 0.7]
-- 配置：
-
-```yaml
-pre_insert:
-  action: "score.heat"
-  heat_window: 5
-  min_heat_threshold: 0.5
-```
-
-注：若平台为 MemoryOS，可将 `score.importance` 作为并行候选，参数形式与 `score.heat` 类似，阈值语义改为“重要性”。
 
 ______________________________________________________________________
 
@@ -140,13 +122,11 @@ ______________________________________________________________________
 | **P1** | `TiM_locomo_none_pre_insert_pipeline.yaml`     | `TiM-preinsert-none`     | `none`                     | 作为插入侧基线，便于衡量各类算子的真实增益与副作用               |
 | **P2** | `TiM_locomo_segment_denoise_pre_insert_pipeline.yaml` | `TiM-preinsert-segdenoise` | `transform.segment_denoise` | 控制片段长度与降噪可提升后续向量检索的稳定性，降低冗余           |
 | **P3** | `TiM_locomo_extract_triple_pre_insert_pipeline.yaml`  | `TiM-preinsert-triple`   | `extract.triple`           | 结构化单元更易被知识对齐与图召回，复杂查询的准确率更高           |
-| **P4** | `TiM_locomo_score_heat_pre_insert_pipeline.yaml`      | `TiM-preinsert-heat`     | `score.heat`               | 过滤低价值信息，减少噪声插入，分层迁移更稳定，整体检索时间更短   |
 
 对比维度：
 
-- 基线 vs 处理：P1 vs P2/P3/P4
+- 基线 vs 处理：P1 vs P2/P3
 - 结构 vs 语义：P2 vs P3
-- 质量控制：P2 vs P4（先变换再筛选 VS 仅筛选）
 
 固定配置（与 PreRetrieval 一致的非干预阶段）：
 
@@ -178,7 +158,7 @@ ______________________________________________________________________
   - Storage Footprint（插入后存储占用增长）
   - Downstream Retrieval Time（后续检索平均耗时）
 
-统计分析：采用配对t检验/单因素方差分析（P1–P4），并报告效应量（Cohen's d）。
+统计分析：采用配对t检验/单因素方差分析（P1–P3），并报告效应量（Cohen's d）。
 
 ______________________________________________________________________
 
@@ -191,7 +171,6 @@ pre_insert_<memory_structure>_<strategy>.yaml
 - pre_insert_tim_none.yaml
 - pre_insert_tim_segment_denoise.yaml
 - pre_insert_tim_extract_triple.yaml
-- pre_insert_tim_score_heat.yaml
 ```
 
 ______________________________________________________________________
@@ -200,7 +179,6 @@ ______________________________________________________________________
 
 - 长文本/噪声场景下，`transform.segment_denoise` 将显著提升检索稳定性与准确率（优于 P1）。
 - 结构化任务/图检索场景，`extract.triple` 会在复杂查询上带来更高的 End-to-End 准确率（优于 P2）。
-- 分层记忆场景，`score.heat` 或 `score.importance` 能降低无效插入与后续冗余检索（效率指标更优）。
 - 过度摘要（`transform.summarize` 的高压缩比）可能导致细节损失，准确率下降；因此仅在扩展实验中评估。
 
 ______________________________________________________________________
@@ -209,28 +187,20 @@ ______________________________________________________________________
 
 在主效应对比后，评估组合策略以验证协同增益：
 
-### 7.1 组合 A：`transform.segment_denoise` → `score.heat`
+### 7.1 组合：`transform.summarize` → `extract.keyword`
 
-目标：先控制片段质量，再按热度筛选，兼顾效果与效率。
+目标：在容量受限场景将信息压缩成关键词。
 
-### 7.2 组合 B：`transform.segment` → `extract.triple`
-
-目标：对长文本先划分片段，再对片段抽取三元组，提高抽取精度与覆盖率。
-
-### 7.3 组合 C：`transform.summarize` → `extract.keyword` → `score.importance`
-
-目标：在容量受限场景将信息压缩成关键词，再以重要性控制入库与层级迁移。
-
-评估方式：对比与单算子（P2/P3/P4）以及基线（P1）的差异；记录插入开销与检索收益的性价比。
+评估方式：对比与单算子（P2/P3）以及基线（P1）的差异；记录插入开销与检索收益的性价比。
 
 ______________________________________________________________________
 
 ## 8. 边界与鲁棒性测试
 
-- 极短文本（<64 tokens）：禁用 `segment`，直接 `none` 或 `extract.keyword`。
-- 超长文本（>4096 tokens）：优先 `segment(+overlap)`，避免跨片段语义断裂；必要时 `continuity_check`。
+- 极短文本（<64 tokens）：直接使用 `none` 或 `extract.keyword`。
+- 超长文本（>4096 tokens）：优先使用 `segment_denoise` 控制片段长度与重叠，避免跨片段语义断裂。
 - 噪声/格式混杂：启用 `segment_denoise`；对表格/列表型内容，建议保留原文与抽取并行。
-- 权限/容量受限：加大 `min_heat_threshold` 或 `importance_threshold`，控制入库规模。
+- 权限/容量受限：通过调整插入过滤策略与容量阈值控制入库规模。
 
 ______________________________________________________________________
 
