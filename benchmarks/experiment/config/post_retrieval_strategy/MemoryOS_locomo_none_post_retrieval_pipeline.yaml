@@ -1,0 +1,75 @@
+# ============================================================
+# PostRetrieval Experiment: MemoryOS + None
+# Memory Structure: MemoryOS (Hierarchical Memory)
+# PostRetrieval Strategy: none (No post-processing, baseline)
+# Config Name: MemoryOS_locomo_none_post_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "MemoryOS-none"
+
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "tier_migration.heat_migration"
+    migrate_policy: "heat"
+    heat_threshold: 5.0
+    stm_capacity: 20
+    upgrade_transform: "multi_summary"
+    enable_profile_extraction: true
+    enable_knowledge_extraction: true
+    reset_heat_after_extraction: true
+
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+    extractor: "spacy"
+    spacy_model: "en_core_web_sm"
+    extract_types: ["NOUN", "PROPN", "VERB"]
+    max_keywords: 10
+
+  post_retrieval:
+    action: "none"
+
+    conversation_format_prompt: |
+      The following is relevant context from different memory tiers.
