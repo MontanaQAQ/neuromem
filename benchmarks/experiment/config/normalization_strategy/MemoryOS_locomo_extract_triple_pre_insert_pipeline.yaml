@@ -7,7 +7,13 @@ runtime:
   memory_test_verbose: true
   test_segments: 5
   prompt_template: |
-    Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
@@ -38,20 +44,26 @@ operators:
     action: "extract.triple"
     extraction_method: "llm"
     triple_extraction_prompt: |
-      Extract factual triples from the dialogue. Each triple as (subject, predicate, object). Resolve pronouns.
+      You are a knowledge graph builder. Extract factual triples from the dialogue.
+      Focus on entities (people, organizations, locations) and their relationships.
+
+      Rules:
+      1. Output format: (Subject, Predicate, Object) - one triple per line
+      2. Resolve ALL pronouns to actual entity names
+      3. Extract relationships, attributes, and temporal information
+      4. Be concise and factual
+
+      Dialogue:
+      {dialogue}
+
+      Triples:
 
   post_insert:
-    action: "migrate"
+    action: "structure_enrichment.heat_migration"
     migrate_policy: "heat"
     heat_threshold: 5.0
-    cold_threshold: 0.3
-    session_gap: 3600
-    tier_capacities:
-      stm: 20
-      mtm: 200
+    stm_capacity: 20
     upgrade_transform: "multi_summary"
-    enable_keywords: true
-    enable_summary: true
     enable_profile_extraction: true
     enable_knowledge_extraction: true
     reset_heat_after_extraction: true
@@ -67,5 +79,14 @@ operators:
   post_retrieval:
     action: "merge"
     merge_type: "multi_query"
+    secondary_queries:
+    - query_template: "{question}"
+      metadata: {tier: "stm"}
+    - query_template: "{question}"
+      metadata: {tier: "mtm"}
+    - query_template: "{question}"
+      metadata: {tier: "lpm", type: "persona"}
+    - query_template: "{question}"
+      metadata: {tier: "lpm", type: "knowledge"}
     conversation_format_prompt: |
       The following is relevant context from different memory tiers.

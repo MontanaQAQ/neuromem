@@ -7,15 +7,13 @@ runtime:
   test_segments: 5
   service_timeout: 600.0
   prompt_template: |
-    Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
 
-    Question: {question}
-    Answer:
-  prompt_template_category5: |
-    Answer the multiple choice question based on the context. Provide ONLY the answer in format (a) or (b) without any explanation.
-
-    Question: {question}
-    Answer:
+    Q: {question}
+    A:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"

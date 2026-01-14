@@ -7,7 +7,13 @@ runtime:
   test_segments: 5
   service_timeout: 600.0
   prompt_template: |
-    Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
@@ -35,7 +41,9 @@ operators:
     min_segment_size: 100
     max_segment_size: 500
     segment_prompt: |
-      Identify and denoise topic segments to improve triple extraction quality.
+      Remove noise and redundancy from the dialogue below while preserving all facts.
+
+      Rules: Remove fillers (um, uh, like), consolidate repeated info, keep facts and preferences, maintain order.
 
   pre_retrieval:
     action: "embedding"
@@ -49,6 +57,17 @@ operators:
       1. REMOVE duplicates and near-duplicates (same meaning, different wording)
       2. MERGE related facts into more complete statements
       3. REMOVE logically subsumed facts (if A contains B's meaning, remove B)
+
+      EXAMPLES of what to consolidate:
+      - "Alice likes coffee" + "Alice likes coffee a lot" → keep only "Alice likes coffee a lot"
+      - "Bob works at Google" + "Bob works at Google as engineer" → keep only "Bob works at Google as engineer"
+      - "Carol plans to travel" + "Carol plans to travel to Japan" → keep only "Carol plans to travel to Japan"
+
+      RULES:
+      - to_delete: List EXACT original texts to remove (duplicates, subsumed facts)
+      - to_insert: Only if you need to CREATE a new merged fact not in original list
+      - Prefer keeping the most informative version rather than creating new text
+      - If a fact appears multiple times, delete all but one
 
       Facts:
       {memories}
