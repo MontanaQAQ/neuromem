@@ -5,7 +5,7 @@ runtime:
   dataset: "locomo"
   memory_insert_verbose: false
   memory_test_verbose: true
-  test_segments: 10
+  test_segments: 5
   prompt_template: |
     Based on the context above, provide a brief, direct answer to the question. No explanation, no reasoning, no elaboration - just the answer.
   api_key: "iloveshuhao"
