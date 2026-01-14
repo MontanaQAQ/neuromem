@@ -15,10 +15,6 @@ class ConflictResolutionAdapter(BaseDataLoader):
     """ConflictResolution 数据集适配器
 
     ConflictResolution 是 MemAgentBench 的冲突解决数据集。
-
-    特点:
-        - dialog_increment = 1（每次处理 1 个事实）
-        - 支持多版本: v1, v2
     """
 
     def __init__(self, version: str | None = None):
@@ -58,32 +54,30 @@ class ConflictResolutionAdapter(BaseDataLoader):
             return f"conflict_resolution_{self._version}"
         return "conflict_resolution"
 
-    def get_turn(self, task_id: str) -> list[tuple[int, int]]:
-        self._ensure_loader()
-        return self._loader.get_turn(task_id)
-
     def get_dialog(self, task_id: str, session_x: int, dialog_y: int) -> list[dict[str, Any]]:
         self._ensure_loader()
         return self._loader.get_dialog(task_id, session_x=session_x, dialog_y=dialog_y)
 
-    def get_total_valid_questions(self, task_id: str) -> int:
+    def get_evaluation(self, task_id: str, session_x: int, dialog_y: int) -> list[dict[str, Any]]:
         self._ensure_loader()
-        return self._loader.get_total_valid_questions(task_id)
+        return self._loader.get_evaluation(task_id, session_x, dialog_y)
 
-    def get_question_list(
-        self, task_id: str, session_x: int, dialog_y: int
-    ) -> list[dict[str, Any]]:
+    def sessions(self, task_id: str) -> list[tuple[int, int]]:
         self._ensure_loader()
-        return self._loader.get_question_list(task_id, session_x, dialog_y)
+        return self._loader.sessions(task_id)
 
-    def get_dataset_statistics(self, task_id: str) -> dict[str, Any]:
+    def question_count(self, task_id: str) -> int:
         self._ensure_loader()
-        return self._loader.get_dataset_statistics(task_id)
+        return self._loader.question_count(task_id)
 
-    def get_dialog_increment(self) -> int:
-        """ConflictResolution 每次处理 1 个事实"""
-        return 1
+    def dialog_count(self, task_id: str) -> int:
+        self._ensure_loader()
+        return self._loader.dialog_count(task_id)
 
-    def get_packet_count(self, max_dialog_idx: int) -> int:
-        """ConflictResolution 每个事实就是一个包"""
-        return max_dialog_idx + 1
+    def message_count(self, task_id: str) -> int:
+        self._ensure_loader()
+        return self._loader.message_count(task_id)
+
+    def statistics(self, task_id: str) -> dict[str, Any]:
+        self._ensure_loader()
+        return self._loader.statistics(task_id)

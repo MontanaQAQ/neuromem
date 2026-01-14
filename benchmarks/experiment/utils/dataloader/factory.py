@@ -26,7 +26,7 @@ class DataLoaderFactory:
 
     典型用法：
         >>> loader = DataLoaderFactory.create("locomo")
-        >>> turns = loader.get_turn("conv-26")
+        >>> sessions = loader.sessions("conv-26")
     """
 
     # 注册的数据集类型

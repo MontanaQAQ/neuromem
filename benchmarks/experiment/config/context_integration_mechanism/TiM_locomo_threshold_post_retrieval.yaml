@@ -7,9 +7,7 @@
 
 runtime:
   dataset: locomo
-  memory_insert_verbose: false
-  memory_test_verbose: true
-  test_segments: 10
+  test_segments: 5
   service_timeout: 600.0
   prompt_template: |
     Based on the above context, answer the following question concisely.

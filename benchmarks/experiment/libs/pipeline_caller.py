@@ -50,9 +50,7 @@ class PipelineCaller(MapFunction):
         self.progress_bar = None
 
         # 问题驱动测试的状态跟踪
-        self.total_questions = self.loader.get_total_valid_questions(
-            self.task_id
-        )  # 该task的总问题数
+        self.total_questions = self.loader.question_count(self.task_id)  # 该task的总问题数
         self.last_tested_count = 0  # 上次测试时的问题数量
 
         # Calculate test thresholds based on dataset type
@@ -208,7 +206,7 @@ class PipelineCaller(MapFunction):
         # 阶段2：记忆测试（问题驱动）
         # ============================================================
         # 检查当前可见问题数量
-        current_questions = self.loader.get_question_list(
+        current_questions = self.loader.get_evaluation(
             task_id,
             session_x=session_id,
             dialog_y=dialog_id + dialog_len - 1,

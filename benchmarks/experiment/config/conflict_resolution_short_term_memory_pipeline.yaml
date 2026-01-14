@@ -2,9 +2,7 @@
 runtime:
   dataset: "conflict_resolution"  # Dataset name
   # task_id: "task_all"  # Task ID, can be overridden by --task_id command line argument
-  memory_insert_verbose: false  # Whether to print memory insert details (Memory Source part)
-  memory_test_verbose: true    # Whether to print memory test details (QA part)
-  test_segments: 10             # Number of test segments, divide total questions into segments for testing
+  test_segments: 5             # Number of test segments, divide total questions into segments for testing
 
   # Prompt template configuration (Phase 2: MemoryTest)
   prompt_template: |

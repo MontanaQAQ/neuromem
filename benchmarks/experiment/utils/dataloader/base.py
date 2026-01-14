@@ -2,12 +2,14 @@
 
 定义所有数据集加载器必须实现的统一接口。
 
-接口说明：
-- get_turn: 获取任务的所有轮次信息
-- get_dialog: 获取指定对话内容
-- get_total_valid_questions: 获取有效问题总数
-- get_question_list: 获取当前可见的问题列表
-- get_dataset_statistics: 获取数据集统计信息
+数据层级: sample → session → message
+- session: 一次会话
+- message: 单条消息（一方说的一句话）
+- dialog: 一轮对话（通常包含2条消息，末尾可能是1条）
+
+接口分类:
+- 核心数据获取: get_dialog, get_evaluation
+- 结构/统计查询: sessions, question_count, dialog_count, message_count, statistics
 """
 
 from __future__ import annotations
@@ -20,55 +22,66 @@ class BaseDataLoader(ABC):
     """统一的数据集加载器抽象基类
 
     所有数据集适配器必须继承此类并实现全部抽象方法。
-
-    Attributes:
-        dataset_name: 数据集名称标识
     """
+
+    # ========== 属性 ==========
 
     @property
     @abstractmethod
     def dataset_name(self) -> str:
-        """返回数据集名称标识
+        """数据集名称标识
 
         Returns:
             数据集名称，如 "locomo", "longmemeval", "conflict_resolution"
         """
 
-    @abstractmethod
-    def get_turn(self, task_id: str) -> list[tuple[int, int]]:
-        """获取任务的所有轮次信息
-
-        返回该任务包含的所有 session 及其最大 dialog 索引。
-
-        Args:
-            task_id: 任务标识，如 "conv-26"
-
-        Returns:
-            轮次列表，每项为 (session_id, max_dialog_idx) 的元组
-            例如: [(0, 10), (1, 8), (2, 15)] 表示 3 个 session
-        """
+    # ========== 核心数据获取 ==========
 
     @abstractmethod
     def get_dialog(self, task_id: str, session_x: int, dialog_y: int) -> list[dict[str, Any]]:
-        """获取指定对话内容
-
-        根据 session 和 dialog 索引获取具体的对话内容。
+        """获取一轮对话内容
 
         Args:
-            task_id: 任务标识
-            session_x: session 索引
+            task_id: 任务标识，如 "conv-26"
+            session_x: session 编号
             dialog_y: dialog 起始索引
 
         Returns:
-            对话列表，每项为包含 speaker 和 text 的字典
-            例如: [{"speaker": "user", "text": "Hello"}, {"speaker": "assistant", "text": "Hi"}]
+            消息列表（1-2条），每项为 {"speaker": "...", "text": "...", ...}
         """
 
     @abstractmethod
-    def get_total_valid_questions(self, task_id: str) -> int:
-        """获取任务的有效问题总数
+    def get_evaluation(self, task_id: str, session_x: int, dialog_y: int) -> list[dict[str, Any]]:
+        """获取当前可见的测试问题列表
 
-        用于计算测试阈值和进度统计。
+        返回在指定 session/dialog 位置时可见的问题。
+
+        Args:
+            task_id: 任务标识
+            session_x: session 编号
+            dialog_y: dialog 索引
+
+        Returns:
+            问题列表，每项为问题字典
+        """
+
+    # ========== 结构/统计查询 ==========
+
+    @abstractmethod
+    def sessions(self, task_id: str) -> list[tuple[int, int]]:
+        """获取任务的会话结构
+
+        Args:
+            task_id: 任务标识
+
+        Returns:
+            会话列表，每项为 (session_id, max_dialog_idx)
+            例如: [(1, 17), (2, 16), (3, 22)] 表示 3 个 session
+        """
+
+    @abstractmethod
+    def question_count(self, task_id: str) -> int:
+        """获取有效问题总数
 
         Args:
             task_id: 任务标识
@@ -78,59 +91,34 @@ class BaseDataLoader(ABC):
         """
 
     @abstractmethod
-    def get_question_list(
-        self, task_id: str, session_x: int, dialog_y: int
-    ) -> list[dict[str, Any]]:
-        """获取当前可见的问题列表
-
-        返回在指定 session/dialog 位置时可见的问题。
+    def dialog_count(self, task_id: str) -> int:
+        """获取总对话轮次（数据包数量）
 
         Args:
             task_id: 任务标识
-            session_x: session 索引
-            dialog_y: dialog 索引
 
         Returns:
-            问题列表，每项为问题字典（具体格式因数据集而异）
+            总对话轮次数
         """
 
     @abstractmethod
-    def get_dataset_statistics(self, task_id: str) -> dict[str, Any]:
-        """获取数据集统计信息
-
-        用于结果保存时记录数据集元信息。
+    def message_count(self, task_id: str) -> int:
+        """获取总消息数目
 
         Args:
             task_id: 任务标识
 
         Returns:
-            统计信息字典，包含数据集相关的统计数据
+            总消息数
         """
 
-    # ========== 可选方法（子类可覆盖）==========
-
-    def get_dialog_increment(self) -> int:
-        """获取 dialog 指针的增量
-
-        不同数据集的对话结构不同：
-        - locomo/longmemeval: 每包含 2 个对话（Q&A），增量为 2
-        - conflict_resolution: 每包含 1 个事实，增量为 1
-
-        Returns:
-            dialog 指针每次移动的增量，默认为 2
-        """
-        return 2
-
-    def get_packet_count(self, max_dialog_idx: int) -> int:
-        """计算 session 的数据包数量
-
-        根据 max_dialog_idx 和增量计算该 session 需要发送的数据包数。
+    @abstractmethod
+    def statistics(self, task_id: str) -> dict[str, Any]:
+        """获取数据集统计信息
 
         Args:
-            max_dialog_idx: session 的最大 dialog 索引
+            task_id: 任务标识
 
         Returns:
-            数据包数量
+            统计信息字典
         """
-        increment = self.get_dialog_increment()
-        return (max_dialog_idx // increment) + 1

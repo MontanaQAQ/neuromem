@@ -37,33 +37,24 @@ class MemorySource(BatchFunction):
         self.loader = DataLoaderFactory.create(self.dataset)
 
         # 获取数据集核心信息
-        self.turns = self.loader.get_turn(self.task_id)
+        self.turns = self.loader.sessions(self.task_id)
 
-        # 统计总的dialog数量和数据包数量
-        self.total_dialogs = sum((max_dialog_idx + 1) for _, max_dialog_idx in self.turns)
-
-        # 使用 loader 的方法计算数据包数量（不同数据集增量不同）
-        self.total_packets = sum(
-            self.loader.get_packet_count(max_dialog_idx) for _, max_dialog_idx in self.turns
-        )
-
-        # 获取 dialog 增量（用于后续指针移动）
-        self.dialog_increment = self.loader.get_dialog_increment()
+        # 从 loader 获取统计信息
+        self.total_messages = self.loader.message_count(self.task_id)
+        self.total_dialogs = self.loader.dialog_count(self.task_id)
 
         # 打印当前任务信息
         print(f"📊 样本 {self.task_id} 统计信息:")
         print(f"   - 总会话数: {len(self.turns)}")
-        print(f"   - 总对话数: {self.total_dialogs}")
-        print(f"   - 总数据包: {self.total_packets}")
+        print(f"   - 总消息数: {self.total_messages}")
+        print(f"   - 总对话轮次: {self.total_dialogs}")
         for idx, (session_id, max_dialog_idx) in enumerate(self.turns):
-            dialog_count = max_dialog_idx + 1
-            print(
-                f"   - 会话 {idx + 1} (session_id={session_id}): {dialog_count} 个对话 (max_dialog_idx={max_dialog_idx})"
-            )
+            msg_count = max_dialog_idx + 1
+            print(f"   - 会话 {idx + 1} (session_id={session_id}): {msg_count} 条消息")
 
         # 初始化任务指针
         self.session_idx = 0  # 当前session在turns列表中的索引
-        self.dialog_ptr = 0  # 当前dialog指针（偶数）
+        self.dialog_ptr = 0  # 当前dialog指针
         self.packet_idx = 0  # 当前数据包序号（从0开始）
 
     def execute(self):
@@ -103,8 +94,11 @@ class MemorySource(BatchFunction):
             self.task_id, session_x=session_id, dialog_y=self.dialog_ptr
         )
 
+        # 计算 dialog 增量（根据实际返回的消息数）
+        dialog_increment = len(dialogs) if dialogs else 2
+
         # 计算下一个 dialog_ptr (用于判断是否为 session 最后一个包)
-        next_dialog_ptr = self.dialog_ptr + self.dialog_increment
+        next_dialog_ptr = self.dialog_ptr + dialog_increment
 
         # 判断是否为当前 session 的最后一个数据包
         is_session_end = next_dialog_ptr > max_dialog_idx
@@ -117,12 +111,19 @@ class MemorySource(BatchFunction):
             "dialogs": dialogs,
             "dialog_len": len(dialogs),
             "packet_idx": self.packet_idx,  # Current packet index (from 0)
-            "total_packets": self.total_packets,  # Total packets
+            "total_packets": self.total_dialogs,  # Total packets
             "is_session_end": is_session_end,  # 是否为当前 session 的最后一个包
         }
 
-        # 移动指针到下一个 dialog（使用 loader 定义的增量）
-        self.dialog_ptr += self.dialog_increment
+        # # DEBUG: 打印 execute 返回数据
+        # print(f"\n[DEBUG execute] packet={self.packet_idx}, session={session_id}, dialog_ptr={self.dialog_ptr}")
+        # for i, d in enumerate(dialogs):
+        #     speaker = d.get('speaker', 'N/A')
+        #     text = d.get('text', '')[:80]
+        #     print(f"  [{self.dialog_ptr + i}] {speaker}: {text}...")
+
+        # 移动指针到下一个 dialog
+        self.dialog_ptr += dialog_increment
 
         self.packet_idx += 1  # Packet index increment
 

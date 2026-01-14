@@ -10,7 +10,7 @@
 典型用法：
     >>> from benchmarks.experiment.utils.dataloader import DataLoaderFactory
     >>> loader = DataLoaderFactory.create("locomo")
-    >>> turns = loader.get_turn("conv-26")
+    >>> sessions = loader.sessions("conv-26")
 """
 
 from .base import BaseDataLoader

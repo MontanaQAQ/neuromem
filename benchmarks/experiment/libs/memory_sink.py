@@ -131,7 +131,7 @@ class MemorySink(SinkFunction):
         task_id = data.get("task_id", self.task_id)
 
         # 从 DataLoader 获取数据集统计信息
-        dataset_stats = self.loader.get_dataset_statistics(task_id)
+        dataset_stats = self.loader.statistics(task_id)
 
         # 构造新的 timing_summary 格式
         timing_summary = {

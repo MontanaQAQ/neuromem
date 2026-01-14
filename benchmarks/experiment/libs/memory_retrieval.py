@@ -86,7 +86,7 @@ class MemoryRetrieval(MapFunction):
         if not services_type:
             raise ValueError("Missing required config: services.services_type")
         self.service_name = services_type.split(".")[-1]
-        self.verbose = config.get("runtime.memory_test_verbose", True)
+        self.verbose = config.get("runtime.memory_test_verbose", False)
 
         # 检索参数（从服务配置读取）
         service_cfg = f"services.{self.service_name}"
