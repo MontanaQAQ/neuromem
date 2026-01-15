@@ -20,7 +20,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "MemoryOS"
+  memory_name: "PreInsert_MemoryOS_none"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 

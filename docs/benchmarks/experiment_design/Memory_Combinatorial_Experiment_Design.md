@@ -86,11 +86,9 @@ ______________________________________________________________________
 - **候选水平**：
   - `none`：原样插入。
   - `transform.summarize`：摘要压缩（MemoryBank 风格）。
-  - `transform.chunking`：长文本分块。
-  - `transform.segment`：主题分段。
-  - `extract.triple`：三元组抽取（HippoRAG 风格）。
-  - `extract.entity|keyword|noun`：稀疏信号，利于 KV/KG/Hybrid。
-  - `score.importance|heat`：重要度/热度打分，写入 metadata；可配合 PostInsert/Migration。
+  - `transform.segment_denoise`：语义分段与降噪（SeCom 风格）。
+  - `extract.triple`：三元组抽取（TiM/HippoRAG 风格）。
+  - `extract.entity | keyword | fact`：实体、关键词或事实解析。
 - **核心配置键**：
   - `operators.pre_insert.action`
   - `operators.pre_insert.transform_type | extract_type`
@@ -182,7 +180,7 @@ ______________________________________________________________________
 **固定配置**：`pre_ret=<A-Top-1>, post_ret=<B-Top-1>, post_ins=none, service=STM`
 
 - **变化维度**：PreInsert
-  - 候选：`none, transform.summarize, transform.chunking, extract.triple, extract.entity, score.importance`
+  - 候选：`none, transform.summarize, transform.segment_denoise, extract.triple, extract.entity, extract.fact`
 - **目的**：插入内容形态对检索与 QA 的影响
 - **预期结论**：找出最优内容转换策略（summarize 可能对长对话有效，extract 对结构化任务有效）
 
@@ -231,7 +229,7 @@ ______________________________________________________________________
 | MemoryService | MS   | stm, hierarchical, graph               |
 | PreRetrieval  | PR   | none, rewrite, expand, multi           |
 | PostRetrieval | POR  | none, timew, recency, filter, llm      |
-| PreInsert     | PI   | none, summarize, chunk, triple, entity |
+| PreInsert     | PI   | none, summarize, segment, triple, entity |
 | PostInsert    | POI  | none, forget, distill, crud, migrate   |
 
 ### 5.2 关键配置键（YAML）

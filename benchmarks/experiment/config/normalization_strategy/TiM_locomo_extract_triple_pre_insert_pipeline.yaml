@@ -20,7 +20,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "TiM"
+  memory_name: "PreInsert_TiM_extract_triple"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 

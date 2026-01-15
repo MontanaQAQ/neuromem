@@ -190,8 +190,7 @@ pre_insert/
 ├── base.py             # 基类和数据模型
 ├── none_action.py      # 透传策略
 ├── transform/          # 文本转换策略
-├── extract/            # 知识提取策略
-└── score/              # 重要性评分策略
+└── extract/            # 知识提取策略
 ```
 
 **支持的 Actions**:
@@ -199,20 +198,16 @@ pre_insert/
 | Action | 说明 | 条目数 | 应用场景 |
 |--------|------|--------|----------|
 | `none` | 透传原始对话 | 1 条 | STM, 基础测试 |
-| `transform` | 文本格式转换 | 1 条 | 格式标准化 |
-| `extract` | 提取事实/实体 | N 条 | 知识抽取 |
-| `score` | 重要性评分 | 1 条 | 选择性遗忘 |
-| `multi_embed` | 多向量生成 | 1 条 | ReMI 算法 |
-| `tri_embed` | 三元组提取 | N 条 | 知识图谱 |
+| `transform` | 文本格式转换 | 2 条 | 片段化、摘要化 |
+| `extract` | 提取事实/实体/三元组 | 4 条 | 知识抽取、图谱构建 |
 
 **配置示例**:
 ```yaml
 operators:
   pre_insert:
-    action: "extract"
-    extract_prompt: |
-      Extract all facts from the conversation.
-      Output JSON array: [{"fact": "..."}, ...]
+    action: "extract.triple"
+    max_triplets: 10
+    keep_original: false
 ```
 
 ##### PostInsert 策略（记忆插入后处理）

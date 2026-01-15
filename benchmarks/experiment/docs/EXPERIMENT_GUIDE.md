@@ -86,11 +86,11 @@ NeuroMem Services
 |--------|------|------|
 | `none` | 原样插入 | - |
 | `transform.summarize` | 事件摘要生成 | MemoryBank |
-| `transform.chunking` | 文本分块 | - |
+| `transform.segment_denoise` | 语义分段与降噪 | SeCom |
 | `extract.triple` | 三元组提取 | TiM, Mem0ᵍ |
 | `extract.entity` | 实体识别 | - |
-| `score.importance` | 重要度打分 | - |
-| `score.heat` | 热度计算 | MemoryOS |
+| `extract.keyword` | 关键词提取 | MemoryOS |
+| `extract.fact` | 事实提取 | Mem0 |
 
 **配置示例**：
 
