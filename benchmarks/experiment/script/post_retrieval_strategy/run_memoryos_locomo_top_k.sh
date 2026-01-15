@@ -16,20 +16,20 @@ CONFIG_FILE="$SCRIPT_DIR/../../config/post_retrieval_strategy/MemoryOS_locomo_to
 # Define all task IDs
 TASK_IDS=(
   "conv-26"
-  # "conv-30"
-  # "conv-41"
-  # "conv-42"
-  # "conv-43"
-  # "conv-44"
-  # "conv-47"
-  # "conv-48"
-  # "conv-49"
-  # "conv-50"
+  "conv-30"
+  "conv-41"
+  "conv-42"
+  "conv-43"
+  "conv-44"
+  "conv-47"
+  "conv-48"
+  "conv-49"
+  "conv-50"
 )
 
 # Create log directory structure
 DATASET="locomo"
-MEMORY_NAME="post_retrieval_top_k_MemoryOS"
+MEMORY_NAME="PostRetrieval_MemoryOS_top_k"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
