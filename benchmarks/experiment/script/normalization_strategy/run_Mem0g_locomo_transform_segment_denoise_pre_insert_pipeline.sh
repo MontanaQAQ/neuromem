@@ -1,5 +1,5 @@
 ﻿#!/bin/bash
-# 运行 Normalization Strategy - Mem0g transform_segment_denoise pre_insert
+# 运行 Normalization Strategy - Mem0g enrich_segment_compress pre_insert
 # 使用方法: bash script/normalization_strategy/run_Mem0g_locomo_transform_segment_denoise_pre_insert_pipeline.sh
 
 set -e
@@ -23,12 +23,12 @@ TASK_IDS=(
 )
 
 DATASET="locomo"
-MEMORY_NAME="PreInsert_Mem0g_transform_segment_denoise"
+MEMORY_NAME="PreInsert_Mem0g_enrich_segment_compress"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Normalization Strategy: Mem0g transform_segment_denoise pre_insert"
+echo "Normalization Strategy: Mem0g enrich_segment_compress pre_insert"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"

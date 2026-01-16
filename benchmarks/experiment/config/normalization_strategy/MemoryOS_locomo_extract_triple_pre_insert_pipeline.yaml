@@ -20,7 +20,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "PreInsert_MemoryOS_extract_triple"
+  memory_name: "PreInsert_MemoryOS_rewrite_triplet_extract"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 
@@ -41,7 +41,7 @@ services:
 
 operators:
   pre_insert:
-    action: "extract.triple"
+    action: "rewrite.triplet_extract"
     extraction_method: "llm"
     triple_extraction_prompt: |
       You are a knowledge graph builder. Extract factual triples from the dialogue.

@@ -23,12 +23,12 @@ TASK_IDS=(
 )
 
 DATASET="locomo"
-MEMORY_NAME="PreInsert_Mem0g_extract_triple"
+MEMORY_NAME="PreInsert_Mem0g_rewrite_triplet_extract"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Normalization Strategy: Mem0g extract_triple pre_insert"
+echo "Normalization Strategy: Mem0g rewrite_triplet_extract pre_insert"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"

@@ -69,6 +69,7 @@ operators:
   pre_insert:
     action: "extract.triple"          # 使用三元组抽取（比 entity 更完整）
     extraction_method: "llm"           # 启用 LLM 路径以触发三元组抽取的真实大模型调用
+    keep_original: false  # 只存储三元组，不存储原始对话
     triple_extraction_prompt: |
       You are a knowledge graph builder. Extract factual triples from the dialogue.
       Focus on entities (people, organizations, locations) and their relationships.

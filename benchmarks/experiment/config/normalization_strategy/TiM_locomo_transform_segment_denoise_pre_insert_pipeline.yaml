@@ -1,5 +1,5 @@
 ﻿---
-# TiM (pre_insert=transform.segment_denoise) - locomo 变体
+# TiM (pre_insert=enrich.segment_compress) - locomo 变体
 runtime:
   dataset: "locomo"
   memory_insert_verbose: false
@@ -20,7 +20,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "PreInsert_TiM_transform_segment_denoise"
+  memory_name: "PreInsert_TiM_enrich_segment_compress"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 
@@ -36,7 +36,7 @@ services:
 
 operators:
   pre_insert:
-    action: "transform.segment_denoise"
+    action: "enrich.segment_compress"
     transform_type: "topic_segment"
     min_segment_size: 100
     max_segment_size: 500
