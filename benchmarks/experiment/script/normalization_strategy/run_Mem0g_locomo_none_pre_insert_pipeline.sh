@@ -11,15 +11,15 @@ CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/Mem0g_locomo_none_p
 
 TASK_IDS=(
   "conv-26"
-#   "conv-30"
-#   "conv-41"
-#   "conv-42"
-#   "conv-43"
-#   "conv-44"
-#   "conv-47"
-#   "conv-48"
-#   "conv-49"
-#   "conv-50"
+  "conv-30"
+  "conv-41"
+  "conv-42"
+  "conv-43"
+  "conv-44"
+  "conv-47"
+  "conv-48"
+  "conv-49"
+  "conv-50"
 )
 
 DATASET="locomo"
