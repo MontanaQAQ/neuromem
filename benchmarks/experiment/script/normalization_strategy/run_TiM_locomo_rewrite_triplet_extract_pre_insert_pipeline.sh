@@ -1,13 +1,13 @@
 ﻿#!/bin/bash
-# 运行 Normalization Strategy - MemoryOS enrich_segment_compress pre_insert
-# 使用方法: bash script/normalization_strategy/run_MemoryOS_locomo_transform_segment_denoise_pre_insert_pipeline.sh
+# 运行 Normalization Strategy - TiM rewrite_triplet_extract pre_insert
+# 使用方法: bash script/normalization_strategy/run_TiM_locomo_rewrite_triplet_extract_pre_insert_pipeline.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
-CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/MemoryOS_locomo_transform_segment_denoise_pre_insert_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/TiM_locomo_rewrite_triplet_extract_pre_insert_pipeline.yaml"
 
 TASK_IDS=(
   "conv-26"
@@ -23,12 +23,12 @@ TASK_IDS=(
 )
 
 DATASET="locomo"
-MEMORY_NAME="PreInsert_MemoryOS_enrich_segment_compress"
+MEMORY_NAME="PreInsert_TiM_rewrite_triplet_extract"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Normalization Strategy: MemoryOS enrich_segment_compress pre_insert"
+echo "Normalization Strategy: TiM rewrite_triplet_extract pre_insert"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"

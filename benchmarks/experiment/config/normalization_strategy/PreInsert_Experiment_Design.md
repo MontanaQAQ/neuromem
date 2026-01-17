@@ -9,9 +9,9 @@ _____________________________________________________________________
 
 # PreInsert 归一化策略实验设计
 
-> 基于 Dev_Archive.md 中已复现的代表性工作，围绕“插入前归一化（PreInsert）”算子的四类方案设计系统化对比实验。
+> 基于 Dev_Archive.md 中已复现的代表性工作，围绕“插入前归一化（PreInsert）”算子的三类方案（none/enrich/rewrite）设计系统化对比实验。
 >
-> 目标：在不同记忆体架构下，比较四类 PreInsert 算子对“插入质量、后续检索准确率与效率”的综合影响，寻找最优算子与参数组合。
+> 目标：在不同记忆体架构下，比较三类 PreInsert 算子对“插入质量、后续检索准确率与效率”的综合影响，寻找最优算子与参数组合。
 >
 > 实验范围：PreInsert 阶段（难度★★☆☆☆），固定其他阶段为 baseline 配置。
 
@@ -19,13 +19,13 @@ ______________________________________________________________________
 
 ## 📋 PreInsert 算子分类体系（三类）
 
-本实验采用与代码实现一致的三类算子体系（参考 `benchmark_memory/experiment/libs/pre_insert`）：
+本实验采用与代码实现一致的三类算子体系（参考 `benchmarks/experiment/libs/pre_insert`）：
 
 | 类别                 | action 前缀       | 子算子示例                             | 功能定位                                     | 适用场景                         |
 | -------------------- | ----------------- | -------------------------------------- | -------------------------------------------- | -------------------------------- |
 | **1. 无处理**        | `none`            | `none`                                 | 透传原始内容，不做任何归一化                 | 作为基准线/排除副作用           |
-| **2. 结构变换**      | `transform.*`     | `segment_denoise`、`summarize` | 片段化、降噪、摘要化，统一内容结构           | 长文本插入、质量不一的输入       |
-| **3. 语义抽取**      | `extract.*`       | `keyword`、`entity`、`triple`、`fact`           | 把原文转化为语义单元（词/实体/三元组/事实）   | 图/三元组记忆、结构化检索       |
+| **2. 增润（Enrich）**| `enrich.*`        | `keyword`、`summarize`、`entity`                | 保持或轻量变更 text，并在 metadata 中附加结构化信息 | 标签/摘要/实体增润与混合检索 |
+| **3. 重写（Rewrite）**| `rewrite.*`       | `compress`、`fact_extract`、`triplet_extract`   | 对 text 进行规整/摘要/净化，必要时生成更细粒度文本 | 长文本分段压缩、事实/三元组重写 |
 
 设计原则：
 
@@ -40,13 +40,13 @@ ______________________________________________________________________
 
 | 记忆体结构                         | 插入约束与建议                                                                                         |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **TiM** (vector_memory / hash)     | 向量检索对片段边界与语义密度敏感，推荐使用 `transform.segment_denoise` 控制片段长度与重叠；`extract.triple` 适用于结构化检索协同。 |
+| **TiM** (vector_memory / hash)     | 向量检索对片段边界与语义密度敏感，推荐使用 `rewrite.compress` 控制片段长度与语义密度；`rewrite.triplet_extract` 适用于结构化检索协同。 |
 | **MemoryOS** (hierarchical_memory) | 分层容量与主动迁移策略需谨慎调参；过度摘要可能损失细节。               |
 | **Mem0ᵍ** (hybrid graph)           | 图场景中 `extract.entity/triple/fact` 直接提升可图化程度。                     |
 
 实验影响：
 
-- 作为统一 baseline，提供 `none`（透传）以衡量副作用；在长文本/噪声较多的场景必须提供变换类作为稳健基线（例如 `segment_denoise`）。
+- 作为统一 baseline，提供 `none`（透传）以衡量副作用；在长文本/噪声较多的场景推荐提供 `rewrite.compress` 作为稳健基线。
 - 组合流水线可能更优，但主实验先比较四类“单算子”主效应，再在扩展实验中评估二/三步组合。
 
 ______________________________________________________________________
@@ -59,12 +59,12 @@ ______________________________________________________________________
 
 ## 2. PreInsert 策略候选水平（TiM 系列示例）
 
-针对 TiM，选取四类算子各一个具代表性的子算子作为主效应对比：
+针对 TiM，选取三类算子各一个具代表性的子算子作为主效应对比：
 
 ### 2.1 Baseline：`none`
 
 - 配置文件：`TiM_locomo_none_pre_insert_pipeline.yaml`
-- 内存名称：`TiM-preinsert-none`
+- 内存名称：`PreInsert_TiM_none`
 - 操作：不做处理，原文直接入库（向量化在插入服务侧完成）。
 - 配置：
 
@@ -73,29 +73,29 @@ pre_insert:
   action: "none"
 ```
 
-### 2.2 结构变换：`transform.segment_denoise`
+### 2.2 重写：`rewrite.compress`
 
-- 配置文件：`TiM_locomo_segment_denoise_pre_insert_pipeline.yaml`
-- 内存名称：`TiM-preinsert-segdenoise`
-- 操作：先分段再降噪，保证每段长度与重叠合理，过滤低质量句段。
+- 配置文件：`TiM_locomo_rewrite_compress_pre_insert_pipeline.yaml`
+- 内存名称：`PreInsert_TiM_rewrite_compress`
+- 操作：语义分段与压缩去噪（SeCom），控制每段长度与冗余，保持事实完整。
 - 关键参数（建议搜索域）：
-  - `segment_size`: [256, 512, 1024]
-  - `overlap`: [0, 64, 128]
-  - `denoise_threshold`: [0.2, 0.4, 0.6]
-- 配置：
+  - `min_segment_size`: [100, 200, 300]
+  - `max_segment_size`: [300, 500, 700]
+  - `transform_type`: ["topic_segment"]
+  配置：
 
 ```yaml
 pre_insert:
-  action: "transform.segment_denoise"
-  segment_size: 512
-  overlap: 64
-  denoise_threshold: 0.4
+  action: "rewrite.compress"
+  transform_type: "topic_segment"
+  min_segment_size: 100
+  max_segment_size: 500
 ```
 
-### 2.3 语义抽取：`extract.triple`
+### 2.3 语义抽取：`rewrite.triplet_extract`
 
-- 配置文件：`TiM_locomo_extract_triple_pre_insert_pipeline.yaml`
-- 内存名称：`TiM-preinsert-triple`
+- 配置文件：`TiM_locomo_rewrite_triplet_extract_pre_insert_pipeline.yaml`
+- 内存名称：`PreInsert_TiM_rewrite_triplet_extract`
 - 操作：从文本抽取三元组，按结构化单元入库（可选择保留原文）。
 - 关键参数：
   - `extraction_method`: ["llm", "rule"]
@@ -105,7 +105,7 @@ pre_insert:
 
 ```yaml
 pre_insert:
-  action: "extract.triple"
+  action: "rewrite.triplet_extract"
   extraction_method: "llm"
   max_triplets: 10
   keep_original: false
@@ -115,18 +115,18 @@ pre_insert:
 
 ______________________________________________________________________
 
-## 3. TiM 实验设计矩阵（四个主效应配置）
+## 3. TiM 实验设计矩阵（三个主效应配置）
 
 | 配置ID | 配置文件                                       | 内存名称                 | PreInsert 算子             | 预期假设                                                         |
 | ------ | ---------------------------------------------- | ------------------------ | -------------------------- | ---------------------------------------------------------------- |
-| **P1** | `TiM_locomo_none_pre_insert_pipeline.yaml`     | `TiM-preinsert-none`     | `none`                     | 作为插入侧基线，便于衡量各类算子的真实增益与副作用               |
-| **P2** | `TiM_locomo_segment_denoise_pre_insert_pipeline.yaml` | `TiM-preinsert-segdenoise` | `transform.segment_denoise` | 控制片段长度与降噪可提升后续向量检索的稳定性，降低冗余           |
-| **P3** | `TiM_locomo_extract_triple_pre_insert_pipeline.yaml`  | `TiM-preinsert-triple`   | `extract.triple`           | 结构化单元更易被知识对齐与图召回，复杂查询的准确率更高           |
+| **P1** | `TiM_locomo_none_pre_insert_pipeline.yaml`     | `PreInsert_TiM_none`                | `none`                     | 作为插入侧基线，便于衡量各类算子的真实增益与副作用               |
+| **P2** | `TiM_locomo_rewrite_compress_pre_insert_pipeline.yaml` | `PreInsert_TiM_rewrite_compress`    | `rewrite.compress`         | 控制片段长度与压缩冗余可提升后续向量检索的稳定性，降低重复与噪声 |
+| **P3** | `TiM_locomo_rewrite_triplet_extract_pre_insert_pipeline.yaml`  | `PreInsert_TiM_rewrite_triplet_extract` | `rewrite.triplet_extract`  | 结构化单元更易被知识对齐与图召回，复杂查询的准确率更高           |
 
 对比维度：
 
 - 基线 vs 处理：P1 vs P2/P3
-- 结构 vs 语义：P2 vs P3
+- 压缩重写 vs 语义重写：P2 vs P3
 
 固定配置（与 PreRetrieval 一致的非干预阶段）：
 
@@ -169,17 +169,17 @@ pre_insert_<memory_structure>_<strategy>.yaml
 
 例如：
 - pre_insert_tim_none.yaml
-- pre_insert_tim_segment_denoise.yaml
-- pre_insert_tim_extract_triple.yaml
+- pre_insert_tim_rewrite_compress.yaml
+- pre_insert_tim_rewrite_triplet_extract.yaml
 ```
 
 ______________________________________________________________________
 
 ## 6. 预期实验结果假设
 
-- 长文本/噪声场景下，`transform.segment_denoise` 将显著提升检索稳定性与准确率（优于 P1）。
-- 结构化任务/图检索场景，`extract.triple` 会在复杂查询上带来更高的 End-to-End 准确率（优于 P2）。
-- 过度摘要（`transform.summarize` 的高压缩比）可能导致细节损失，准确率下降；因此仅在扩展实验中评估。
+- 长文本/噪声场景下，`rewrite.compress` 将显著提升检索稳定性与准确率（优于 P1）。
+- 结构化任务/图检索场景，`rewrite.triplet_extract` 会在复杂查询上带来更高的 End-to-End 准确率（优于 P2）。
+- 过度摘要（`enrich.summarize` 的高压缩比）可能导致细节损失，准确率下降；因此作为扩展实验评估。
 
 ______________________________________________________________________
 
@@ -187,7 +187,7 @@ ______________________________________________________________________
 
 在主效应对比后，评估组合策略以验证协同增益：
 
-### 7.1 组合：`transform.summarize` → `extract.keyword`
+### 7.1 组合：`enrich.summarize` → `enrich.keyword`
 
 目标：在容量受限场景将信息压缩成关键词。
 
@@ -197,9 +197,9 @@ ______________________________________________________________________
 
 ## 8. 边界与鲁棒性测试
 
-- 极短文本（<64 tokens）：直接使用 `none` 或 `extract.keyword`。
-- 超长文本（>4096 tokens）：优先使用 `segment_denoise` 控制片段长度与重叠，避免跨片段语义断裂。
-- 噪声/格式混杂：启用 `segment_denoise`；对表格/列表型内容，建议保留原文与抽取并行。
+- 极短文本（<64 tokens）：直接使用 `none` 或 `enrich.keyword`。
+- 超长文本（>4096 tokens）：优先使用 `rewrite.compress` 控制片段长度与过度冗余，避免跨片段语义断裂。
+- 噪声/格式混杂：启用 `rewrite.compress`；对表格/列表型内容，建议保留原文与抽取并行。
 - 权限/容量受限：通过调整插入过滤策略与容量阈值控制入库规模。
 
 ______________________________________________________________________

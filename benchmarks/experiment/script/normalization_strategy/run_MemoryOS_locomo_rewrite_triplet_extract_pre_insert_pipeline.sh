@@ -1,13 +1,13 @@
 ﻿#!/bin/bash
-# 运行 Normalization Strategy - Mem0g extract_triple pre_insert
-# 使用方法: bash script/normalization_strategy/run_Mem0g_locomo_extract_triple_pre_insert_pipeline.sh
+# 运行 Normalization Strategy - MemoryOS rewrite_triplet_extract pre_insert
+# 使用方法: bash script/normalization_strategy/run_MemoryOS_locomo_rewrite_triplet_extract_pre_insert_pipeline.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
-CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/Mem0g_locomo_extract_triple_pre_insert_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/normalization_strategy/MemoryOS_locomo_rewrite_triplet_extract_pre_insert_pipeline.yaml"
 
 TASK_IDS=(
   "conv-26"
@@ -23,12 +23,12 @@ TASK_IDS=(
 )
 
 DATASET="locomo"
-MEMORY_NAME="PreInsert_Mem0g_rewrite_triplet_extract"
+MEMORY_NAME="PreInsert_MemoryOS_rewrite_triplet_extract"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Normalization Strategy: Mem0g rewrite_triplet_extract pre_insert"
+echo "Normalization Strategy: MemoryOS rewrite_triplet_extract pre_insert"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"

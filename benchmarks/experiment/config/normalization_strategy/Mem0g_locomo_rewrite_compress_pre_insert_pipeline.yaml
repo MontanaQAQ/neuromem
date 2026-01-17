@@ -19,7 +19,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "PreInsert_Mem0g_enrich_segment_compress"
+  memory_name: "PreInsert_Mem0g_rewrite_compress"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 
@@ -36,7 +36,7 @@ services:
 
 operators:
   pre_insert:
-    action: "enrich.segment_compress"
+    action: "rewrite.compress"
     transform_type: "topic_segment"
     min_segment_size: 100
     max_segment_size: 500

@@ -1,0 +1,87 @@
+﻿---
+# Mem0ᵍ (pre_insert=transform.summarize) - locomo 变体
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 5
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 256
+  temperature: 0
+  seed: 42
+  memory_name: "PreInsert_Mem0g_transform_summarize"
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "hierarchical.semantic_inverted_knowledge_graph"
+  semantic_inverted_knowledge_graph:
+    vector_dim: 1024
+    hierarchy_levels: 3
+    routing_strategy: "parallel"
+    # Mem0ᵍ (pre_insert=enrich.summarize) - locomo 变体
+    default_index: "semantic_index"
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "transform"
+    transform_type: "summarize"
+    only_on_session_end: true
+    summarize_prompt: |
+      Summarize the key events and information from this conversation.
+      Focus on: facts mentioned, preferences expressed, plans discussed.
+      Keep the summary concise but informative.
+
+      memory_name: "PreInsert_Mem0g_enrich_summarize"
+      {dialogue}
+
+      Summary:
+
+  post_insert:
+    action: "conflict_resolution.llm_crud"
+    top_k: 10
+    debug_summary_only: true
+    decision_prompt: |
+      You are a JSON decision API. Output ONLY a single minified JSON object, no prose, no markdown, no code fences.
+
+      Schema:
+      {
+        "action": "ADD|UPDATE|DELETE|NOOP",
+        "to_delete": ["<id>", ...],
+        "reason": "<short explanation>"
+      }
+
+      Rules:
+      - Use UPPERCASE for action exactly as one of ADD, UPDATE, DELETE, NOOP.
+      - If uncertain, default to {"action":"ADD","to_delete":[],"reason":"insufficient evidence"}.
+      - "to_delete" must contain only IDs present in the Existing facts list (the values inside square brackets []).
+          action: "enrich.summarize"
+
+      Inputs:
+      New fact:
+      {new_memory}
+
+      Existing facts:
+      {existing_memories}
+
+      Now respond with ONLY the JSON object.
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"
+    top_k: 10
+    conversation_format_prompt: |
+      The following is relevant context retrieved from memory.

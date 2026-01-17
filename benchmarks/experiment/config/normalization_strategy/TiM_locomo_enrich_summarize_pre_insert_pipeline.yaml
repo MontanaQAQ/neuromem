@@ -1,5 +1,6 @@
 ﻿---
-# TiM (pre_insert=enrich.segment_compress) - locomo 变体
+# TiM (pre_insert=transform.summarize) - locomo 变体
+# TiM (pre_insert=enrich.summarize) - locomo 变体
 runtime:
   dataset: "locomo"
   memory_insert_verbose: false
@@ -20,7 +21,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "PreInsert_TiM_enrich_segment_compress"
+  memory_name: "PreInsert_TiM_enrich_summarize"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 
@@ -36,14 +37,17 @@ services:
 
 operators:
   pre_insert:
-    action: "enrich.segment_compress"
-    transform_type: "topic_segment"
-    min_segment_size: 100
-    max_segment_size: 500
-    segment_prompt: |
-      Remove noise and redundancy from the dialogue below while preserving all facts.
+    action: "enrich.summarize"
+    only_on_session_end: true
+    summarize_prompt: |
+      Summarize the key events and information from this conversation.
+      Focus on: facts mentioned, preferences expressed, plans discussed.
+      Keep the summary concise but informative.
 
-      Rules: Remove fillers (um, uh, like), consolidate repeated info, keep facts and preferences, maintain order.
+      Conversation:
+      {dialogue}
+
+      Summary:
 
   pre_retrieval:
     action: "embedding"

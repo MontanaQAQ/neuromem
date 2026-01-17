@@ -1,6 +1,5 @@
 ﻿---
-# MemoryOS (pre_insert=extract.triple) - locomo 变体
-# 使用三元组抽取作为 PreInsert
+# MemoryOS (pre_insert=rewrite.triplet_extract) - locomo 变体
 runtime:
   dataset: "locomo"
   memory_insert_verbose: false

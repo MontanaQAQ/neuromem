@@ -1,4 +1,4 @@
-"""SegmentCompressAction - SeCom 语义分段 + 压缩去噪
+"""CompressAction - SeCom 语义分段 + 压缩去噪
 
 将对话按语义分段，并对每个段落进行压缩去噪。
 这是 SeCom 论文的核心特性。
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from benchmarks.experiment.utils import LLMGenerator
 
 
-class SegmentDenoiseAction(BasePreInsertAction):
+class CompressAction(BasePreInsertAction):
     """SeCom 语义分段 + 压缩去噪 Action
 
     配置参数:
@@ -80,10 +80,10 @@ class SegmentDenoiseAction(BasePreInsertAction):
             if self.store_summary_in_metadata:
                 # TODO: 实现数据分离 - 压缩摘要存metadata，原文存text
                 entry = {
-                    "text": original_text,  # 保留原始对话
+                    "text": original_text,
                     "metadata": {
-                        "action": "enrich.segment_compress",
-                        "summary": compressed_text,  # 压缩摘要存metadata
+                        "action": "rewrite.compress",
+                        "summary": compressed_text,
                         "segment_index": i,
                         "total_segments": len(segments),
                         "segment_length": len(segment),
@@ -93,9 +93,9 @@ class SegmentDenoiseAction(BasePreInsertAction):
             else:
                 # 当前实现：压缩文本替换原文（会导致QA准确性下降）
                 entry = {
-                    "text": compressed_text,  # 使用压缩后的文本
+                    "text": compressed_text,
                     "metadata": {
-                        "action": "enrich.segment_compress",
+                        "action": "rewrite.compress",
                         "original_length": len(original_text),
                         "compressed_length": len(compressed_text),
                         "segment_index": i,

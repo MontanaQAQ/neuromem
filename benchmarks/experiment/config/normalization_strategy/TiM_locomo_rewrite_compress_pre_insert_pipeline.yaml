@@ -1,5 +1,5 @@
 ﻿---
-# TiM (pre_insert=extract.triple) - locomo 变体
+# TiM (pre_insert=enrich.segment_compress) - locomo 变体
 runtime:
   dataset: "locomo"
   memory_insert_verbose: false
@@ -20,7 +20,7 @@ runtime:
   max_tokens: 256
   temperature: 0
   seed: 42
-  memory_name: "PreInsert_TiM_rewrite_triplet_extract"
+  memory_name: "PreInsert_TiM_rewrite_compress"
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
 
@@ -36,34 +36,14 @@ services:
 
 operators:
   pre_insert:
-    action: "rewrite.triplet_extract"
-    extraction_method: "llm"
-    max_triplets: 10
-    keep_original: false
-    triple_extraction_prompt: |
-      You are a factual knowledge extractor.
-      Analyze the dialogue below and extract all subject–predicate–object triples that represent explicitly stated or directly inferable real-world facts about people, organizations, objects, preferences, roles, locations, activities, or states.
+    action: "rewrite.compress"
+    transform_type: "topic_segment"
+    min_segment_size: 100
+    max_segment_size: 500
+    segment_prompt: |
+      Remove noise and redundancy from the dialogue below while preserving all facts.
 
-      Guidelines:
-      - Map "I", "me", "my" to the name of the speaker provided in the dialogue log.
-      - Include personal states, plans, or situations if clearly described (e.g., "I'm busy" → (Speaker, is, busy)).
-      - Handle colloquialisms and omitted subjects: If a subject is implied but omitted, infer the subject from context.
-      - Resolve pronouns to specific entities; if the referent is ambiguous, skip the triple. Never output pronouns as subject or object.
-      - Avoid redundancy by consolidating repeated or fragmented details into a single, most specific triple, and ignore non-informative conversational fillers.
-      - Use natural-language predicates in active voice. Capture specific nuances like time and location directly in the predicate (e.g., "starts at 5 PM", "lives in Tokyo").
-      - Do NOT assume external knowledge; base everything on what is said or immediately implied.
-
-      Output ONLY in this format:
-
-      If one or more facts exist:
-      (Subject, Predicate, Object)
-      ...
-
-      If no extractable facts:
-      None
-
-      Dialogue:
-      {dialogue}
+      Rules: Remove fillers (um, uh, like), consolidate repeated info, keep facts and preferences, maintain order.
 
   pre_retrieval:
     action: "embedding"

@@ -23,7 +23,6 @@ from .base import BasePreInsertAction
 from .enrich import (
     EntityExtractAction,
     KeywordExtractAction,
-    SegmentDenoiseAction,
     SummarizeAction,
 )
 from .none_action import NoneAction
@@ -31,6 +30,7 @@ from .rewrite import (
     FactExtractAction,
     TripleExtractAction,
 )
+from .rewrite.compress import CompressAction
 
 
 class PreInsertActionRegistry:
@@ -102,7 +102,8 @@ def _register_builtin_actions():
     PreInsertActionRegistry.register("none", NoneAction)
     PreInsertActionRegistry.register("enrich.keyword", KeywordExtractAction)
     PreInsertActionRegistry.register("enrich.summarize", SummarizeAction)
-    PreInsertActionRegistry.register("enrich.segment_compress", SegmentDenoiseAction)
+    # Canonical rewrite compress
+    PreInsertActionRegistry.register("rewrite.compress", CompressAction)
     PreInsertActionRegistry.register("enrich.entity", EntityExtractAction)
     PreInsertActionRegistry.register("rewrite.fact_extract", FactExtractAction)
     PreInsertActionRegistry.register("rewrite.triplet_extract", TripleExtractAction)
@@ -118,13 +119,13 @@ def _register_builtin_actions():
     PreInsertActionRegistry.register("decomposition.entity", EntityExtractAction)
     PreInsertActionRegistry.register("decomposition.fact", FactExtractAction)
     PreInsertActionRegistry.register("decomposition.triple", TripleExtractAction)
-    PreInsertActionRegistry.register("decomposition.segment_denoise", SegmentDenoiseAction)
+    PreInsertActionRegistry.register("decomposition.segment_denoise", CompressAction)
 
     # 历史 transform/extract 命名（保持兼容）
-    PreInsertActionRegistry.register("transform.segment_compress", SegmentDenoiseAction)
-    PreInsertActionRegistry.register("transform.segment_denoise", SegmentDenoiseAction)
+    PreInsertActionRegistry.register("transform.segment_compress", CompressAction)
+    PreInsertActionRegistry.register("transform.segment_denoise", CompressAction)
     # 旧 enrich 名保持兼容
-    PreInsertActionRegistry.register("enrich.segment_denoise", SegmentDenoiseAction)
+    PreInsertActionRegistry.register("enrich.segment_denoise", CompressAction)
     PreInsertActionRegistry.register("transform.summarize", SummarizeAction)
     PreInsertActionRegistry.register("extract.keyword", KeywordExtractAction)
     PreInsertActionRegistry.register("extract.entity", EntityExtractAction)
@@ -133,9 +134,12 @@ def _register_builtin_actions():
     # 历史 rewrite 名保持兼容
     PreInsertActionRegistry.register("rewrite.fact", FactExtractAction)
     PreInsertActionRegistry.register("rewrite.triple", TripleExtractAction)
+    # 新增别名：compress 迁移至 rewrite 命名
+    PreInsertActionRegistry.register("rewrite.compress", CompressAction)
+    PreInsertActionRegistry.register("rewrite.segment_compress", CompressAction)
 
     # 额外别名
-    PreInsertActionRegistry.register("enrich.segment_compress", SegmentDenoiseAction)
+    PreInsertActionRegistry.register("enrich.segment_compress", CompressAction)
 
     # 额外别名：更贴近语义的命名（不改类名，仅作为注册别名）
     # - KeywordExtractAction 也可理解为 Note 抽取
