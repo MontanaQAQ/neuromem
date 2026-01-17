@@ -1,8 +1,7 @@
 # ============================================================
-# 数据结构实验: Linknote Graph (简单图基线)
-# 论文: A-Mem
-# 特点: 双向链接图 + 向量检索
-# 配置名称: locomo_linknote_graph_pipeline.yaml
+# 数据结构实验: Property Graph (属性图)
+# 论文来源: Mem0ᵍ
+# 特点: RDF风格属性图，支持节点/边属性查询
 # ============================================================
 
 runtime:
@@ -26,19 +25,16 @@ runtime:
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: DataStructure_linknote_graph
+  memory_name: DataStructure_property_graph
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
   embedding_model: BAAI/bge-m3
 
 services:
-  services_type: "hierarchical.linknote_graph"
-  linknote_graph:
-    vector_dim: 1024
-    enable_bidirectional_links: true
-    max_links_per_node: 10
-    link_similarity_threshold: 0.7
+  services_type: "hierarchical.property_graph"
+  property_graph:
+    directed: true
   memory_retrieval_adapter: none
 
 # ============================================================

@@ -1,8 +1,7 @@
 # ============================================================
-# 数据结构实验: Linknote Graph (简单图基线)
-# 论文: A-Mem
-# 特点: 双向链接图 + 向量检索
-# 配置名称: locomo_linknote_graph_pipeline.yaml
+# 数据结构实验: Feature-Summary-Vectorstore Combination (三索引融合)
+# 论文来源: MemoryBank
+# 特点: BM25 + Summary + FAISS 三索引融合
 # ============================================================
 
 runtime:
@@ -26,19 +25,24 @@ runtime:
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: DataStructure_linknote_graph
+  memory_name: DataStructure_feature_summary_vectorstore
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
   embedding_model: BAAI/bge-m3
 
 services:
-  services_type: "hierarchical.linknote_graph"
-  linknote_graph:
+  services_type: "partitional.feature_summary_vectorstore_combination"
+  feature_summary_vectorstore_combination:
     vector_dim: 1024
-    enable_bidirectional_links: true
-    max_links_per_node: 10
-    link_similarity_threshold: 0.7
+    summary_max_size: 50
+    combination_strategy: "weighted"
+    weights:
+      vector_index: 0.5
+      feature_index: 0.3
+      summary_index: 0.2
+    enable_feature_extraction: true
+    enable_summary_generation: true
   memory_retrieval_adapter: none
 
 # ============================================================

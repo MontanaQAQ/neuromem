@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # 数据结构实验批量运行脚本
-# 运行所有数据结构维度的实验（5个配置）
+# 运行所有数据结构维度的实验（11个配置）
 # 使用方法: bash run_all_data_structure.sh
 # ============================================================
 
@@ -13,14 +13,20 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 CONFIG_DIR="$SCRIPT_DIR/../../config/memory_data_structure"
 
-# 定义所有配置文件
+# 定义所有配置文件（11个）
 CONFIG_FILES=(
-  # Partitional 类
+  # Partitional 类（8个）
   "locomo_fifo_queue_pipeline.yaml"
   "locomo_lsh_hash_pipeline.yaml"
+  "locomo_segment_pipeline.yaml"
+  "locomo_inverted_vectorstore_pipeline.yaml"
   "locomo_feature_queue_vector_pipeline.yaml"
-  # Hierarchical 类
+  "locomo_feature_queue_segment_pipeline.yaml"
+  "locomo_feature_queue_summary_pipeline.yaml"
+  "locomo_feature_summary_vector_pipeline.yaml"
+  # Hierarchical 类（3个）
   "locomo_linknote_graph_pipeline.yaml"
+  "locomo_property_graph_pipeline.yaml"
   "locomo_semantic_kg_pipeline.yaml"
 )
 
@@ -31,11 +37,16 @@ TASK_IDS=(
   "conv-41"
   "conv-42"
   "conv-43"
+  "conv-44"
+  "conv-47"
+  "conv-48"
+  "conv-49"
+  "conv-50"
 )
 
 # 创建日志目录
 DATASET="locomo"
-LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/data_structure_experiment"
+LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/DataStructure_experiment"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
