@@ -1,17 +1,17 @@
 #!/bin/bash
-# Run MemoryOS Locomo PostRetrieval Experiment - semantic
-# Usage: bash script/post_retrieval_strategy/run_memoryos_locomo_semantic.sh
+# Run Mem0g Locomo PostRetrieval Experiment - semantic
+# Usage: bash script/context_integration_mechanism/run_mem0g_locomo_semantic.sh
 
 set -e  # Exit immediately on error
 
 # Get absolute path of script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Get project root directory (4 levels up from script/post_retrieval_strategy/)
+# Get project root directory (4 levels up from script/context_integration_mechanism/)
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python script relative path
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # Configuration file path
-CONFIG_FILE="$SCRIPT_DIR/../../config/post_retrieval_strategy/MemoryOS_locomo_semantic_post_retrieval_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/context_integration_mechanism/Mem0g_locomo_semantic_post_retrieval_pipeline.yaml"
 
 # Define all task IDs
 TASK_IDS=(
@@ -29,12 +29,12 @@ TASK_IDS=(
 
 # Create log directory structure
 DATASET="locomo"
-MEMORY_NAME="PostRetrieval_MemoryOS_semantic"
+MEMORY_NAME="PostRetrieval_Mem0g_semantic"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "MemoryOS Locomo PostRetrieval Experiment - semantic"
+echo "Mem0g Locomo PostRetrieval Experiment - semantic"
 echo "========================================================================"
 echo ""
 echo "Project Root: $PROJECT_ROOT"
@@ -77,6 +77,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "All tasks completed - post_retrieval_semantic_MemoryOS"
+echo "All tasks completed - post_retrieval_semantic_Mem0g"
 echo "All logs saved to: $LOG_BASE_DIR"
 echo "========================================================================"

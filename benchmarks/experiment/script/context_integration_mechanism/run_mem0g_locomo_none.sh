@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Mem0g Locomo PostRetrieve Experiment - none (context integration)
+# Run Mem0g Locomo PostRetrieval Experiment - none
 # Usage: bash script/context_integration_mechanism/run_mem0g_locomo_none.sh
 
 set -e  # Exit immediately on error
@@ -29,12 +29,12 @@ TASK_IDS=(
 
 # Create log directory structure
 DATASET="locomo"
-MEMORY_NAME="PostRetrieve_Mem0g_none"
+MEMORY_NAME="PostRetrieval_Mem0g_none"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Mem0g Locomo PostRetrieve Experiment - none (context integration)"
+echo "Mem0g Locomo PostRetrieval Experiment - none"
 echo "========================================================================"
 echo ""
 echo "Project Root: $PROJECT_ROOT"
@@ -77,6 +77,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "All tasks completed - context_integration_none_Mem0g"
+echo "All tasks completed - post_retrieval_none_Mem0g"
 echo "All logs saved to: $LOG_BASE_DIR"
 echo "========================================================================"
