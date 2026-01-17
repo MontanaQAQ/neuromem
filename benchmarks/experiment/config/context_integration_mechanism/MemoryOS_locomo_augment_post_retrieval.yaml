@@ -26,7 +26,7 @@ runtime:
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: MemoryOS-postretrieval-augment
+  memory_name: PostRetrieve_MemoryOS_augment
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1

@@ -34,7 +34,7 @@ runtime:
   temperature: 0
   seed: 42
 
-  memory_name: Mem0g-decompose
+  memory_name: PreRetrieve_Mem0g_decompose
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1

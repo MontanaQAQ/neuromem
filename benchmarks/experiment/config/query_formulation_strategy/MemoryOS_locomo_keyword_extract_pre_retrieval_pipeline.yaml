@@ -35,7 +35,7 @@ runtime:
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: MemoryOS-keyword_extract
+  memory_name: PreRetrieve_MemoryOS_keyword_extract
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1

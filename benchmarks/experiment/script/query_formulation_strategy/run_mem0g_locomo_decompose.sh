@@ -29,7 +29,7 @@ TASK_IDS=(
 
 # 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="Mem0g-decompose"
+MEMORY_NAME="PreRetrieve_Mem0g_decompose"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
