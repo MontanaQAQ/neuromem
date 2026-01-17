@@ -231,3 +231,275 @@ class RoundAnalyzer:
             avg_metrics[round_idx] = float(np.mean(values)) if values else 0.0
 
         return avg_metrics
+
+
+class CategoryAnalyzer:
+    """
+    Category分析器 - 按问题类别分析F1
+
+    Category说明:
+    - Category 1: 多答案问题
+    - Category 2: 时间相关问题
+    - Category 3: 需清理注释的问题
+    - Category 4: 标准问题
+    """
+
+    def __init__(self, evaluator: BaseEvaluator | str = "generic_f1"):
+        if isinstance(evaluator, str):
+            self.evaluator = get_evaluator(evaluator)
+        else:
+            self.evaluator = evaluator
+
+    def analyze_f1_by_category(self, task_data: TaskData) -> dict[int, float]:
+        """
+        按Category分析F1分数
+
+        Returns:
+            {category: avg_f1}
+        """
+        from collections import defaultdict
+
+        category_scores = defaultdict(list)
+
+        for test in task_data.test_results:
+            questions = test.get("questions", [])
+            for q in questions:
+                category = q.get("category", 0)
+                score = self.evaluator.evaluate_single(
+                    q.get("predicted_answer", ""), q.get("reference_answer", ""), **q
+                )
+                category_scores[category].append(score)
+
+        result = {}
+        for cat in sorted(category_scores.keys()):
+            scores = category_scores[cat]
+            result[cat] = float(np.mean(scores)) if scores else 0.0
+
+        return result
+
+    def analyze_f1_by_category_and_round(self, task_data: TaskData) -> dict[int, dict[int, float]]:
+        """
+        按Category和轮次分析F1分数
+
+        Returns:
+            {round_idx: {category: avg_f1}}
+        """
+        from collections import defaultdict
+
+        round_category_scores = defaultdict(lambda: defaultdict(list))
+
+        for test in task_data.test_results:
+            round_idx = test.get("test_index", 0)
+            questions = test.get("questions", [])
+            for q in questions:
+                category = q.get("category", 0)
+                score = self.evaluator.evaluate_single(
+                    q.get("predicted_answer", ""), q.get("reference_answer", ""), **q
+                )
+                round_category_scores[round_idx][category].append(score)
+
+        result = {}
+        for round_idx in sorted(round_category_scores.keys()):
+            result[round_idx] = {}
+            for cat in sorted(round_category_scores[round_idx].keys()):
+                scores = round_category_scores[round_idx][cat]
+                result[round_idx][cat] = float(np.mean(scores)) if scores else 0.0
+
+        return result
+
+    def get_category_distribution(self, task_data: TaskData) -> dict[int, int]:
+        """
+        获取Category分布
+
+        Returns:
+            {category: count}
+        """
+        from collections import Counter
+
+        categories = []
+        for test in task_data.test_results:
+            for q in test.get("questions", []):
+                categories.append(q.get("category", 0))
+
+        return dict(Counter(categories))
+
+    def aggregate_across_tasks(
+        self,
+        loader: DataLoader,
+        strategy: str,
+    ) -> dict[int, float]:
+        """
+        跨所有task聚合Category F1
+
+        Returns:
+            {category: avg_f1}
+        """
+        from collections import defaultdict
+
+        all_category_metrics = defaultdict(list)
+
+        for task_data in loader.iter_tasks(strategy):
+            category_metrics = self.analyze_f1_by_category(task_data)
+            for cat, value in category_metrics.items():
+                all_category_metrics[cat].append(value)
+
+        avg_metrics = {}
+        for cat in sorted(all_category_metrics.keys()):
+            values = all_category_metrics[cat]
+            avg_metrics[cat] = float(np.mean(values)) if values else 0.0
+
+        return avg_metrics
+
+
+class TimeBreakdownAnalyzer:
+    """
+    时间分解分析器 - 分析pre/memory/post三阶段时间
+    """
+
+    def analyze_insert_breakdown(self, task_data: TaskData) -> dict[str, float]:
+        """
+        分析插入时间的三阶段分解
+
+        Returns:
+            {"pre": avg_ms, "memory": avg_ms, "post": avg_ms, "total": avg_ms}
+        """
+        timing = task_data.timing_summary.get("insert_timings", {})
+        details = timing.get("details", [])
+
+        if not details:
+            return {"pre": 0.0, "memory": 0.0, "post": 0.0, "total": 0.0}
+
+        pre_times = [d.get("pre_insert_ms", 0) for d in details]
+        memory_times = [d.get("memory_insert_ms", 0) for d in details]
+        post_times = [d.get("post_insert_ms", 0) for d in details]
+
+        pre_avg = float(np.mean(pre_times))
+        memory_avg = float(np.mean(memory_times))
+        post_avg = float(np.mean(post_times))
+
+        return {
+            "pre": pre_avg,
+            "memory": memory_avg,
+            "post": post_avg,
+            "total": pre_avg + memory_avg + post_avg,
+        }
+
+    def analyze_retrieval_breakdown(self, task_data: TaskData) -> dict[str, float]:
+        """
+        分析检索时间的三阶段分解
+
+        Returns:
+            {"pre": avg_ms, "memory": avg_ms, "post": avg_ms, "total": avg_ms}
+        """
+        timing = task_data.timing_summary.get("retrieval_timings", {})
+        details = timing.get("details", [])
+
+        if not details:
+            return {"pre": 0.0, "memory": 0.0, "post": 0.0, "total": 0.0}
+
+        pre_times = [d.get("pre_retrieval_ms", 0) for d in details]
+        memory_times = [d.get("memory_retrieval_ms", 0) for d in details]
+        post_times = [d.get("post_retrieval_ms", 0) for d in details]
+
+        pre_avg = float(np.mean(pre_times))
+        memory_avg = float(np.mean(memory_times))
+        post_avg = float(np.mean(post_times))
+
+        return {
+            "pre": pre_avg,
+            "memory": memory_avg,
+            "post": post_avg,
+            "total": pre_avg + memory_avg + post_avg,
+        }
+
+    def analyze_breakdown_by_round(
+        self, task_data: TaskData, timing_type: str = "insert"
+    ) -> dict[int, dict[str, float]]:
+        """
+        按轮次分析时间分解
+
+        Args:
+            timing_type: "insert" 或 "retrieval"
+
+        Returns:
+            {round_idx: {"pre": ms, "memory": ms, "post": ms, "total": ms}}
+        """
+        if timing_type == "insert":
+            timing = task_data.timing_summary.get("insert_timings", {})
+            pre_key, mem_key, post_key = "pre_insert_ms", "memory_insert_ms", "post_insert_ms"
+        else:
+            timing = task_data.timing_summary.get("retrieval_timings", {})
+            pre_key, mem_key, post_key = (
+                "pre_retrieval_ms",
+                "memory_retrieval_ms",
+                "post_retrieval_ms",
+            )
+
+        details = timing.get("details", [])
+        result = {}
+
+        if timing_type == "insert":
+            # insert按question_range对应
+            for round_idx in task_data.rounds:
+                start_idx, end_idx = task_data.get_question_range(round_idx)
+                if start_idx < len(details) and end_idx <= len(details):
+                    round_details = details[start_idx:end_idx]
+                    if round_details:
+                        pre_avg = float(np.mean([d.get(pre_key, 0) for d in round_details]))
+                        mem_avg = float(np.mean([d.get(mem_key, 0) for d in round_details]))
+                        post_avg = float(np.mean([d.get(post_key, 0) for d in round_details]))
+                        result[round_idx] = {
+                            "pre": pre_avg,
+                            "memory": mem_avg,
+                            "post": post_avg,
+                            "total": pre_avg + mem_avg + post_avg,
+                        }
+        else:
+            # retrieval按test_index对应
+            for detail in details:
+                round_idx = detail.get("test_index")
+                if round_idx is not None:
+                    result[round_idx] = {
+                        "pre": detail.get(pre_key, 0),
+                        "memory": detail.get(mem_key, 0),
+                        "post": detail.get(post_key, 0),
+                        "total": detail.get(pre_key, 0)
+                        + detail.get(mem_key, 0)
+                        + detail.get(post_key, 0),
+                    }
+
+        return result
+
+    def aggregate_across_tasks(
+        self,
+        loader: DataLoader,
+        strategy: str,
+        timing_type: str = "insert",
+    ) -> dict[str, float]:
+        """
+        跨所有task聚合时间分解
+
+        Returns:
+            {"pre": avg_ms, "memory": avg_ms, "post": avg_ms, "total": avg_ms}
+        """
+        from collections import defaultdict
+
+        all_breakdowns = defaultdict(list)
+
+        analyze_fn = (
+            self.analyze_insert_breakdown
+            if timing_type == "insert"
+            else self.analyze_retrieval_breakdown
+        )
+
+        for task_data in loader.iter_tasks(strategy):
+            breakdown = analyze_fn(task_data)
+            for key, value in breakdown.items():
+                all_breakdowns[key].append(value)
+
+        result = {}
+        for key in ["pre", "memory", "post", "total"]:
+            values = all_breakdowns.get(key, [])
+            result[key] = float(np.mean(values)) if values else 0.0
+
+        return result

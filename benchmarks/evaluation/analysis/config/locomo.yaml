@@ -46,6 +46,24 @@ metrics:
     ylabel: "Time (ms)"
     description: "Average retrieval time per query"
 
+# Category配置
+categories:
+  # Category标签（用于图表和报告显示）
+  labels:
+    1: "Multi-Answer"
+    2: "Time-Related"
+    3: "Clean-Comments"
+    4: "Standard"
+    5: "Not-Mentioned"
+
+  # Category描述
+  descriptions:
+    1: "多答案问题，需要f1_multi处理逗号分隔的多个答案"
+    2: "时间相关问题，标准F1"
+    3: "需要清理分号后注释部分"
+    4: "标准问题，标准F1"
+    5: "判断是否正确识别'信息未提及'"
+
 # 输出配置
 output:
   # 生成的文件类型

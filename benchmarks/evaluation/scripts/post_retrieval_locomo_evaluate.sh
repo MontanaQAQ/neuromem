@@ -63,11 +63,13 @@ done
 # 切换到analysis目录运行
 cd "$EVAL_DIR/analysis" || exit 1
 
-# 构建命令
+# 构建命令 - 指定独立的输出目录
+OUTPUT_DIR=".sage/benchmarks/benchmark_memory/locomo/output/round_analysis_post_retrieval"
+
 if [[ -n "$SPECIFIC_PATHS" ]]; then
-    CMD="python round_analyzer.py --config locomo $SPECIFIC_PATHS $VALIDATE_ONLY"
+    CMD="python round_analyzer.py --config locomo $SPECIFIC_PATHS --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
 else
-    CMD="python round_analyzer.py --config locomo --all --prefix $PREFIX $VALIDATE_ONLY"
+    CMD="python round_analyzer.py --config locomo --all --prefix $PREFIX --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
 fi
 
 echo "执行: $CMD"

@@ -5,8 +5,8 @@
 | 策略维度 | 设计意图 | Action数量 | 代表系统 |
 |---------|---------|-----------|---------|
 | **None (透传)** | 无后续维护操作 | 1 | HippoRAG2, SCM |
-| Conflict Resolution | 解决记忆冲突和重复 | 1 | Mem0, MemGPT |
-| Decay Eviction | 遗忘过时记忆 | 1 | MemoryBank |
+| Conflict Resolution | 解决记忆冲突和重复 | 2 | Mem0, MemGPT, Mem0ᵍ |
+| Decay Eviction | 遗忘过时记忆 | 2 | MemoryBank, LD-Agent |
 | Structure Enrichment | 增强记忆结构 | 3 | A-Mem, HippoRAG, MemoryOS |
 
 > **设计理念**: Post-Insert采用"策略分类"而非"功能分类"，因为这些操作的触发机制和执行逻辑高度依赖系统的整体记忆管理策略。
@@ -24,6 +24,7 @@
 | Action | 决策方式 | 可用操作 | 触发机制 |
 |--------|---------|---------|---------|
 | **llm_crud.py** | LLM判断 | ADD, UPDATE, DELETE, NOOP | 检索相似记忆后 |
+| **semantic_consolidation.py** | 语义合并 | UPDATE, ADD, NOOP | 检索最相似记忆后 |
 
 **LLM CRUD决策流程**:
 ```python
@@ -68,6 +69,7 @@
 | Action | 衰减模型 | 可用操作 | 触发机制 |
 |--------|---------|---------|---------|
 | **forgetting_curve.py** | Ebbinghaus遗忘曲线 | DELETE, NOOP | 定期扫描 |
+| **time_decay.py** | 线性/指数时间衰减 | DELETE, NOOP | 定期扫描或容量触发 |
 | **time_decay.py** | 线性/指数衰减 | DELETE, NOOP | 定期扫描或容量触发 |
 
 **Forgetting Curve公式**:

@@ -28,16 +28,36 @@ import yaml
 
 # 支持直接运行和作为模块导入
 try:
-    from .utils.data_loader import DataLoader, RoundAnalyzer
-    from .utils.plotting import plot_comparison, plot_single_strategy
+    from .utils.data_loader import (
+        CategoryAnalyzer,
+        DataLoader,
+        RoundAnalyzer,
+        TimeBreakdownAnalyzer,
+    )
+    from .utils.plotting import (
+        plot_category_comparison,
+        plot_comparison,
+        plot_single_strategy,
+        plot_time_breakdown,
+    )
     from .utils.validators import (
         discover_experiment_dirs,
         print_validation_report,
         validate_experiment_dir,
     )
 except ImportError:
-    from utils.data_loader import DataLoader, RoundAnalyzer
-    from utils.plotting import plot_comparison, plot_single_strategy
+    from utils.data_loader import (
+        CategoryAnalyzer,
+        DataLoader,
+        RoundAnalyzer,
+        TimeBreakdownAnalyzer,
+    )
+    from utils.plotting import (
+        plot_category_comparison,
+        plot_comparison,
+        plot_single_strategy,
+        plot_time_breakdown,
+    )
     from utils.validators import (
         discover_experiment_dirs,
         print_validation_report,
@@ -124,6 +144,8 @@ def run_analysis(
     evaluator_name = config.get("evaluator", {}).get("name", "generic_f1")
     loader = DataLoader(base_path)
     analyzer = RoundAnalyzer(evaluator_name)
+    category_analyzer = CategoryAnalyzer(evaluator_name)
+    time_analyzer = TimeBreakdownAnalyzer()
 
     print("=" * 70)
     print(f"开始分析 ({len(valid_strategies)} 个策略)")
@@ -133,6 +155,9 @@ def run_analysis(
     all_f1 = {}
     all_insert = {}
     all_retrieval = {}
+    all_category_f1 = {}  # Category F1
+    all_insert_breakdown = {}  # Insert时间分解
+    all_retrieval_breakdown = {}  # Retrieval时间分解
 
     for strategy in valid_strategies:
         print(f"\n[{strategy}]")
@@ -149,6 +174,23 @@ def run_analysis(
         all_f1[strategy] = f1_metrics
         all_insert[strategy] = insert_metrics
         all_retrieval[strategy] = retrieval_metrics
+
+        # Category F1分析
+        category_f1 = category_analyzer.aggregate_across_tasks(loader, strategy)
+        all_category_f1[strategy] = category_f1
+        print(f"  Category F1: {category_f1}")
+
+        # 时间分解分析
+        insert_breakdown = time_analyzer.aggregate_across_tasks(loader, strategy, "insert")
+        retrieval_breakdown = time_analyzer.aggregate_across_tasks(loader, strategy, "retrieval")
+        all_insert_breakdown[strategy] = insert_breakdown
+        all_retrieval_breakdown[strategy] = retrieval_breakdown
+        print(
+            f"  Insert Breakdown: pre={insert_breakdown['pre']:.2f}, memory={insert_breakdown['memory']:.2f}, post={insert_breakdown['post']:.2f}"
+        )
+        print(
+            f"  Retrieval Breakdown: pre={retrieval_breakdown['pre']:.2f}, memory={retrieval_breakdown['memory']:.2f}, post={retrieval_breakdown['post']:.2f}"
+        )
 
         # 绘制单策略图
         if config.get("output", {}).get("charts", {}).get("single_strategy", True):
@@ -178,11 +220,44 @@ def run_analysis(
         )
         print("  ✓ Saved: comparison_retrieval_time.png")
 
+        # Category F1 对比图
+        if all_category_f1:
+            category_labels = config.get("categories", {}).get("labels", None)
+            plot_category_comparison(
+                all_category_f1,
+                out_path / "comparison_category_f1.png",
+                title="F1 Score by Question Category",
+                category_labels=category_labels,
+            )
+            print("  ✓ Saved: comparison_category_f1.png")
+
+        # 时间分解对比图
+        if all_insert_breakdown:
+            plot_time_breakdown(
+                all_insert_breakdown,
+                out_path / "comparison_insert_breakdown.png",
+                title="Insert Time Breakdown (pre/memory/post)",
+            )
+            print("  ✓ Saved: comparison_insert_breakdown.png")
+
+        if all_retrieval_breakdown:
+            plot_time_breakdown(
+                all_retrieval_breakdown,
+                out_path / "comparison_retrieval_breakdown.png",
+                title="Retrieval Time Breakdown (pre/memory/post)",
+            )
+            print("  ✓ Saved: comparison_retrieval_breakdown.png")
+
     # 生成CSV
     if "csv" in config.get("output", {}).get("formats", []):
         generate_csv(all_f1, out_path / "f1_scores.csv", "F1")
         generate_csv(all_insert, out_path / "insert_times.csv", "Insert Time (ms)")
         generate_csv(all_retrieval, out_path / "retrieval_times.csv", "Retrieval Time (ms)")
+        generate_category_csv(all_category_f1, out_path / "category_f1_scores.csv")
+        generate_breakdown_csv(all_insert_breakdown, out_path / "insert_breakdown.csv", "Insert")
+        generate_breakdown_csv(
+            all_retrieval_breakdown, out_path / "retrieval_breakdown.csv", "Retrieval"
+        )
         print("\n✓ CSV files saved")
 
     # 生成Markdown报告
@@ -193,6 +268,9 @@ def run_analysis(
             all_f1,
             all_insert,
             all_retrieval,
+            all_category_f1,
+            all_insert_breakdown,
+            all_retrieval_breakdown,
             out_path / "analysis_report.md",
         )
         print("✓ Markdown report saved")
@@ -233,12 +311,69 @@ def generate_csv(
             writer.writerow(row)
 
 
+def generate_category_csv(
+    category_metrics: dict[str, dict[int, float]],
+    output_path: Path,
+):
+    """生成Category F1 CSV文件"""
+    if not category_metrics:
+        return
+
+    # 获取所有Category
+    all_categories = sorted(set().union(*[set(m.keys()) for m in category_metrics.values()]))
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        # 表头
+        header = ["Strategy"] + [f"Cat{c}" for c in all_categories] + ["Mean"]
+        writer.writerow(header)
+
+        # 数据行
+        for strategy, cat_metrics in category_metrics.items():
+            values = [cat_metrics.get(c, 0) for c in all_categories]
+            mean_val = float(np.mean(values)) if values else 0
+            row = [strategy] + [f"{v:.6f}" for v in values] + [f"{mean_val:.6f}"]
+            writer.writerow(row)
+
+
+def generate_breakdown_csv(
+    breakdown_metrics: dict[str, dict[str, float]],
+    output_path: Path,
+    timing_type: str,
+):
+    """生成时间分解CSV文件"""
+    if not breakdown_metrics:
+        return
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        # 表头
+        header = ["Strategy", "Pre (ms)", "Memory (ms)", "Post (ms)", "Total (ms)"]
+        writer.writerow(header)
+
+        # 数据行
+        for strategy, breakdown in breakdown_metrics.items():
+            row = [
+                strategy,
+                f"{breakdown.get('pre', 0):.2f}",
+                f"{breakdown.get('memory', 0):.2f}",
+                f"{breakdown.get('post', 0):.2f}",
+                f"{breakdown.get('total', 0):.2f}",
+            ]
+            writer.writerow(row)
+
+
 def generate_markdown(
     config: dict,
     strategies: list[str],
     f1_metrics: dict,
     insert_metrics: dict,
     retrieval_metrics: dict,
+    category_f1_metrics: dict,
+    insert_breakdown_metrics: dict,
+    retrieval_breakdown_metrics: dict,
     output_path: Path,
 ):
     """生成Markdown报告"""
@@ -246,6 +381,12 @@ def generate_markdown(
 
     # 获取所有轮次
     all_rounds = sorted(set().union(*[set(m.keys()) for m in f1_metrics.values()]))
+    # 获取所有Category
+    all_categories = (
+        sorted(set().union(*[set(m.keys()) for m in category_f1_metrics.values()]))
+        if category_f1_metrics
+        else []
+    )
 
     md = f"# {dataset_name.upper()} Round Analysis Report\n\n"
     md += f"**Generated:** {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -253,10 +394,11 @@ def generate_markdown(
     md += "## Summary\n\n"
     md += f"- **Dataset:** {dataset_name}\n"
     md += f"- **Strategies:** {len(strategies)}\n"
-    md += f"- **Rounds:** {len(all_rounds)}\n\n"
+    md += f"- **Rounds:** {len(all_rounds)}\n"
+    md += f"- **Categories:** {len(all_categories)}\n\n"
 
     # F1对比表
-    md += "## F1 Scores\n\n"
+    md += "## F1 Scores by Round\n\n"
     md += "| Strategy | " + " | ".join([f"R{r}" for r in all_rounds]) + " | Mean |\n"
     md += "|----------|" + "|".join(["------" for _ in all_rounds]) + "|------|\n"
 
@@ -267,8 +409,27 @@ def generate_markdown(
 
     md += "\n"
 
+    # Category F1对比表
+    if category_f1_metrics and all_categories:
+        category_labels = config.get("categories", {}).get("labels", {})
+        md += "## F1 Scores by Category\n\n"
+        cat_headers = [category_labels.get(c, f"Cat{c}") for c in all_categories]
+        md += "| Strategy | " + " | ".join(cat_headers) + " | Mean |\n"
+        md += "|----------|" + "|".join(["------" for _ in all_categories]) + "|------|\n"
+
+        for strategy in strategies:
+            vals = [category_f1_metrics.get(strategy, {}).get(c, 0) for c in all_categories]
+            mean_val = float(np.mean(vals)) if vals else 0
+            md += (
+                f"| {strategy} | "
+                + " | ".join([f"{v:.4f}" for v in vals])
+                + f" | {mean_val:.4f} |\n"
+            )
+
+        md += "\n"
+
     # Insert时间表
-    md += "## Insert Time (ms)\n\n"
+    md += "## Insert Time (ms) by Round\n\n"
     md += "| Strategy | " + " | ".join([f"R{r}" for r in all_rounds]) + " | Mean |\n"
     md += "|----------|" + "|".join(["------" for _ in all_rounds]) + "|------|\n"
 
@@ -279,8 +440,20 @@ def generate_markdown(
 
     md += "\n"
 
+    # Insert时间分解表
+    if insert_breakdown_metrics:
+        md += "## Insert Time Breakdown (ms)\n\n"
+        md += "| Strategy | Pre | Memory | Post | Total |\n"
+        md += "|----------|-----|--------|------|-------|\n"
+
+        for strategy in strategies:
+            b = insert_breakdown_metrics.get(strategy, {})
+            md += f"| {strategy} | {b.get('pre', 0):.2f} | {b.get('memory', 0):.2f} | {b.get('post', 0):.2f} | {b.get('total', 0):.2f} |\n"
+
+        md += "\n"
+
     # Retrieval时间表
-    md += "## Retrieval Time (ms)\n\n"
+    md += "## Retrieval Time (ms) by Round\n\n"
     md += "| Strategy | " + " | ".join([f"R{r}" for r in all_rounds]) + " | Mean |\n"
     md += "|----------|" + "|".join(["------" for _ in all_rounds]) + "|------|\n"
 
@@ -288,6 +461,18 @@ def generate_markdown(
         vals = [retrieval_metrics.get(strategy, {}).get(r, 0) for r in all_rounds]
         mean_val = float(np.mean(vals)) if vals else 0
         md += f"| {strategy} | " + " | ".join([f"{v:.2f}" for v in vals]) + f" | {mean_val:.2f} |\n"
+
+    md += "\n"
+
+    # Retrieval时间分解表
+    if retrieval_breakdown_metrics:
+        md += "## Retrieval Time Breakdown (ms)\n\n"
+        md += "| Strategy | Pre | Memory | Post | Total |\n"
+        md += "|----------|-----|--------|------|-------|\n"
+
+        for strategy in strategies:
+            b = retrieval_breakdown_metrics.get(strategy, {})
+            md += f"| {strategy} | {b.get('pre', 0):.2f} | {b.get('memory', 0):.2f} | {b.get('post', 0):.2f} | {b.get('total', 0):.2f} |\n"
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(md)
