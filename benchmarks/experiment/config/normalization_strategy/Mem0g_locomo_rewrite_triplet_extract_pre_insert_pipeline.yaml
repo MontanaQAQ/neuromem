@@ -39,11 +39,11 @@ operators:
     action: "rewrite.triplet_extract"
     extraction_method: "llm"
     keep_original: false
-    max_triplets: 8  # 从默认10降到8，减少生成量
+    max_triplets: 3  # 一轮对话(2条消息)通常只有1-3个有意义的事实
     triple_extraction_prompt: |
-      Extract key facts as triples from the dialogue.
+      Extract factual triples from this dialogue turn.
       Format: (Subject, Predicate, Object) - one per line.
-      Keep it simple and direct.
+      Only extract 1-3 real facts. Skip if no clear facts.
 
       Dialogue:
       {dialogue}
