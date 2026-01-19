@@ -38,32 +38,17 @@ operators:
   pre_insert:
     action: "rewrite.triplet_extract"
     extraction_method: "llm"
-    max_triplets: 10
     keep_original: false
+    max_triplets: 3  # 一轮对话(2条消息)通常只有1-3个有意义的事实
     triple_extraction_prompt: |
-      You are a factual knowledge extractor.
-      Analyze the dialogue below and extract all subject–predicate–object triples that represent explicitly stated or directly inferable real-world facts about people, organizations, objects, preferences, roles, locations, activities, or states.
-
-      Guidelines:
-      - Map "I", "me", "my" to the name of the speaker provided in the dialogue log.
-      - Include personal states, plans, or situations if clearly described (e.g., "I'm busy" → (Speaker, is, busy)).
-      - Handle colloquialisms and omitted subjects: If a subject is implied but omitted, infer the subject from context.
-      - Resolve pronouns to specific entities; if the referent is ambiguous, skip the triple. Never output pronouns as subject or object.
-      - Avoid redundancy by consolidating repeated or fragmented details into a single, most specific triple, and ignore non-informative conversational fillers.
-      - Use natural-language predicates in active voice. Capture specific nuances like time and location directly in the predicate (e.g., "starts at 5 PM", "lives in Tokyo").
-      - Do NOT assume external knowledge; base everything on what is said or immediately implied.
-
-      Output ONLY in this format:
-
-      If one or more facts exist:
-      (Subject, Predicate, Object)
-      ...
-
-      If no extractable facts:
-      None
+      Extract factual triples from this dialogue turn.
+      Format: (Subject, Predicate, Object) - one per line.
+      Only extract 1-3 real facts. Skip if no clear facts.
 
       Dialogue:
       {dialogue}
+
+      Triples:
 
   pre_retrieval:
     action: "embedding"

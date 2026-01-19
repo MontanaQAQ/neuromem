@@ -42,15 +42,12 @@ operators:
   pre_insert:
     action: "rewrite.triplet_extract"
     extraction_method: "llm"
+    keep_original: false
+    max_triplets: 3  # 一轮对话(2条消息)通常只有1-3个有意义的事实
     triple_extraction_prompt: |
-      You are a knowledge graph builder. Extract factual triples from the dialogue.
-      Focus on entities (people, organizations, locations) and their relationships.
-
-      Rules:
-      1. Output format: (Subject, Predicate, Object) - one triple per line
-      2. Resolve ALL pronouns to actual entity names
-      3. Extract relationships, attributes, and temporal information
-      4. Be concise and factual
+      Extract factual triples from this dialogue turn.
+      Format: (Subject, Predicate, Object) - one per line.
+      Only extract 1-3 real facts. Skip if no clear facts.
 
       Dialogue:
       {dialogue}
