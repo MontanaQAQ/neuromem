@@ -1,0 +1,63 @@
+﻿# ============================================================
+# PostInsert 实验: MemoryOS + LLM CRUD
+# 记忆体结构: MemoryOS (三层 STM/MTM/LTM)
+# PostInsert 策略: conflict_resolution.llm_crud
+# 配置名称: MemoryOS_longmemeval_llm_crud_post_insert.yaml
+# ============================================================
+
+runtime:
+  dataset: longmemeval
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: PostInsert_MemoryOS_llm_crud
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: none
+
+operators:
+  pre_insert:
+    action: score.heat
+    access_weight: 0.6
+    recency_weight: 0.4
+
+  pre_retrieval:
+    action: embedding
+
+  post_insert:
+    action: conflict_resolution.llm_crud
+    similarity_threshold: 0.8
+    top_k: 5
+
+  post_retrieval:
+    action: none

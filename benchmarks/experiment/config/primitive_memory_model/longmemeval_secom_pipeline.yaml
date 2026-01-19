@@ -1,0 +1,71 @@
+﻿# ============================================================
+# SeCom Pipeline 配置
+# 论文: On Memory Construction and Retrieval for Personalized Conversational Agents
+# 特点: Segment-level 记忆 + 压缩式去噪 + 语义聚类
+# ============================================================
+
+runtime:
+  dataset: "longmemeval"
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  # 配置1（Llama-3.1-8B，用于对比）：
+  # api_key: "token-abc123"
+  # base_url: "http://sage2:8000/v1"
+  # model_name: "/home/cyb/Llama-3.1-8B-Instruct"
+  # max_tokens: 32
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "SeCom"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+# ============================================================
+# 服务配置
+# SeCom 使用 segment-level 记忆单元
+# ============================================================
+services:
+  services_type: "partitional.segment"
+  segment:
+    segment_strategy: "time"          # 分段策略：time/topic/hybrid（对应原semantic聚类）
+    time_window: 3600                 # 时间窗口：1小时（对应原session gap）
+    max_segment_size: 100             # 单段最大数据量（对应原segments容量）
+  memory_retrieval_adapter: "none"
+
+# ============================================================
+# Operator 配置
+# ============================================================
+operators:
+  pre_insert:
+    action: "transform"
+    transform_type: "compress"
+    method: "simple"
+  post_insert:
+    action: "merge"
+    merge_type: "semantic_cluster"
+    cluster_threshold: 0.7
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+  post_retrieval:
+    action: "none"
+    conversation_format_prompt: |
+      The following is relevant segment-level memory.

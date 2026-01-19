@@ -1,0 +1,88 @@
+﻿# ============================================================
+# PreRetrieval 实验: TiM + Keyword Extract
+# 记忆体结构: TiM (LSH哈希桶 + 向量检索)
+# PreRetrieval 策略: keyword_extract
+# 配置名称: TiM_longmemeval_keyword_extract_pre_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: longmemeval
+  test_segments: 5
+  service_timeout: 600.0
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "PreRetrieve_TiM_keyword_extract"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.lsh_hash"
+
+  lsh_hash:
+    vector_dim: 1024
+    lsh_nbits: 128
+    lsh_rotate_data: true
+    lsh_train_thresholds: false
+    retrieval_top_k: 10
+
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "extract.triple"
+    extraction_method: "llm"
+    max_triplets: 10
+    keep_original: false
+    triple_extraction_prompt: |
+      You are a factual knowledge extractor.
+      Analyze the dialogue below and extract all subject–predicate–object triples.
+
+      Dialogue:
+      {dialogue}
+
+  pre_retrieval:
+    action: optimize.keyword_extract
+    extractor: llm
+    max_keywords: 6
+    extract_types:
+    - NOUN
+    - PROPN
+    keyword_prompt: |
+      Extract the most important keywords from the following question.
+      Focus on entities, concepts, and key terms that would be useful for retrieval.
+      Return at most {max_keywords} keywords, separated by commas.
+
+      Question: {question}
+      Keywords:
+
+  post_insert:
+    action: "conflict_resolution.semantic_consolidation"
+    retrieve_count: 10
+    min_merge_count: 5
+    merge_prompt: |
+      You are a memory consolidation expert. Given a list of facts about a person, remove duplicates.
+      Facts:
+      {memories}
+      Respond with JSON only:
+      {"to_delete": [], "to_insert": []}
+
+  post_retrieval:
+    action: "none"
+    conversation_format_prompt: |
+      The following is some history information.
