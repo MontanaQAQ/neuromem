@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
-CONFIG_FILE="$SCRIPT_DIR/../../config/consolidation_policy/Mem0g_locomo_forgetting_curve_post_insert.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/consolidation_policy/Mem0g_locomo_forgetting_curve_post_insert_pipeline.yaml"
 
 TASK_IDS=(
   "conv-26"
