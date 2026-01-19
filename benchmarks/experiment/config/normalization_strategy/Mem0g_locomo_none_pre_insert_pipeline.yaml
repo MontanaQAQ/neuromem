@@ -17,7 +17,7 @@ runtime:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  max_tokens: 256
+  max_tokens: 32
   temperature: 0
   seed: 42
   memory_name: "PreInsert_Mem0g_none"
