@@ -1,6 +1,6 @@
 #!/bin/bash
-# 运行 Locomo 长轮对话记忆实验 - LD-Agent 批量测试
-# 使用方法: bash script/run_locomo_ldagent.sh
+# 运行 Locomo 长轮对话记忆实验 - MemGPT 批量测试
+# 使用方法: bash script/primitive_memory_model/run_memgpt_locomo.sh
 
 set -e  # 遇到错误立即退出
 
@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # 配置文件路径
-CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_ldagent_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_memgpt_pipeline.yaml"
 
 # 定义所有任务 ID
 TASK_IDS=(
@@ -29,12 +29,12 @@ TASK_IDS=(
 
 # 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="LD-Agent"
+MEMORY_NAME="MemGPT"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Locomo 长轮对话记忆实验 - LD-Agent 批量测试"
+echo "Locomo 长轮对话记忆实验 - MemGPT 批量测试"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"
@@ -77,6 +77,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "🎉 所有任务执行完毕 - LD-Agent"
+echo "🎉 所有任务执行完毕 - MemGPT"
 echo "📁 所有日志已保存到: $LOG_BASE_DIR"
 echo "========================================================================"

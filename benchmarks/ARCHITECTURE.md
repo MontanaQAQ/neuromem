@@ -427,8 +427,8 @@ class RuntimeConfig:
 ```
 script/
 ├── primitive_memory_model/
-│   ├── run_locomo_stm.sh               # LoCoMo STM 批量测试
-│   ├── run_locomo_tim.sh               # LoCoMo TiM 批量测试
+│   ├── run_stm_locomo.sh               # LoCoMo STM 批量测试
+│   ├── run_tim_locomo.sh               # LoCoMo TiM 批量测试
 │   └── ...
 ├── consolidation_policy/
 ├── context_integration_mechanism/
@@ -436,13 +436,13 @@ script/
 ├── normalization_strategy/
 ├── query_formulation_strategy/
 ├── result_optimization_strategy/
-├── run_conflict_resolution_stm.sh      # Conflict Resolution 测试
-└── run_longmemeval_stm.sh              # LongMemEval 测试
+├── run_stm_locomo_conflict_resolution.sh      # Conflict Resolution 测试
+└── run_stm_locomo_longmemeval.sh              # LongMemEval 测试
 ```
 
 #### 2.4.2 脚本结构
 
-以 [`run_locomo_stm.sh`](./experiment/script/primitive_memory_model/run_locomo_stm.sh) 为例：
+以 [`run_stm_locomo.sh`](./experiment/script/primitive_memory_model/run_stm_locomo.sh) 为例：
 
 ```bash
 #!/bin/bash
@@ -484,7 +484,7 @@ done
 **使用方法**:
 ```bash
 cd benchmarks/experiment
-bash script/primitive_memory_model/run_locomo_stm.sh
+bash script/primitive_memory_model/run_stm_locomo.sh
 ```
 
 ---

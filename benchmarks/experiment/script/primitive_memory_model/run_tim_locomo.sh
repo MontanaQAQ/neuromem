@@ -1,6 +1,6 @@
 #!/bin/bash
 # 运行 Locomo 长轮对话记忆实验 - TiM 批量测试
-# 使用方法: bash script/run_locomo_tim.sh
+# 使用方法: bash script/primitive_memory_model/run_tim_locomo.sh
 
 set -e  # 遇到错误立即退出
 

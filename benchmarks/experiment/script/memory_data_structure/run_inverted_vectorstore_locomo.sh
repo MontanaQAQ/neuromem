@@ -1,6 +1,6 @@
 #!/bin/bash
 # 运行 Memory Data Structure 实验 - Inverted Vectorstore Combination
-# 使用方法: bash script/memory_data_structure/run_DataStructure_inverted_vectorstore.sh
+# 使用方法: bash script/memory_data_structure/run_inverted_vectorstore_locomo.sh
 
 set -e  # 遇到错误立即退出
 

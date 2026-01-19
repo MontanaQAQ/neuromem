@@ -1,6 +1,6 @@
 #!/bin/bash
-# 运行 Locomo 长轮对话记忆实验 - HippoRAG2 批量测试
-# 使用方法: bash script/run_locomo_hipporag2.sh
+# 运行 Locomo 长轮对话记忆实验 - SCM 批量测试
+# 使用方法: bash script/primitive_memory_model/run_scm_locomo.sh
 
 set -e  # 遇到错误立即退出
 
@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # 配置文件路径
-CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_hipporag2_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_scm_pipeline.yaml"
 
 # 定义所有任务 ID
 TASK_IDS=(
@@ -29,12 +29,12 @@ TASK_IDS=(
 
 # 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="HippoRAG2"
+MEMORY_NAME="SCM"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Locomo 长轮对话记忆实验 - HippoRAG2 批量测试"
+echo "Locomo 长轮对话记忆实验 - SCM 批量测试"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"
@@ -77,6 +77,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "🎉 所有任务执行完毕 - HippoRAG2"
+echo "🎉 所有任务执行完毕 - SCM"
 echo "📁 所有日志已保存到: $LOG_BASE_DIR"
 echo "========================================================================"

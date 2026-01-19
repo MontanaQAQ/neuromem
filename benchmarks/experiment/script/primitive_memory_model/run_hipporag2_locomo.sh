@@ -1,6 +1,6 @@
 #!/bin/bash
-# 运行 Locomo 长轮对话记忆实验 - 短期记忆（STM）批量测试
-# 使用方法: bash script/run_locomo_stm.sh
+# 运行 Locomo 长轮对话记忆实验 - HippoRAG2 批量测试
+# 使用方法: bash script/primitive_memory_model/run_hipporag2_locomo.sh
 
 set -e  # 遇到错误立即退出
 
@@ -11,35 +11,36 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 # Python 脚本的相对路径
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
 # 配置文件路径
-CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_short_term_memory_pipeline.yaml"
+CONFIG_FILE="$SCRIPT_DIR/../../config/primitive_memory_model/locomo_hipporag2_pipeline.yaml"
 
 # 定义所有任务 ID
 TASK_IDS=(
   "conv-26"
-  # "conv-30"
-  # "conv-41"
-  # "conv-42"
-  # "conv-43"
-  # "conv-44"
-  # "conv-47"
-  # "conv-48"
-  # "conv-49"
-  # "conv-50"
+#   "conv-30"
+#   "conv-41"
+#   "conv-42"
+#   "conv-43"
+#   "conv-44"
+#   "conv-47"
+#   "conv-48"
+#   "conv-49"
+#   "conv-50"
 )
 
-# 日志目录基础路径（与 Python ProcessLogger 保持一致）
+# 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="stm"
+MEMORY_NAME="HippoRAG2"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
+mkdir -p "$LOG_BASE_DIR"
 
 echo "========================================================================"
-echo "Locomo 长轮对话记忆实验 - 短期记忆（STM）批量测试"
+echo "Locomo 长轮对话记忆实验 - HippoRAG2 批量测试"
 echo "========================================================================"
 echo ""
 echo "项目根目录: $PROJECT_ROOT"
 echo "Python 脚本: $(realpath "$PYTHON_SCRIPT")"
 echo "配置文件: $(realpath "$CONFIG_FILE")"
-echo "日志基础目录: $LOG_BASE_DIR"
+echo "日志目录: $LOG_BASE_DIR"
 echo "总任务数: ${#TASK_IDS[@]}"
 echo ""
 
@@ -51,7 +52,7 @@ for i in "${!TASK_IDS[@]}"; do
   TASK_ID="${TASK_IDS[$i]}"
   TASK_NUM=$((i + 1))
 
-  # 生成带时间戳的目录名（与 Python ProcessLogger 相同格式）
+  # 生成带时间戳的日志文件名
   TIMESTAMP=$(date +%H%M%S)
   LOG_DIR="$LOG_BASE_DIR/${TASK_ID}_${TIMESTAMP}"
   mkdir -p "$LOG_DIR"
@@ -63,7 +64,6 @@ for i in "${!TASK_IDS[@]}"; do
   echo "--------------------------------------------------------------------"
 
   # 运行任务并将输出重定向到日志文件（同时显示到终端）
-  # 通过环境变量 PROCESS_LOG_DIR 传递日志目录给 Python
   PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH" PROCESS_LOG_DIR="$LOG_DIR" python "$PYTHON_SCRIPT" --config "$CONFIG_FILE" --task_id "$TASK_ID" 2>&1 | tee "$LOG_FILE"
 
   if [ ${PIPESTATUS[0]} -eq 0 ]; then
@@ -77,6 +77,6 @@ for i in "${!TASK_IDS[@]}"; do
 done
 
 echo "========================================================================"
-echo "🎉 所有任务执行完毕 - STM"
+echo "🎉 所有任务执行完毕 - HippoRAG2"
 echo "📁 所有日志已保存到: $LOG_BASE_DIR"
 echo "========================================================================"
