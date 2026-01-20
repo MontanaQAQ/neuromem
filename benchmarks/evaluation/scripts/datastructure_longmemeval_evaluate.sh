@@ -1,10 +1,9 @@
-﻿#!/bin/bash
+#!/bin/bash
 # ============================================================================
 # datastructure_longmemeval_evaluate.sh
 #
 # LongMemEval DataStructure 实验评估脚本
-# 自动发现并分析 .sage/benchmarks/benchmark_memory/longmemeval 下所有 DataStructure_* 目录
-# 说明：沿用 round_analyzer 的 locomo 配置，但通过 --base-dir 与 --output-dir 指向 longmemeval 数据
+# 自动发现并分析所有 DataStructure_* 目录
 # ============================================================================
 
 set -e
@@ -24,11 +23,6 @@ echo ""
 PREFIX="DataStructure_"
 VALIDATE_ONLY=""
 SPECIFIC_PATHS=""
-
-# Paths for longmemeval dataset
-LONG_BASE_DIR=".sage/benchmarks/benchmark_memory/longmemeval"
-OUTPUT_DIR=".sage/benchmarks/benchmark_memory/longmemeval/output/round_analysis_datastructure"
-
 # 解析参数
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -69,11 +63,13 @@ done
 # 切换到 analysis 目录运行
 cd "$EVAL_DIR/analysis" || exit 1
 
-# 构建命令 - 指定 longmemeval 的 base-dir 与独立的输出目录
+# 独立输出目录
+OUTPUT_DIR=".sage/benchmarks/benchmark_memory/longmemeval/output/round_analysis_datastructure"
+
 if [[ -n "$SPECIFIC_PATHS" ]]; then
-    CMD="python round_analyzer.py --config locomo --base-dir $LONG_BASE_DIR $SPECIFIC_PATHS --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
+    CMD="python round_analyzer.py --config longmemeval $SPECIFIC_PATHS --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
 else
-    CMD="python round_analyzer.py --config locomo --base-dir $LONG_BASE_DIR --all --prefix $PREFIX --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
+    CMD="python round_analyzer.py --config longmemeval --all --prefix $PREFIX --output-dir $OUTPUT_DIR $VALIDATE_ONLY"
 fi
 
 echo "执行: $CMD"

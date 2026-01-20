@@ -160,6 +160,73 @@ class RoundAnalyzer:
 
         round_times = {}
 
+        if not details:
+            return round_times
+
+        # ------------------------------------------------------------------
+        # LongMemEval 兼容：insert_timings.details 往往是“每次插入(对话/记忆条目)”的明细，
+        # 但 test_results 里的 question_range 是“题目范围”，两者不是同一索引空间。
+        # 此时改用 dialogs_inserted_count（通常为累计插入进度）对 details 进行分段。
+        # 为适配 dialogs_inserted_count 可能按 message 计数的情况，按 total_messages 进行缩放。
+        # ------------------------------------------------------------------
+        try:
+            test_results = task_data.test_results
+            has_dialog_counts = bool(test_results) and all(
+                isinstance(t.get("dialogs_inserted_count"), int) for t in test_results
+            )
+            if has_dialog_counts:
+                # dialogs_inserted_count 通常为累计值（随 test_index 增长）
+                ordered = sorted(
+                    (
+                        (int(t.get("test_index")), int(t.get("dialogs_inserted_count")))
+                        for t in test_results
+                        if t.get("test_index") is not None
+                    ),
+                    key=lambda x: x[0],
+                )
+
+                if ordered:
+                    # 使用 dataset_statistics.total_messages 作为分母（更接近 dialogs_inserted_count 的计数口径）
+                    ds_stats = task_data.raw.get("dataset_statistics", {})
+                    total_messages = ds_stats.get("total_messages")
+                    denom = None
+                    if isinstance(total_messages, int) and total_messages > 0:
+                        denom = total_messages
+                    else:
+                        # 回退：使用最大累计值
+                        denom = max(c for _, c in ordered) or None
+
+                    if denom:
+                        n = len(details)
+                        # 将累计计数映射到 details 的累计索引
+                        cum_indices: list[tuple[int, int]] = []
+                        last_idx = 0
+                        for round_idx, cum_count in ordered:
+                            # clamp to [0, n]
+                            idx = int(round((cum_count / denom) * n))
+                            if idx < last_idx:
+                                idx = last_idx
+                            if idx > n:
+                                idx = n
+                            cum_indices.append((round_idx, idx))
+                            last_idx = idx
+
+                        prev = 0
+                        for round_idx, end in cum_indices:
+                            seg = details[prev:end]
+                            if seg:
+                                times = [calc_insert_time(t) for t in seg]
+                                round_times[round_idx] = float(np.mean(times)) if times else 0.0
+                            else:
+                                round_times[round_idx] = 0.0
+                            prev = end
+
+                        # 如果最后一段没被覆盖（极少数情况），不强行追加额外轮次
+                        return round_times
+        except Exception:
+            # 任意异常时回退到旧逻辑，避免影响其它数据集
+            pass
+
         for round_idx in task_data.rounds:
             start_idx, end_idx = task_data.get_question_range(round_idx)
 
