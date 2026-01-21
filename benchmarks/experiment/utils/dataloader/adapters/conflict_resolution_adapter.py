@@ -60,24 +60,27 @@ class ConflictResolutionAdapter(BaseDataLoader):
 
     def get_evaluation(self, task_id: str, session_x: int, dialog_y: int) -> list[dict[str, Any]]:
         self._ensure_loader()
-        return self._loader.get_evaluation(task_id, session_x, dialog_y)
+        return self._loader.get_question_list(task_id, session_x, dialog_y)
 
     def sessions(self, task_id: str) -> list[tuple[int, int]]:
         self._ensure_loader()
-        return self._loader.sessions(task_id)
+        return self._loader.get_turn(task_id)
 
     def question_count(self, task_id: str) -> int:
         self._ensure_loader()
-        return self._loader.question_count(task_id)
+        stats = self._loader.get_dataset_statistics(task_id)
+        return stats.get("total_questions", 0)
 
     def dialog_count(self, task_id: str) -> int:
         self._ensure_loader()
-        return self._loader.dialog_count(task_id)
+        stats = self._loader.get_dataset_statistics(task_id)
+        return stats.get("total_dialogs", 0)
 
     def message_count(self, task_id: str) -> int:
         self._ensure_loader()
-        return self._loader.message_count(task_id)
+        stats = self._loader.get_dataset_statistics(task_id)
+        return stats.get("total_dialogs", 0)
 
     def statistics(self, task_id: str) -> dict[str, Any]:
         self._ensure_loader()
-        return self._loader.statistics(task_id)
+        return self._loader.get_dataset_statistics(task_id)
