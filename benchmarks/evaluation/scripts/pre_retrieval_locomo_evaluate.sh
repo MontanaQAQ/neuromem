@@ -20,7 +20,7 @@ echo "========================================"
 echo ""
 
 # 默认参数
-PREFIX="PreRetrieval_"
+PREFIX="PreRetrieve_"
 VALIDATE_ONLY=""
 SPECIFIC_PATHS=""
 
