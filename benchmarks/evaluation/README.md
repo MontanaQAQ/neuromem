@@ -28,6 +28,21 @@ evaluation/
 
 ## 🚀 快速开始
 
+### 0. DataStructure-only datasets (MemAgentBench / LongMemEval)
+
+本仓库当前已支持两套仅包含 **Memory Data Structure** 实验的工作负载：
+
+- **MemAgentBench / Conflict Resolution**: `.sage/benchmarks/benchmark_memory/conflict_resolution/`
+- **LongMemEval**: `.sage/benchmarks/benchmark_memory/longmemeval/`
+
+对应的一键评估入口脚本在 `benchmarks/evaluation/scripts/`：
+
+- `datastructure_conflict_resolution_evaluate.sh`
+- `datastructure_longmemeval_evaluate.sh`
+
+运行后会在各自的 `output/round_analysis_datastructure/` 目录下生成：
+`analysis_report.md`、`comparison_*.png`、`*.csv` 等论文级图表与表格。
+
 ### 1. 指标探索
 
 计算基础指标（F1、精确匹配率等）：

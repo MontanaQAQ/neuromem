@@ -14,8 +14,7 @@ paths:
 
 # Experiment directory prefixes
 prefixes:
-  - "PostInsert_"
-  - "PreInsert_"
+  - "DataStructure_"
 
 # Evaluator configuration
 evaluator:
