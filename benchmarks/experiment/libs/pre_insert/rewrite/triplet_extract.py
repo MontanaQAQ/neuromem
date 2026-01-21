@@ -111,6 +111,11 @@ class TripleExtractAction(BasePreInsertAction):
                     "predicate": triplet["predicate"],
                     "object": triplet["object"],
                 },
+                # 添加 insert_params 供图记忆系统（如 Mem0g）使用
+                "insert_params": {
+                    "entities": [triplet["subject"], triplet["object"]],
+                    "relations": [(triplet["subject"], triplet["predicate"], triplet["object"])],
+                },
             }
             entry = self._set_default_fields(entry)
             entry["insert_method"] = "triple_extract_triplet"
