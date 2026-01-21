@@ -32,14 +32,14 @@ SYSTEM_MARKERS = {
 STRATEGY_COLORS = {
     # 基线
     "none": "#6699FF",  # 蓝色（None基线）
-    # 语义相关
-    "semantic": "#66B3FF",  # 淡蓝（明亮蓝）
-    "top_k": "#99CCFF",  # 浅天蓝
-    # 增强操作
-    "augment": "#66CC66",  # 淡绿（明亮绿）
+    # PostRetrieval策略 - 区分度更高的颜色
+    "semantic": "#FF9966",  # 珊瑚橙（Rerank）
+    "top_k": "#99CC99",  # 薄荷绿（Filter）
+    "augment": "#CC99FF",  # 淡紫（Augment）
+    "multi_query": "#FFCC66",  # 金黄（Merge）
+    # 其他增强操作
     "enrich": "#99FF99",  # 浅绿
     # 复杂处理
-    "multi_query": "#FFB366",  # 淡橙（明亮橙）
     "summarize": "#FFCC66",  # 橙黄
     # 压缩/重写 - 单一操作
     "compress": "#FF9999",  # 淡红（粉红）
@@ -65,17 +65,17 @@ STRATEGY_COLORS = {
     "validate": "#DD99FF",  # 淡紫（Validate）
 }
 
-# 辅助: 线型
+# 辅助: 线型 - 统一使用实线，避免视觉混乱
 STRATEGY_LINESTYLES = {
     "none": "-",
     "semantic": "-",
     "top_k": "-",
-    "augment": "--",
-    "enrich": "--",
-    "multi_query": "-.",
-    "summarize": "-.",
-    "compress": ":",
-    "rewrite": ":",
+    "augment": "-",
+    "enrich": "-",
+    "multi_query": "-",
+    "summarize": "-",
+    "compress": "-",
+    "rewrite": "-",
 }
 
 
@@ -127,7 +127,39 @@ def parse_config_name(config_name: str) -> tuple[str, str, str, str]:
         "rewrite_triplet_extract": "Rewrite",
     }
 
-    if len(strategy_parts) == 1:
+    # PreRetrieval策略标签映射（专用优化）
+    preretrieval_label_map = {
+        "embedding": "None",
+        "keyword_extract": "Optimize",
+        "decompose": "Enhancement",
+        "validate": "Validate",
+    }
+
+    # PostRetrieval策略标签映射
+    postretrieval_label_map = {
+        "multi_query": "Merge",
+        "semantic": "Rerank",
+        "top_k": "Filter",
+        "augment": "Augment",
+        "none": "None",
+    }
+
+    # 根据维度应用不同的映射
+    if dimension == "PreRetrieval" or dimension == "PreRetrieve":
+        # PreRetrieval使用专用映射
+        full_strategy_lower = "_".join(strategy_parts)
+        if full_strategy_lower in preretrieval_label_map:
+            strategy_label = preretrieval_label_map[full_strategy_lower]
+        else:
+            strategy_label = strategy_parts[0].replace("_", " ").title()
+    elif dimension == "PostRetrieval":
+        # PostRetrieval使用专用映射
+        full_strategy_lower = "_".join(strategy_parts)
+        if full_strategy_lower in postretrieval_label_map:
+            strategy_label = postretrieval_label_map[full_strategy_lower]
+        else:
+            strategy_label = strategy_parts[0].replace("_", " ").title()
+    elif len(strategy_parts) == 1:
         # 单个策略词
         strategy_label = strategy_parts[0].replace("_", " ").title()
     else:
@@ -263,8 +295,11 @@ def plot_comparison(
                 alpha=0.8,
             )
 
-    ax.set_xlabel("Round", fontsize=13, fontweight="bold")
-    ax.set_ylabel(ylabel, fontsize=13, fontweight="bold")
+    ax.set_xlabel("Round", fontsize=16, fontweight="bold")
+    ax.set_ylabel(ylabel, fontsize=16, fontweight="bold")
+
+    # 设置刻度标签字体大小
+    ax.tick_params(axis="both", labelsize=14)
 
     # 使用双图例或标准图例
     if use_visual_encoding and plotted_configs:
@@ -816,73 +851,120 @@ def plot_cost_effectiveness_comparison(
 
     if use_broken_axis:
         # 使用三段断轴：创建三个子图，更好地展示不同数量级的数据
+        # height_ratios: 顶部1.5（密集需要更多空间），中间0.7（空太大缩小），底部1
         fig, (ax_top, ax_middle, ax_bottom) = plt.subplots(
             3,
             1,
             figsize=(9, 9),
             sharex=True,
-            gridspec_kw={"height_ratios": [1, 1, 1], "hspace": 0.05},
+            gridspec_kw={"height_ratios": [1.5, 0.7, 1], "hspace": 0.05},
         )
 
-        # 智能分段：将数据分为低、中、高三个区域
+        # 智能分段：根据数据分布找到自然的断点
         sorted_ce = sorted([v for v in all_ce_values if v > 0])
-        percentile_25 = sorted_ce[len(sorted_ce) // 4] if len(sorted_ce) > 4 else sorted_ce[0]
-        percentile_75 = sorted_ce[len(sorted_ce) * 3 // 4] if len(sorted_ce) > 4 else sorted_ce[-1]
 
-        # 定义三个区间
-        # 底部：0 到 第25百分位 * 1.2
-        # 中间：第25百分位 * 0.8 到 第75百分位 * 1.2
-        # 顶部：第75百分位 * 0.8 到 最大值 * 1.05
-        low_max = percentile_25 * 1.2
-        mid_min = percentile_25 * 0.8
-        mid_max = percentile_75 * 1.2
-        high_min = percentile_75 * 0.8
+        # 找到数据中的大跳跃点作为断点
+        gaps = []
+        for i in range(len(sorted_ce) - 1):
+            gap_size = sorted_ce[i + 1] - sorted_ce[i]
+            gap_ratio = sorted_ce[i + 1] / sorted_ce[i] if sorted_ce[i] > 0 else float("inf")
+            gaps.append((gap_size, gap_ratio, i))
 
-        # 如果中间区间太窄，则调整
-        if mid_max - mid_min < (max_ce - min_ce) * 0.1:
+        # 按gap_ratio排序，找到最大的两个跳跃点
+        gaps.sort(key=lambda x: x[1], reverse=True)
+
+        if len(gaps) >= 2:
+            # 取最大的两个跳跃点作为断点
+            break_indices = sorted([gaps[0][2], gaps[1][2]])
+            break1_idx, break2_idx = break_indices
+
+            # 定义三个不重叠的区间
+            # 第一个断点的值
+            break1_value = sorted_ce[break1_idx]
+            break2_value = sorted_ce[break2_idx]
+
+            # 底部区间：从最小值到第一个断点
+            low_max = break1_value
+            # 中间区间：从第一个断点到第二个断点
+            mid_min = break1_value
+            mid_max = break2_value
+            # 顶部区间：从第二个断点到最大值
+            high_min = break2_value
+        else:
+            # 降级到简单分段
+            percentile_25 = sorted_ce[len(sorted_ce) // 4] if len(sorted_ce) > 4 else sorted_ce[0]
+            percentile_75 = (
+                sorted_ce[len(sorted_ce) * 3 // 4] if len(sorted_ce) > 4 else sorted_ce[-1]
+            )
+            low_max = percentile_25
             mid_min = percentile_25
             mid_max = percentile_75
+            high_min = percentile_75
 
-        # 绘制数据到三个子图
+        # 绘制数据到三个子图 - 根据值范围智能分配
         for rounds, ce_values, color, linestyle, marker, _unique_key, _encoding in data_to_plot:
-            # 顶部：高值区域
-            ax_top.plot(
-                rounds,
-                ce_values,
-                color=color,
-                linestyle=linestyle,
-                marker=marker,
-                linewidth=1.5,
-                markersize=6,
-                alpha=0.8,
-            )
-            # 中部：中值区域
-            ax_middle.plot(
-                rounds,
-                ce_values,
-                color=color,
-                linestyle=linestyle,
-                marker=marker,
-                linewidth=1.5,
-                markersize=6,
-                alpha=0.8,
-            )
-            # 底部：低值区域
-            ax_bottom.plot(
-                rounds,
-                ce_values,
-                color=color,
-                linestyle=linestyle,
-                marker=marker,
-                linewidth=1.5,
-                markersize=6,
-                alpha=0.8,
-            )
+            # 判断这条曲线主要在哪个区间
+            ce_array = np.array(ce_values)
+            avg_ce = np.mean(ce_array)
 
-        # 设置y轴范围
-        ax_top.set_ylim(high_min, max_ce * 1.05)
+            # 根据平均值判断绘制到哪个子图
+            # 每个子图只绘制属于其范围的曲线，避免重复
+            if avg_ce >= high_min:
+                # 顶部区间
+                ax_top.plot(
+                    rounds,
+                    ce_values,
+                    color=color,
+                    linestyle=linestyle,
+                    marker=marker,
+                    linewidth=1.5,
+                    markersize=6,
+                    alpha=0.8,
+                )
+            elif avg_ce >= mid_min:
+                # 中间区间
+                ax_middle.plot(
+                    rounds,
+                    ce_values,
+                    color=color,
+                    linestyle=linestyle,
+                    marker=marker,
+                    linewidth=1.5,
+                    markersize=6,
+                    alpha=0.8,
+                )
+            else:
+                # 底部区间
+                ax_bottom.plot(
+                    rounds,
+                    ce_values,
+                    color=color,
+                    linestyle=linestyle,
+                    marker=marker,
+                    linewidth=1.5,
+                    markersize=6,
+                    alpha=0.8,
+                )
+
+        # 设置y轴范围 - 严格不重叠的三个区间
+        # 底部区间
+        bottom_values = [v for v in all_ce_values if v <= low_max]
+        if bottom_values:
+            actual_bottom_min = min(bottom_values)
+
+            # 如果最小值 > 阈值，从最小值附近开始
+            bottom_lower = actual_bottom_min * 0.98 if actual_bottom_min > low_max * 0.05 else 0
+
+            # 底部上界：严格不超过low_max
+            ax_bottom.set_ylim(bottom_lower, low_max)
+        else:
+            ax_bottom.set_ylim(0, low_max)
+
+        # 中间区间：严格从mid_min到mid_max
         ax_middle.set_ylim(mid_min, mid_max)
-        ax_bottom.set_ylim(0, low_max)
+
+        # 顶部区间：从high_min到最大值，上界留20%缓冲
+        ax_top.set_ylim(high_min, max_ce * 1.2)
 
         # 隐藏子图之间的脊柱
         ax_top.spines["bottom"].set_visible(False)
@@ -904,19 +986,26 @@ def plot_cost_effectiveness_comparison(
         ax_middle.plot((-d, +d), (-d, +d), **kwargs)
         ax_middle.plot((1 - d, 1 + d), (-d, +d), **kwargs)
 
+        # 断轴标记 - 底部Y轴（如果跳过了0附近的区域）
+        if bottom_values and min(bottom_values) > low_max * 0.05:
+            # 在底部Y轴左侧添加断轴标记
+            kwargs.update(transform=ax_bottom.transAxes)
+            ax_bottom.plot((-d * 2, -d * 2), (-d, +d), **kwargs)
+            ax_bottom.plot((-d * 2, -d * 2), (1 - d, 1 + d), **kwargs)
+
         kwargs.update(transform=ax_bottom.transAxes)
         ax_bottom.plot((-d, +d), (1 - d, 1 + d), **kwargs)
         ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
-        # 设置标签
-        ax_bottom.set_xlabel("Round", fontsize=13, fontweight="bold")
+        # 设置标签 - 增大字体
+        ax_bottom.set_xlabel("Round", fontsize=16, fontweight="bold")
         fig.text(
             0.04,
             0.5,
             "Cost-Effectiveness",
             va="center",
             rotation="vertical",
-            fontsize=13,
+            fontsize=16,
             fontweight="bold",
         )
 
@@ -926,6 +1015,11 @@ def plot_cost_effectiveness_comparison(
             all_rounds.update(f1_by_round.keys())
         if all_rounds:
             ax_bottom.set_xticks(sorted(all_rounds))
+
+        # 设置刻度标签字体大小 - 增大
+        ax_top.tick_params(axis="both", labelsize=14)
+        ax_middle.tick_params(axis="both", labelsize=14)
+        ax_bottom.tick_params(axis="both", labelsize=14)
 
         # 双图例放在上方子图的右上角
         if plotted_configs:
@@ -948,14 +1042,20 @@ def plot_cost_effectiveness_comparison(
                 alpha=0.8,
             )
 
-        ax.set_xlabel("Round", fontsize=13, fontweight="bold")
-        ax.set_ylabel("Cost-Effectiveness", fontsize=13, fontweight="bold")
+        ax.set_xlabel("Round", fontsize=16, fontweight="bold")
+        ax.set_ylabel("Cost-Effectiveness", fontsize=16, fontweight="bold")
+
+        # 设置刻度标签字体大小
+        ax.tick_params(axis="both", labelsize=14)
 
         all_rounds = set()
         for f1_by_round, _ in strategies_data.values():
             all_rounds.update(f1_by_round.keys())
         if all_rounds:
             ax.set_xticks(sorted(all_rounds))
+
+        # 设置刻度标签字体大小
+        ax.tick_params(axis="both", labelsize=12)
 
         ax.set_ylim(bottom=0)
 

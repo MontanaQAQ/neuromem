@@ -55,6 +55,11 @@ STRATEGY_COLORS = {
     # 复杂处理 (鲜艳橙色)
     "multi_query": "#FF9100",  # 鲜橙
     "summarize": "#FFC107",  # 金黄
+    # PreRetrieve 特有策略
+    "decompose": "#FFB399",  # 珊瑚粉（Decompose）
+    "embedding": "#99DDFF",  # 天蓝（Embedding）
+    "keyword_extract": "#FFDD99",  # 浅金黄（Keyword Extract）
+    "validate": "#DD99FF",  # 淡紫（Validate）
 }
 
 # 辅助: 线型 (可选，用于进一步区分)
