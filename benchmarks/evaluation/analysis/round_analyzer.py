@@ -37,8 +37,8 @@ try:
     from .utils.plotting import (
         plot_category_comparison,
         plot_comparison,
+        plot_cost_effectiveness_comparison,
         plot_single_strategy,
-        plot_time_breakdown,
     )
     from .utils.validators import (
         discover_experiment_dirs,
@@ -55,8 +55,8 @@ except ImportError:
     from utils.plotting import (
         plot_category_comparison,
         plot_comparison,
+        plot_cost_effectiveness_comparison,
         plot_single_strategy,
-        plot_time_breakdown,
     )
     from utils.validators import (
         discover_experiment_dirs,
@@ -231,22 +231,67 @@ def run_analysis(
             )
             print("  ✓ Saved: comparison_category_f1.png")
 
-        # 时间分解对比图
-        if all_insert_breakdown:
-            plot_time_breakdown(
-                all_insert_breakdown,
-                out_path / "comparison_insert_breakdown.png",
-                title="Insert Time Breakdown (pre/memory/post)",
-            )
-            print("  ✓ Saved: comparison_insert_breakdown.png")
+        # Cost-Effectiveness 对比图
+        if config.get("output", {}).get("charts", {}).get("cost_effectiveness", True):
+            # 准备数据：{config_name: (f1_by_round, time_by_round)}
+            # 根据维度使用对应阶段的时间
+            strategies_data = {}
 
-        if all_retrieval_breakdown:
-            plot_time_breakdown(
-                all_retrieval_breakdown,
-                out_path / "comparison_retrieval_breakdown.png",
-                title="Retrieval Time Breakdown (pre/memory/post)",
-            )
-            print("  ✓ Saved: comparison_retrieval_breakdown.png")
+            # 从第一个策略中提取维度信息（PreInsert/PostInsert/PreRetrieval/PostRetrieval）
+            dimension_name = None
+            if valid_strategies:
+                first_strategy = valid_strategies[0]
+                for dim in ["PreInsert", "PostInsert", "PreRetrieval", "PostRetrieval"]:
+                    if dim in first_strategy:
+                        dimension_name = dim
+                        break
+
+            for strategy in strategies:
+                if strategy not in all_f1:
+                    continue
+
+                # 根据维度选择对应阶段的时间
+                time_by_round = {}
+                if dimension_name == "PostInsert" and strategy in all_insert_breakdown:
+                    # PostInsert: 使用post_insert时间
+                    breakdown = all_insert_breakdown[strategy]
+                    # breakdown是平均值，需要为每个round复制（假设时间相对稳定）
+                    for round_num in all_f1[strategy]:
+                        time_by_round[round_num] = breakdown.get("post", 0)
+                elif dimension_name == "PreInsert" and strategy in all_insert_breakdown:
+                    # PreInsert: 使用pre_insert时间
+                    breakdown = all_insert_breakdown[strategy]
+                    for round_num in all_f1[strategy]:
+                        time_by_round[round_num] = breakdown.get("pre", 0)
+                elif dimension_name == "PostRetrieval" and strategy in all_retrieval_breakdown:
+                    # PostRetrieval: 使用post_retrieval时间
+                    breakdown = all_retrieval_breakdown[strategy]
+                    for round_num in all_f1[strategy]:
+                        time_by_round[round_num] = breakdown.get("post", 0)
+                elif dimension_name == "PreRetrieval" and strategy in all_retrieval_breakdown:
+                    # PreRetrieval: 使用pre_retrieval时间
+                    breakdown = all_retrieval_breakdown[strategy]
+                    for round_num in all_f1[strategy]:
+                        time_by_round[round_num] = breakdown.get("pre", 0)
+                else:
+                    # 降级方案：使用总时间
+                    if "Retrieval" in strategy and strategy in all_retrieval:
+                        time_by_round = all_retrieval[strategy]
+                    elif strategy in all_insert:
+                        time_by_round = all_insert[strategy]
+
+                if time_by_round:
+                    strategies_data[strategy] = (all_f1[strategy], time_by_round)
+
+            if strategies_data:
+                dimension = config.get("name", "Experiment")
+                plot_cost_effectiveness_comparison(
+                    strategies_data,
+                    dimension,
+                    out_path / "comparison_cost_effectiveness.png",
+                    title="Cost-Effectiveness Comparison",
+                )
+                print("  ✓ Saved: comparison_cost_effectiveness.png")
 
     # 生成CSV
     if "csv" in config.get("output", {}).get("formats", []):
