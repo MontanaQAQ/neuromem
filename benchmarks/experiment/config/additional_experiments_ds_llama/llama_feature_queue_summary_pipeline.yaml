@@ -1,0 +1,58 @@
+# ============================================================
+# 数据结构实验: Feature-Queue-Summary Combination (三索引融合)
+# 论文来源: LDAgent
+# 特点: BM25 + FIFO + Summary 三索引融合，自动摘要
+# Backbone: Llama-3.1-8B-Instruct (补充实验)
+# ============================================================
+
+runtime:
+  dataset: locomo
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置 - Llama-3.1-8B
+  api_key: "token-abc123"
+  base_url: "http://sage2:8001/v1"
+  model_name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  llm_base_url: "http://sage2:8001/v1"
+  llm_model: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: Llama_DataStructure_feature_queue_summary
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.feature_queue_summary_combination"
+  feature_queue_summary_combination:
+    fifo_max_size: 100
+    summary_max_size: 20
+    summary_min_length: 10
+    enable_feature_extraction: true
+    enable_summary_generation: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.4
+      fifo_index: 0.3
+      summary_index: 0.3
+  memory_retrieval_adapter: none
+
+operators:
+  pre_insert:
+    action: "none"
+  post_insert:
+    action: "none"
+  pre_retrieval:
+    action: "embedding"
+  post_retrieval:
+    action: "none"
