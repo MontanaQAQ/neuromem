@@ -50,14 +50,7 @@ operators:
       Rules: Remove fillers (um, uh, like), consolidate repeated info, keep facts and preferences, maintain order.
 
   post_insert:
-    action: "structure_enrichment.heat_migration"
-    migrate_policy: "heat"
-    heat_threshold: 5.0
-    stm_capacity: 20
-    upgrade_transform: "multi_summary"
-    enable_profile_extraction: true
-    enable_knowledge_extraction: true
-    reset_heat_after_extraction: true
+    action: "none"
 
   pre_retrieval:
     action: "optimize"

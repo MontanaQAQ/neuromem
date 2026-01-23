@@ -347,7 +347,7 @@ def create_dual_legend(ax, plotted_configs):
             marker=SYSTEM_MARKERS.get(sys, "o"),
             color=system_colors.get(sys, "#666666"),
             linestyle="",
-            markersize=10,
+            markersize=14,
             label=sys,
             markeredgewidth=1.5,
             markerfacecolor=system_colors.get(sys, "#666666"),
@@ -370,17 +370,21 @@ def create_dual_legend(ax, plotted_configs):
             Patch(facecolor=color, label=strat_label, edgecolor="white", linewidth=0.5)
         )
 
-    # 添加双图例 - 并列放在右上角
+    # 添加双图例 - 放在底部x轴标签下方，一行一个
     if strategy_handles:
         legend1 = ax.legend(
             handles=strategy_handles,
             title="Operation",
-            loc="upper left",
-            bbox_to_anchor=(0.50, 1.0),
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.2),
             fontsize=10,
-            title_fontsize=11,
+            title_fontsize=12,
             framealpha=0.95,
             edgecolor="gray",
+            ncol=100,  # 设置足够大的值确保一行显示
+            columnspacing=0.5,
+            handlelength=1.0,
+            handletextpad=0.4,
         )
         ax.add_artist(legend1)  # 保留第一个图例
 
@@ -388,12 +392,16 @@ def create_dual_legend(ax, plotted_configs):
         ax.legend(
             handles=system_handles,
             title="Memory Base",
-            loc="upper left",
-            bbox_to_anchor=(0.75, 1.0),
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.30),
             fontsize=10,
-            title_fontsize=11,
+            title_fontsize=12,
             framealpha=0.95,
             edgecolor="gray",
+            ncol=100,  # 设置足够大的值确保一行显示
+            columnspacing=0.5,
+            handlelength=1.0,
+            handletextpad=0.4,
         )
 
 
@@ -855,7 +863,7 @@ def plot_cost_effectiveness_comparison(
         fig, (ax_top, ax_middle, ax_bottom) = plt.subplots(
             3,
             1,
-            figsize=(9, 9),
+            figsize=(8.1, 9),
             sharex=True,
             gridspec_kw={"height_ratios": [1.5, 0.7, 1], "hspace": 0.05},
         )
@@ -917,7 +925,7 @@ def plot_cost_effectiveness_comparison(
                     color=color,
                     linestyle=linestyle,
                     marker=marker,
-                    linewidth=1.5,
+                    linewidth=2.5,
                     markersize=6,
                     alpha=0.8,
                 )
@@ -929,7 +937,7 @@ def plot_cost_effectiveness_comparison(
                     color=color,
                     linestyle=linestyle,
                     marker=marker,
-                    linewidth=1.5,
+                    linewidth=2.5,
                     markersize=6,
                     alpha=0.8,
                 )
@@ -941,7 +949,7 @@ def plot_cost_effectiveness_comparison(
                     color=color,
                     linestyle=linestyle,
                     marker=marker,
-                    linewidth=1.5,
+                    linewidth=2.5,
                     markersize=6,
                     alpha=0.8,
                 )
@@ -998,14 +1006,14 @@ def plot_cost_effectiveness_comparison(
         ax_bottom.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
 
         # 设置标签 - 增大字体
-        ax_bottom.set_xlabel("Round", fontsize=16, fontweight="bold")
+        ax_bottom.set_xlabel("Round", fontsize=18, fontweight="bold")
         fig.text(
-            0.04,
+            0.03,
             0.5,
             "Cost-Effectiveness",
             va="center",
             rotation="vertical",
-            fontsize=16,
+            fontsize=18,
             fontweight="bold",
         )
 
@@ -1017,17 +1025,17 @@ def plot_cost_effectiveness_comparison(
             ax_bottom.set_xticks(sorted(all_rounds))
 
         # 设置刻度标签字体大小 - 增大
-        ax_top.tick_params(axis="both", labelsize=14)
-        ax_middle.tick_params(axis="both", labelsize=14)
-        ax_bottom.tick_params(axis="both", labelsize=14)
+        ax_top.tick_params(axis="both", labelsize=18)
+        ax_middle.tick_params(axis="both", labelsize=18)
+        ax_bottom.tick_params(axis="both", labelsize=18)
 
-        # 双图例放在上方子图的右上角
+        # 双图例放在底部子图的Round标签下方
         if plotted_configs:
-            create_dual_legend(ax_top, list(plotted_configs.values()))
+            create_dual_legend(ax_bottom, list(plotted_configs.values()))
 
     else:
         # 常规单轴图
-        fig, ax = plt.subplots(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(8.1, 6))
 
         for rounds, ce_values, color, linestyle, marker, _unique_key, encoding in data_to_plot:
             ax.plot(
@@ -1037,25 +1045,22 @@ def plot_cost_effectiveness_comparison(
                 color=color,
                 linestyle=linestyle,
                 marker=marker,
-                linewidth=1.5,
+                linewidth=2.5,
                 markersize=6,
                 alpha=0.8,
             )
 
-        ax.set_xlabel("Round", fontsize=16, fontweight="bold")
-        ax.set_ylabel("Cost-Effectiveness", fontsize=16, fontweight="bold")
+        ax.set_xlabel("Round", fontsize=18, fontweight="bold")
+        ax.set_ylabel("Cost-Effectiveness", fontsize=18, fontweight="bold")
 
         # 设置刻度标签字体大小
-        ax.tick_params(axis="both", labelsize=14)
+        ax.tick_params(axis="both", labelsize=18)
 
         all_rounds = set()
         for f1_by_round, _ in strategies_data.values():
             all_rounds.update(f1_by_round.keys())
         if all_rounds:
             ax.set_xticks(sorted(all_rounds))
-
-        # 设置刻度标签字体大小
-        ax.tick_params(axis="both", labelsize=12)
 
         ax.set_ylim(bottom=0)
 

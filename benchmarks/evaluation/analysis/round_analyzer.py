@@ -284,7 +284,8 @@ def run_analysis(
                     strategies_data[strategy] = (all_f1[strategy], time_by_round)
 
             if strategies_data:
-                dimension = config.get("name", "Experiment")
+                # 使用检测到的维度名（PreInsert/PostInsert等），而不是config名
+                dimension = dimension_name if dimension_name else config.get("name", "Experiment")
                 plot_cost_effectiveness_comparison(
                     strategies_data,
                     dimension,
