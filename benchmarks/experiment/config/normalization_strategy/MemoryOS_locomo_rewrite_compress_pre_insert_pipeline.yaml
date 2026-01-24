@@ -53,24 +53,9 @@ operators:
     action: "none"
 
   pre_retrieval:
-    action: "optimize"
-    optimize_type: "keyword_extract"
-    extractor: "spacy"
-    spacy_model: "en_core_web_sm"
-    extract_types: ["NOUN", "PROPN", "VERB"]
-    max_keywords: 10
+    action: "embedding"
 
   post_retrieval:
-    action: "merge"
-    merge_type: "multi_query"
-    secondary_queries:
-    - query_template: "{question}"
-      metadata: {tier: "stm"}
-    - query_template: "{question}"
-      metadata: {tier: "mtm"}
-    - query_template: "{question}"
-      metadata: {tier: "lpm", type: "persona"}
-    - query_template: "{question}"
-      metadata: {tier: "lpm", type: "knowledge"}
+    action: "none"
     conversation_format_prompt: |
       The following is relevant context from different memory tiers.
