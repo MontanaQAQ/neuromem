@@ -1,0 +1,106 @@
+﻿# ============================================================
+# PostRetrieval Experiment (Llama): TiM + Top-K Filter
+# Memory Structure: TiM (Vector Hash Memory)
+# PostRetrieval Strategy: filter.top_k
+# Config Name: Llama TiM_locomo_top_k_post_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 5
+  service_timeout: 600.0
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+
+  # LLM - Llama unified config
+  api_key: "token-abc123"
+  base_url: "http://sage2:8001/v1"
+  model_name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  llm_base_url: "http://sage2:8001/v1"
+  llm_model: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "PostRetrieval_TiM_top_k_Llama"
+
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.lsh_hash"
+  lsh_hash:
+    embedding_dim: 1024
+    num_tables: 10
+    hash_size: 128
+    n_gram: 3
+    threshold: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "extract.triple"
+    extraction_method: "llm"
+    keep_original: false
+    max_triplets: 3
+    triple_extraction_prompt: |
+      You are a knowledge graph builder.
+      Extract factual triples from the dialogue.
+
+      Strict Rules (follow exactly):
+      - Output ONLY triples, one per line.
+      - Exact format: (Subject, Predicate, Object)
+      - Use DOUBLE QUOTES only if present in source; otherwise plain text.
+      - Resolve ALL pronouns to actual entity names.
+      - No headings, no explanations, no markdown, no code fences, no extra text.
+      - If no triples: return "None" on a single line.
+
+      Dialogue:
+      {dialogue}
+
+      Triples:
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_insert:
+    action: "conflict_resolution.semantic_consolidation"
+    retrieve_count: 10
+    min_merge_count: 5
+    merge_prompt: |
+      You are a memory consolidation expert. Given a list of facts about a person, your job is to:
+      1. REMOVE duplicates and near-duplicates (same meaning, different wording)
+      2. MERGE related facts into more complete statements
+      3. REMOVE logically subsumed facts (if A contains B's meaning, remove B)
+
+      EXAMPLES of what to consolidate:
+      - "Alice likes coffee" + "Alice likes coffee a lot" -> keep only "Alice likes coffee a lot"
+      - "Bob works at Google" + "Bob works at Google as engineer" -> keep only "Bob works at Google as engineer"
+      - "Carol plans to travel" + "Carol plans to travel to Japan" -> keep only "Carol plans to travel to Japan"
+
+      RULES:
+      - to_delete: List EXACT original texts to remove (duplicates, subsumed facts)
+      - to_insert: Only if you need to CREATE a new merged fact not in original list
+      - Prefer keeping the most informative version rather than creating new text
+      - If a fact appears multiple times, delete all but one
+
+      Facts:
+      {memories}
+
+      Respond with JSON only:
+      {"to_delete": ["exact text 1", "exact text 2"], "to_insert": []}
+
+  post_retrieval:
+    action: "filter.top_k"
+    top_k: 10
+
+    conversation_format_prompt: |
+      The following is some history information.
