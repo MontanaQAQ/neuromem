@@ -5,7 +5,7 @@
 功能: 执行多个相关查询并合并结果
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import (
     BasePostRetrievalAction,
@@ -31,7 +31,7 @@ class MultiQueryMergeAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """执行多查询合并
 
@@ -64,21 +64,31 @@ class MultiQueryMergeAction(BasePostRetrievalAction):
             )
 
         # 生成多个查询变体
+        print(f"[DEBUG] MultiQuery starting with question: {question}")
         queries = self._generate_queries(question, llm)
+        print(f"[DEBUG] MultiQuery total generated queries: {len(queries)}")
 
         # 对每个查询执行检索
         all_results = [original_items]  # 包含原始结果
+        print(f"[DEBUG] MultiQuery original results: {len(original_items)} items")
 
-        for query in queries:
+        for i, query in enumerate(queries):
             try:
+                print(f"[DEBUG] MultiQuery executing query {i + 1}/{len(queries)}: {query}")
                 results = self._retrieve_with_query(query, service, input_data)
+                print(f"[DEBUG] MultiQuery query {i + 1} returned {len(results)} items")
                 all_results.append(results)
-            except Exception:  # noqa: BLE001
+            except Exception as e:  # noqa: BLE001
                 # 如果单个查询失败，跳过
+                print(f"[DEBUG] MultiQuery query {i + 1} failed: {type(e).__name__}: {e}")
                 continue
 
         # 合并所有结果
+        print(
+            f"[DEBUG] MultiQuery merging {len(all_results)} result sets using '{self.merge_strategy}' strategy"
+        )
         merged_items = self._merge_all_results(all_results)
+        print(f"[DEBUG] MultiQuery merged total: {len(merged_items)} items")
 
         return PostRetrievalOutput(
             memory_items=merged_items,
@@ -104,39 +114,51 @@ class MultiQueryMergeAction(BasePostRetrievalAction):
 
         # 使用 LLM 生成查询改写
         try:
-            prompt = f"""Generate {self.num_queries - 1} different ways to ask the following question:
+            prompt = f"""Rewrite the following question in {self.num_queries - 1} different ways. Keep the meaning the same but use different words.
 
-Question: {question}
+Original question: {question}
 
-Requirements:
-- Each variant should have the same meaning but different wording
-- Focus on different aspects or perspectives
-- Keep them concise and clear
+Rules:
+- Output ONLY the rewritten questions, one per line
+- NO explanations, labels, or formatting
+- NO ** or markdown
+- Each line starts with a number and period (e.g., "1. ")
 
-Output format (one per line):
-1. [variant 1]
-2. [variant 2]
-..."""
+Example:
+1. What programming languages has James used?
+2. Which coding languages is James familiar with?
+
+Now rewrite this question:"""
 
             response = llm.generate(prompt)
+            print(f"[DEBUG] MultiQuery LLM Response:\n{response}")
 
-            # 解析响应
+            # 解析响应 - 改进的逻辑
             lines = response.strip().split("\n")
             for line in lines:
-                # 去掉编号
                 line = line.strip()
-                if line and (line[0].isdigit() or line.startswith("-") or line.startswith("*")):
-                    # 去掉前缀
-                    parts = line.split(".", 1)
-                    if len(parts) > 1:
-                        query = parts[1].strip()
-                        queries.append(query)
+                if not line:
+                    continue
+
+                # 移除编号前缀（1. 2. - * 等）
+                import re
+
+                # 匹配 "1." "2." "1)" "-" "*" 等开头
+                cleaned = re.sub(r"^[\d\-\*]+[\.\)]\s*", "", line)
+                # 移除 markdown 格式
+                cleaned = re.sub(r"\*\*[^*]+\*\*:\s*", "", cleaned)
+                # 移除引号
+                cleaned = cleaned.strip("\"'")
+
+                if cleaned and len(cleaned) > 10:  # 至少10个字符才是有效查询
+                    queries.append(cleaned)
 
             # 限制数量
             queries = queries[: self.num_queries - 1]
-        except Exception:  # noqa: BLE001
+            print(f"[DEBUG] MultiQuery Generated {len(queries)} variants: {queries}")
+        except Exception as e:  # noqa: BLE001
             # 如果生成失败，返回空列表
-            pass
+            print(f"[DEBUG] MultiQuery generation failed: {type(e).__name__}: {e}")
 
         return queries
 
@@ -153,10 +175,37 @@ Output format (one per line):
         Returns:
             检索结果列表
         """
-        # TODO: 调用服务检索
-        # 需要服务提供 retrieve 方法
-        # 当前简化为返回空列表
-        return []
+        try:
+            # 使用 service proxy 的 search 方法重新检索
+            # service 是 _ServiceProxy 实例，提供 search() 和 retrieve() 方法
+            top_k = input_data.config.get("top_k", 10)
+
+            # 根据服务类型选择合适的检索方法
+            try:
+                # 优先使用 search 方法（语义检索）
+                results = service.search(query=query, top_k=top_k)
+            except Exception:
+                # 如果 search 失败，尝试 retrieve（图检索）
+                try:
+                    results = service.retrieve(query=query, top_k=top_k)
+                except Exception:  # noqa: BLE001
+                    return []
+
+            # 转换为 MemoryItem 格式
+            items = []
+            for idx, result in enumerate(results):
+                item = MemoryItem(
+                    text=result.get("content", ""),
+                    score=result.get("score"),
+                    metadata=result.get("metadata", {}),
+                    original_index=idx,
+                )
+                items.append(item)
+
+            return items
+        except Exception:  # noqa: BLE001
+            # 如果检索失败，返回空列表（降级处理）
+            return []
 
     def _merge_all_results(self, all_results: list[list[MemoryItem]]) -> list[MemoryItem]:
         """合并所有查询的结果
@@ -169,11 +218,10 @@ Output format (one per line):
         """
         if self.merge_strategy == "union":
             return self._merge_union(all_results)
-        elif self.merge_strategy == "intersection":
+        if self.merge_strategy == "intersection":
             return self._merge_intersection(all_results)
-        else:
-            # 默认使用 union
-            return self._merge_union(all_results)
+        # 默认使用 union
+        return self._merge_union(all_results)
 
     def _merge_union(self, all_results: list[list[MemoryItem]]) -> list[MemoryItem]:
         """Union 合并策略

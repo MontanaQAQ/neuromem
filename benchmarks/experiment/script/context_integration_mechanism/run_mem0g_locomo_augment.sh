@@ -15,16 +15,16 @@ CONFIG_FILE="$SCRIPT_DIR/../../config/context_integration_mechanism/Mem0g_locomo
 
 # Define all task IDs
 TASK_IDS=(
-  "conv-26"
-  "conv-30"
-  "conv-41"
-  "conv-42"
-  "conv-43"
-  "conv-44"
-  "conv-47"
+  # "conv-26"
+  # "conv-30"
+  # "conv-41"
+  # "conv-42"
+  # "conv-43"
+  # "conv-44"
+  # "conv-47"
   "conv-48"
-  "conv-49"
-  "conv-50"
+  # "conv-49"
+  # "conv-50"
 )
 
 # Create log directory structure

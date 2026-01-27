@@ -7,6 +7,56 @@ import time
 
 from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 
+# 扩展的 embedding 模型维度映射（补充 sage-common 中未定义的模型）
+EXTENDED_EMBEDDING_DIMENSIONS = {
+    "intfloat/e5-large-v2": 1024,
+    "intfloat/e5-base-v2": 768,
+    "intfloat/e5-small-v2": 384,
+    "sentence-transformers/all-mpnet-base-v2": 768,
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 384,
+}
+
+
+def _patch_embedding_model_dimensions():
+    """在运行时动态补丁 sage-common 的 embedding 模型维度映射
+
+    这样可以在不修改 sage-common 源码的情况下支持新的 embedding 模型。
+    """
+    try:
+        from sage.common.components.sage_embedding.embedding_model import EmbeddingModel
+
+        # 获取原始的 set_dim 方法
+        original_set_dim = EmbeddingModel.set_dim
+
+        def patched_set_dim(self, model_name):
+            """补丁版本的 set_dim，优先使用扩展的维度映射"""
+            # 先检查扩展映射
+            if model_name in EXTENDED_EMBEDDING_DIMENSIONS:
+                self.dim = EXTENDED_EMBEDDING_DIMENSIONS[model_name]
+                return
+
+            # 回退到原始方法
+            try:
+                original_set_dim(self, model_name)
+            except ValueError as err:
+                # 如果原始方法也不认识，再抛出错误
+                raise ValueError(
+                    f"Unknown embedding model: {model_name}. "
+                    f"Please add it to EXTENDED_EMBEDDING_DIMENSIONS in "
+                    f"benchmarks/experiment/utils/llm/embedding_generator.py"
+                ) from err
+
+        # 替换方法
+        EmbeddingModel.set_dim = patched_set_dim
+
+    except Exception as e:
+        # 补丁失败不影响主流程（对于已知模型）
+        print(f"[WARNING] Failed to patch EmbeddingModel dimensions: {e}")
+
+
+# 在模块加载时自动应用补丁
+_patch_embedding_model_dimensions()
+
 
 class EmbeddingGenerator:
     """Embedding 生成器类"""

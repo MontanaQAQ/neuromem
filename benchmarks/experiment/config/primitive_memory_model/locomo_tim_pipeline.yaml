@@ -40,7 +40,7 @@ runtime:
 
 # 服务配置
 services:
-  services_type: "partitional.lsh_hash"  # 记忆服务：<类型>.<具体实现>
+  services_type: "partitional.lsh_hash"  # 记忆服务：LSH 哈希索引
   lsh_hash:
     # === MinHash LSH 核心参数 ===
     embedding_dim: 1024  # 向量维度（需要与 embedding 模型输出维度一致）
@@ -50,7 +50,6 @@ services:
     # === MinHash LSH 检索参数===
     n_gram: 3            # n-gram shingle 大小（默认 3，用于文本分词）
     threshold: 0.3       # 相似度阈值（降低到 0.3 以提高召回率，TiM 三元组提取后文本较短）
-    # 注意：threshold 越低，召回越高但误报也越多。TiM 三元组提取后需要较低阈值
   memory_retrieval_adapter: "none"
 
 
@@ -127,8 +126,8 @@ operators:
 # ============================================================
 # 论文核心特性：
 #   1. 归纳性思想（Inductive Thoughts）：以三元组形式存储
-#   2. LSH 哈希索引：快速定位语义相近的记忆
-#   3. 后思考（Post-thinking）：插入后进行记忆优化
+#   2. LSH 哈希索引：快速定位语义相近的记忆（MinHash LSH）
+#   3. 后思考（Post-thinking）：插入后进行记忆优化（Forget + Merge）
 #   4. 两阶段检索：LSH 定位候选桶 + 桶内相似度计算
 #
 # SAGE 实现方式：
@@ -137,38 +136,36 @@ operators:
 # ├─────────────────────────────────────────────────────────┤
 # │ PreInsert          │ Post-thinking        │ extract.triple│
 # │  - 三元组提取      │ 生成归纳性思想        │ LLM Prompt   │
-# │  - Embedding       │ 向量化以备 LSH        │ BGE-M3       │
 # ├─────────────────────────────────────────────────────────┤
-# │ MemoryInsert       │ Insert (LSH)         │ VectorMemory │
-# │  - LSH 哈希        │ 计算哈希桶            │ index_type=  │
-# │  - 存入对应桶      │ 追加到 bucket         │  IndexLSH    │
+# │ MemoryInsert       │ Insert (LSH)         │ lsh_hash     │
+# │  - MinHash 计算    │ 计算文本哈希签名      │ Service      │
+# │  - 存入哈希桶      │ 追加到 bucket         │ LSHIndex     │
 # ├─────────────────────────────────────────────────────────┤
-# │ PostInsert         │ Forget + Merge       │ distillation │
-# │  - 检索相似记忆    │ 查询同桶内容          │ topk=10      │
-# │  - LLM 判断操作    │ 去重/合并/删除矛盾    │ LLM Prompt   │
-# │  - 执行删除/插入   │ 一次性更新桶内容      │ Service      │
+# │ PostInsert         │ Forget + Merge       │ conflict_    │
+# │  - 检索相似记忆    │ 查询同桶内容          │ resolution   │
+# │  - LLM 判断操作    │ 去重/合并/删除矛盾    │ .semantic_   │
+# │  - 执行删除/插入   │ 一次性更新桶内容      │ consolidation│
 # ├─────────────────────────────────────────────────────────┤
-# │ PreRetrieval       │ Query Embedding      │ embedding    │
-# │  - 查询向量化      │ 用于 LSH 计算         │ BGE-M3       │
+# │ PreRetrieval       │ Query 预处理         │ embedding    │
+# │  - 查询文本准备    │ 用于 LSH 计算         │ (可选)       │
 # ├─────────────────────────────────────────────────────────┤
-# │ MemoryRetrieval    │ Two-stage Retrieve   │ VectorMemory │
-# │  - LSH 定位桶      │ 找到候选 bucket       │ Hamming Dist │
-# │  - 桶内相似度计算  │ top-k 最相关记忆      │ Cosine Sim   │
+# │ MemoryRetrieval    │ Two-stage Retrieve   │ lsh_hash     │
+# │  - LSH 定位桶      │ 找到候选 bucket       │ MinHash      │
+# │  - 桶内相似度计算  │ top-k 最相关记忆      │ Jaccard Sim  │
 # ├─────────────────────────────────────────────────────────┤
 # │ PostRetrieval      │ Context Integration  │ none         │
 # │  - 基础格式化      │ 拼接为 prompt         │ 默认格式     │
 # └─────────────────────────────────────────────────────────┘
 #
 # 关键配置参数：
-#   - index_type: IndexLSH (TiM 使用 LSH 哈希索引)
-#   - nbits: 128 (LSH 哈希位数，影响精度和速度的平衡)
-#   - distillation: 记忆蒸馏策略（去重/合并相似记忆）
-#
-# 索引类型对比：
-#   - IndexLSH (TiM): 快速近似检索，适合大规模数据
-#   - IndexHNSWFlat: 更高精度，但速度稍慢
-#   - IndexFlatL2: 精确 KNN，适合小规模数据
+#   - services_type: partitional.lsh_hash（TiM 使用 LSH 哈希索引）
+#   - hash_size: 128（MinHash 排列数，影响精度）
+#   - threshold: 0.3（相似度阈值，三元组较短需要降低）
+#   - semantic_consolidation: 记忆蒸馏策略（去重/合并相似记忆）
 #
 # 运行示例：
-#   python packages/sage-benchmark/.../memory_test_pipeline.py \
-#     --config .../locomo_tim_pipeline.yaml --task_id conv-26
+#   python benchmarks/experiment/memory_test_pipeline.py \
+#     --config config/primitive_memory_model/locomo_tim_pipeline.yaml \
+#     --task_id conv-26
+#     --config config/primitive_memory_model/locomo_tim_pipeline.yaml \
+#     --task_id conv-26

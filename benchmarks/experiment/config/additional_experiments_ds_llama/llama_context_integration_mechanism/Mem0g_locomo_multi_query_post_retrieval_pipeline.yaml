@@ -29,7 +29,7 @@ runtime:
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: "PostRetrieval_Mem0g_multi_query_Llama"
+  memory_name: "Additional_Llama_Mem0g_multi_query"
 
   embedding_base_url: "http://localhost:8091/v1"
   embedding_model: "BAAI/bge-m3"
@@ -49,19 +49,15 @@ operators:
   pre_insert:
     action: "extract.triple"
     extraction_method: "llm"
-    keep_original: false
-    max_triplets: 3
     triple_extraction_prompt: |
-      You are a knowledge graph builder.
-      Extract factual triples from the dialogue.
+      You are a knowledge graph builder. Extract factual triples from the dialogue.
+      Focus on entities (people, organizations, locations) and their relationships.
 
-      Strict Rules (follow exactly):
-      - Output ONLY triples, one per line.
-      - Exact format: (Subject, Predicate, Object)
-      - Use DOUBLE QUOTES only if present in source; otherwise plain text.
-      - Resolve ALL pronouns to actual entity names.
-      - No headings, no explanations, no markdown, no code fences, no extra text.
-      - If no triples: return "None" on a single line.
+      Rules:
+      1. Output format: (Subject, Predicate, Object) - one triple per line
+      2. Resolve ALL pronouns to actual entity names
+      3. Extract relationships, attributes, and temporal information
+      4. Be concise and factual
 
       Dialogue:
       {dialogue}

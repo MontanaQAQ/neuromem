@@ -1,0 +1,132 @@
+# ============================================================================
+# additional_model_llama.yaml
+#
+# 补充实验：Llama-3-8B 模型下 PostRetrieval 策略对比分析配置
+# 对比 Augment vs Multi-query (D5 Integration)
+# ============================================================================
+
+dataset:
+  name: "locomo"
+  description: "LoCoMo - LLM Model Comparison: PanGu-1B vs Llama-3-8B (PostRetrieval Strategies)"
+
+# 实验名称（用于报告标题）
+name: "LLM Model Comparison: PanGu-1B vs Llama-3-8B (D5 Integration)"
+
+# 数据路径配置
+paths:
+  base_dir: ".sage/benchmarks/benchmark_memory/locomo"
+  output_dir: ".sage/benchmarks/benchmark_memory/locomo/output/round_analysis_additional_model_llama"
+
+# 实验目录前缀（自动发现时使用）
+prefixes:
+  - "PostRetrieval_Mem0g_"
+
+# 评估器配置
+evaluator:
+  name: "locomo"
+
+# 指标配置
+metrics:
+  - name: "f1"
+    display_name: "F1 Score"
+    ylabel: "F1 Score"
+    description: "Token-level F1 with Porter Stemmer"
+
+  - name: "insert_time"
+    display_name: "Insert Time per Item"
+    ylabel: "Time (ms)"
+    description: "Average insert time per memory item"
+
+  - name: "retrieval_time"
+    display_name: "Retrieval Time per Query"
+    ylabel: "Time (ms)"
+    description: "Average retrieval time per query"
+
+# Category 配置
+categories:
+  labels:
+    1: "Multi-answer"
+    2: "Single-answer"
+    3: "Clean-semicolon"
+    4: "Standard"
+    5: "Info-not-mentioned"
+
+# 输出配置
+output:
+  # 输出格式
+  formats:
+    - "csv"      # CSV数据表
+    - "md"       # Markdown报告
+    - "json"     # JSON原始数据
+
+  # 图表配置
+  charts:
+    single_strategy: true       # 单策略图
+    comparison: true            # 对比图
+    cost_effectiveness: true    # 成本效益图
+    category: true              # 类别对比图
+
+  # 图表样式
+  style:
+    figure_size: [10, 6]
+    dpi: 300
+    font_size: 12
+    line_width: 2
+    marker_size: 8
+    grid: true
+    legend_location: "best"
+
+# ============================================================================
+# 补充实验特定配置
+# ============================================================================
+
+# 对比组定义
+comparison_groups:
+  - name: "PanGu-1B (Original)"
+    strategies:
+      - name: "PanGu_Augment"
+        path: "PostRetrieval_Mem0g_augment"
+        label: "PanGu + Augment"
+      - name: "PanGu_Multi-query"
+        path: "PostRetrieval_Mem0g_multi_query"
+        label: "PanGu + Multi-query"
+
+  - name: "Llama-3-8B (Additional)"
+    strategies:
+      - name: "Llama_Augment"
+        path: "Additional_Llama_Mem0g_augment"
+        label: "Llama + Augment"
+      - name: "Llama_Multi-query"
+        path: "Additional_Llama_Mem0g_multi_query"
+        label: "Llama + Multi-query"
+
+# 分析维度
+analysis_dimensions:
+  - name: "Retrieval Quality"
+    description: "检索质量对比"
+    metrics:
+      - "f1"
+      - "retrieval_time"
+
+  - name: "Strategy Effectiveness"
+    description: "策略有效性分析"
+    metrics:
+      - "f1"
+      - "category_f1"
+
+# 报告配置
+report:
+  title: "LLM Model Comparison: PanGu-1B vs Llama-3-8B (PostRetrieval Strategies)"
+  sections:
+    - "Executive Summary"
+    - "Methodology"
+    - "Results"
+    - "Discussion"
+    - "Conclusions"
+
+  highlights:
+    - "LLM模型对F1 score的影响 (PanGu vs Llama)"
+    - "PostRetrieval策略对比 (Augment vs Multi-query)"
+    - "模型-策略组合的最优选择"
+    - "检索时间开销分析"
+    - "各类别问题表现差异"

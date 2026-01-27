@@ -1,16 +1,12 @@
-﻿# ============================================================
-# PostRetrieval Experiment (Llama): Mem0g + Augment
-# Memory Structure: Mem0g (Semantic Inverted Knowledge Graph)
-# PostRetrieval Strategy: augment
-# Config Name: Llama Mem0g_locomo_augment_post_retrieval_pipeline.yaml
-# ============================================================
-
+---
+# Mem0ᵍ (pre_insert=rewrite.triplet_extract, embedding=e5-large-v2) - locomo 变体
+# 补充实验：测试 intfloat/e5-large-v2 embedding 模型 + rewrite 的效果
+# 基于: benchmarks/experiment/config/normalization_strategy/Mem0g_locomo_rewrite_triplet_extract_pre_insert_pipeline.yaml
 runtime:
   dataset: "locomo"
   memory_insert_verbose: false
   memory_test_verbose: true
   test_segments: 5
-
   prompt_template: |
     Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
     - For "what/who": just the thing/person
@@ -19,18 +15,15 @@ runtime:
 
     Q: {question}
     A:
-
-  # LLM - Llama unified config
-  api_key: "token-abc123"
-  base_url: "http://sage2:8001/v1"
-  model_name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
   max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: "Additional_Llama_Mem0g_augment"
-
-  embedding_base_url: "http://localhost:8091/v1"
-  embedding_model: "BAAI/bge-m3"
+  memory_name: "Additional_Mem0g_rewrite_e5_large"
+  embedding_base_url: "http://localhost:8092/v1"  # 使用新的 e5-large-v2 端口
+  embedding_model: "intfloat/e5-large-v2"  # 使用新的 embedding 模型
 
 services:
   services_type: "hierarchical.semantic_inverted_knowledge_graph"
@@ -45,17 +38,14 @@ services:
 
 operators:
   pre_insert:
-    action: "extract.triple"
+    action: "rewrite.triplet_extract"
     extraction_method: "llm"
+    keep_original: false
+    max_triplets: 3  # 一轮对话(2条消息)通常只有1-3个有意义的事实
     triple_extraction_prompt: |
-      You are a knowledge graph builder. Extract factual triples from the dialogue.
-      Focus on entities (people, organizations, locations) and their relationships.
-
-      Rules:
-      1. Output format: (Subject, Predicate, Object) - one triple per line
-      2. Resolve ALL pronouns to actual entity names
-      3. Extract relationships, attributes, and temporal information
-      4. Be concise and factual
+      Extract factual triples from this dialogue turn.
+      Format: (Subject, Predicate, Object) - one per line.
+      Only extract 1-3 real facts. Skip if no clear facts.
 
       Dialogue:
       {dialogue}
@@ -96,10 +86,7 @@ operators:
     action: "embedding"
 
   post_retrieval:
-    action: "augment"
-    augment_type: "persona"
-    position: "before"
-    separator: "\n\n---\n\n"
-
+    action: "none"
+    top_k: 10
     conversation_format_prompt: |
       The following is relevant context retrieved from memory.
