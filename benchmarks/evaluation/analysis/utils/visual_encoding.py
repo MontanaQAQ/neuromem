@@ -2,15 +2,15 @@
 改进的视觉编码系统 - 用于四个记忆操作维度的图表
 
 设计原则:
-    - 使用标记形状(marker)表示记忆体系统 (TiM/MemoryOS/Mem0g)
+    - 使用标记形状(marker)表示记忆体系统
     - 使用颜色表示操作策略 (none/enrich/compress等)
     - 使用线型(linestyle)作为辅助区分
 
 视觉编码:
     标记 (Marker) = 记忆体系统
-        ○ (circle)     → TiM
-        □ (square)     → MemoryOS
-        △ (triangle_up) → Mem0g
+        ○ (circle)     → Lsh Hash (内部名: TiM)
+        □ (square)     → Queue-Segment (内部名: MemoryOS)
+        △ (triangle_up) → Property Graph (内部名: Mem0g)
 
     颜色 (Color) = 操作策略
         灰色   → none (基线)
@@ -18,6 +18,11 @@
         绿色   → augment/enrich (增强)
         橙色   → multi_query/summarize (复杂处理)
         红色   → compress/rewrite (压缩/重写)
+
+注意:
+    - SYSTEM_MARKERS 使用内部配置名称作为键 (TiM, MemoryOS, Mem0g)
+    - SYSTEM_DISPLAY_NAMES 将内部名称映射到显示名称
+    - 图例中显示的是 SYSTEM_DISPLAY_NAMES 中的友好名称
 """
 
 from __future__ import annotations
@@ -33,6 +38,13 @@ SYSTEM_MARKERS = {
     "TiM": "o",  # 圆形
     "MemoryOS": "s",  # 正方形
     "Mem0g": "^",  # 三角形
+}
+
+# 系统名称显示映射（用于图例）
+SYSTEM_DISPLAY_NAMES = {
+    "TiM": "Lsh Hash",
+    "MemoryOS": "Queue-Segment",
+    "Mem0g": "Property Graph",
 }
 
 # 操作策略 → 颜色 (鲜艳版本)
@@ -87,17 +99,19 @@ def parse_config_name(config_name: str) -> tuple[str, str, str]:
 
     Args:
         config_name: 如 "PreInsert_TiM_enrich_summarize"
+                     (使用内部配置名称，如 TiM, MemoryOS, Mem0g)
 
     Returns:
         (dimension, system, strategy)
         如 ("PreInsert", "TiM", "enrich_summarize")
+        注意: system 返回的是内部名称，需要通过 SYSTEM_DISPLAY_NAMES 转换为显示名称
     """
     parts = config_name.split("_")
 
     # 第一部分: 维度 (PreInsert/PostInsert/PreRetrieval/PostRetrieval)
     dimension = parts[0]
 
-    # 第二部分: 系统 (TiM/MemoryOS/Mem0g)
+    # 第二部分: 系统 (TiM/MemoryOS/Mem0g - 内部配置名称)
     system = parts[1] if len(parts) > 1 else "Unknown"
 
     # 第三部分及之后: 策略 (保持完整组合名)
@@ -152,14 +166,16 @@ def get_visual_encoding(config_name: str) -> dict:
             color = "#808080"  # 默认灰色
 
     formatted_strategy = format_strategy_label(strategy)
+    display_system = SYSTEM_DISPLAY_NAMES.get(system, system)
 
     return {
         "marker": SYSTEM_MARKERS.get(system, "o"),
         "color": color,
         "linestyle": STRATEGY_LINESTYLES.get(strategy, "-"),
-        "label": f"{system} - {formatted_strategy}",
+        "label": f"{display_system} - {formatted_strategy}",  # 使用显示名称
         "formatted_strategy": formatted_strategy,
-        "system": system,
+        "system": system,  # 保留内部名称供后续处理
+        "display_system": display_system,  # 添加显示名称
         "strategy": strategy,
         "dimension": dimension,
     }
@@ -283,7 +299,7 @@ def create_dual_legend(ax, plotted_configs):
             linestyle="",
             markersize=10,
             markeredgewidth=1.5,
-            label=sys,
+            label=SYSTEM_DISPLAY_NAMES.get(sys, sys),  # 使用显示名称
         )
         for sys in unique_systems
         if sys in SYSTEM_MARKERS
@@ -364,9 +380,9 @@ if __name__ == "__main__":
 
     print("✓ 生成示例图: test_visual_encoding.png")
     print("\n图例说明:")
-    print("  ○ (圆形)   = TiM")
-    print("  □ (正方形) = MemoryOS")
-    print("  △ (三角形) = Mem0g")
+    print("  ○ (圆形)   = Lsh Hash")
+    print("  □ (正方形) = Queue-Segment")
+    print("  △ (三角形) = Property Graph")
     print("\n  灰色 = none (基线)")
     print("  蓝色 = semantic/top_k")
     print("  绿色 = augment/enrich")

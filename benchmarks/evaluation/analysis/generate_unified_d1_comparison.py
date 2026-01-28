@@ -12,7 +12,7 @@ import pandas as pd
 
 # Data structure mapping for cleaner display names
 DS_DISPLAY_NAMES = {
-    "DataStructure_inverted_vectorstore": "Hybrid (Inverted+Vector)",
+    "DataStructure_inverted_vectorstore": "Inverted+Vector",
     "DataStructure_feature_queue_vectorstore": "Queue+Vector",
     "DataStructure_feature_queue_segment": "Queue+Segment",
     "DataStructure_feature_queue_summary": "Queue+Summary",
@@ -31,7 +31,7 @@ DS_STYLES = {
         "marker": "*",
         "color": "#e74c3c",
         "size": 300,
-        "label": "Hybrid (Inverted+Vector)",
+        "label": "Inverted+Vector",
     },  # Red star - highlight
     "DataStructure_feature_queue_vectorstore": {
         "marker": "D",
@@ -114,21 +114,24 @@ def compute_pareto_frontier(latencies, f1_scores):
 
 
 def load_benchmark_data(benchmark_name):
-    """Load F1 scores and retrieval times for a benchmark."""
+    """Load F1 scores, insert times, and retrieval times for a benchmark."""
     base_path = Path(
         f".sage/benchmarks/benchmark_memory/{benchmark_name}/output/round_analysis_datastructure"
     )
 
     f1_df = pd.read_csv(base_path / "f1_scores.csv")
+    insert_df = pd.read_csv(base_path / "insert_times.csv")
     retrieval_df = pd.read_csv(base_path / "retrieval_times.csv")
 
-    # Use mean values
+    # Use mean values and calculate intrinsic latency (insert + retrieval)
     data = []
     for _idx, row in f1_df.iterrows():
         strategy = row["Strategy"]
         f1_mean = row["Mean"]
+        insert_mean = insert_df[insert_df["Strategy"] == strategy]["Mean"].values[0]
         retrieval_mean = retrieval_df[retrieval_df["Strategy"] == strategy]["Mean"].values[0]
-        data.append({"strategy": strategy, "f1": f1_mean, "retrieval_latency": retrieval_mean})
+        intrinsic_latency = insert_mean + retrieval_mean
+        data.append({"strategy": strategy, "f1": f1_mean, "intrinsic_latency": intrinsic_latency})
 
     return pd.DataFrame(data)
 
@@ -159,7 +162,7 @@ def create_unified_comparison():
 
             style = DS_STYLES[strategy]
             ax.scatter(
-                row["retrieval_latency"],
+                row["intrinsic_latency"],
                 row["f1"],
                 marker=style["marker"],
                 color=style["color"],
@@ -171,7 +174,7 @@ def create_unified_comparison():
             )
 
         # Compute and draw Pareto frontier
-        latencies = data["retrieval_latency"].values
+        latencies = data["intrinsic_latency"].values
         f1_scores = data["f1"].values
         pareto_indices = compute_pareto_frontier(latencies, f1_scores)
 
@@ -192,7 +195,7 @@ def create_unified_comparison():
         # ax.set_xscale('log')  # Disabled - linear is clearer for this data
 
         # Let matplotlib auto-determine ticks, just set reasonable limits
-        x_vals = data["retrieval_latency"].values
+        x_vals = data["intrinsic_latency"].values
         x_min, x_max = x_vals.min(), x_vals.max()
         x_margin = (x_max - x_min) * 0.1
         ax.set_xlim(x_min - x_margin, x_max + x_margin)
@@ -201,7 +204,7 @@ def create_unified_comparison():
         ax.tick_params(axis="x", which="major", labelsize=16, rotation=0, length=5)
 
         # Labels and title
-        ax.set_xlabel("Retrieval Latency (ms)", fontsize=18, fontweight="bold")
+        ax.set_xlabel("Intrinsic Structure Latency [ms]", fontsize=18, fontweight="bold")
         if ax == axes[0]:  # Only leftmost plot gets y-label
             ax.set_ylabel("Token-level F1 Score", fontsize=18, fontweight="bold")
         ax.set_title(title, fontsize=20, fontweight="bold", pad=10)
@@ -283,7 +286,7 @@ def create_unified_comparison():
         for _idx, row in top3.iterrows():
             strategy_name = DS_DISPLAY_NAMES.get(row["strategy"], row["strategy"])
             print(
-                f"  {strategy_name:35s} F1={row['f1']:.4f}  Latency={row['retrieval_latency']:6.1f}ms"
+                f"  {strategy_name:35s} F1={row['f1']:.4f}  Intrinsic Latency={row['intrinsic_latency']:6.1f}ms"
             )
 
 

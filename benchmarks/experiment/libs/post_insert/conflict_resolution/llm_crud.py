@@ -38,6 +38,8 @@ class LLMCRUDAction(BasePostInsertAction):
         """Initialize LLM CRUD action configuration."""
         self.top_k = self._get_config("top_k", 5)
         self.debug_summary_only = bool(self._get_config("debug_summary_only", False))
+        # JSON输出需要足够的tokens，默认128（比QA的32大很多）
+        self.llm_max_tokens = self._get_config("llm_max_tokens", 128)
         self.decision_prompt = self._get_config(
             "decision_prompt",
             """分析新记忆与现有记忆的关系，决定操作类型。
@@ -162,15 +164,16 @@ class LLMCRUDAction(BasePostInsertAction):
             "{existing_memories}", existing_text
         )
 
-        # Call LLM
+        # Call LLM (覆盖max_tokens确保JSON输出完整)
         try:
             if hasattr(llm, "generate_json"):
                 response = llm.generate_json(
                     prompt,
-                    default={"action": "ADD", "to_delete": [], "reason": "insufficient evidence"},
+                    default={"action": "ADD", "to_delete": [], "reason": "parse_failed"},
+                    max_tokens=self.llm_max_tokens,
                 )
             else:
-                response = llm.generate(prompt)
+                response = llm.generate(prompt, max_tokens=self.llm_max_tokens)
         except Exception as e:
             if not self.debug_summary_only:
                 print(f"[DEBUG LLM_CRUD] LLM call failed: {e}")
@@ -180,58 +183,169 @@ class LLMCRUDAction(BasePostInsertAction):
                 )
             raise
 
-        # Parse response
+        # Parse response - 增强解析，支持多种格式
         try:
-            if isinstance(response, dict):
-                decision = response
-            else:
-                if not isinstance(response, str):
-                    response = json.dumps(response, ensure_ascii=False)
-                try:
-                    decision = json.loads(response)
-                except json.JSONDecodeError:
-                    extracted = self._extract_json_block(response)
-                    decision = json.loads(extracted)
-
-            # Validate and normalize decision
-            action = decision.get("action")
-            if action not in self.AVAILABLE_ACTIONS:
-                action = "ADD"
-            decision["action"] = action
-
-            # Normalize to_delete field
-            if "to_delete" in decision and isinstance(decision["to_delete"], list):
-                pass
-            elif decision.get("target_id"):
-                decision["to_delete"] = [decision["target_id"]]
-            else:
-                decision["to_delete"] = []
-
-            # Validate IDs against similar memories
-            # 确保 ID 是可哈希类型（字符串/数字），避免字典类型导致的 unhashable 错误
-            valid_ids = set()
-            for m in similar_memories:
-                mid = m.get("id")
-                if mid is not None:
-                    # 如果 ID 是字典或列表，转换为字符串
-                    if isinstance(mid, (dict, list)):
-                        mid = str(mid)
-                    valid_ids.add(str(mid))
-
-            normalized_to_delete = [
-                tid for tid in decision["to_delete"] if tid and str(tid).strip() in valid_ids
-            ]
-            decision["to_delete"] = normalized_to_delete
-
-            if decision["action"] in ["UPDATE", "DELETE"] and not decision["to_delete"]:
-                decision["action"] = "NOOP"
-
-            return decision
-
+            return self._parse_llm_response(response, similar_memories)
         except Exception as e:
             if not self.debug_summary_only:
-                print(f"[DEBUG LLM_CRUD] Parse error: {e}")
-            return {"action": "ADD", "to_delete": [], "reason": "Parse error"}
+                print(f"[DEBUG LLM_CRUD] Parse error: {e}, response={str(response)[:200]}")
+            # Fallback: 尝试从文本中提取action关键字
+            return self._fallback_extract_action(response, similar_memories)
+
+    def _parse_llm_response(
+        self, response: Any, similar_memories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Parse LLM response with multiple fallback strategies."""
+
+        # Strategy 1: 直接是dict
+        if isinstance(response, dict):
+            return self._normalize_decision(response, similar_memories)
+
+        # 转换为字符串
+        if not isinstance(response, str):
+            response = json.dumps(response, ensure_ascii=False)
+
+        response = response.strip()
+
+        # Strategy 2: 直接JSON解析
+        try:
+            decision = json.loads(response)
+            return self._normalize_decision(decision, similar_memories)
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 3: 提取```json块
+        try:
+            extracted = self._extract_json_block(response)
+            decision = json.loads(extracted)
+            return self._normalize_decision(decision, similar_memories)
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Strategy 4: 修复常见JSON错误后重试
+        try:
+            fixed = self._fix_json_string(response)
+            decision = json.loads(fixed)
+            return self._normalize_decision(decision, similar_memories)
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Strategy 5: 从文本中提取action关键字
+        return self._fallback_extract_action(response, similar_memories)
+
+    def _fix_json_string(self, text: str) -> str:
+        """Fix common JSON formatting errors from small LLMs."""
+        import re
+
+        # 提取第一个{...}块
+        start = text.find("{")
+        if start == -1:
+            return text
+
+        depth = 0
+        end = start
+        for i in range(start, len(text)):
+            ch = text[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+
+        json_str = text[start:end] if end > start else text
+
+        # 修复常见错误
+        # 1. 单引号 -> 双引号
+        json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
+        # 2. 无引号的key -> 加引号
+        json_str = re.sub(r"(\{|,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:", r'\1"\2":', json_str)
+        # 3. 移除尾部逗号
+        return re.sub(r",\s*([}\]])", r"\1", json_str)
+
+    def _fallback_extract_action(
+        self, response: Any, similar_memories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Fallback: extract action keyword from text when JSON parsing fails."""
+
+        text = str(response).upper()
+
+        # 提取有效ID列表
+        valid_ids = []
+        for m in similar_memories:
+            mid = m.get("id")
+            if mid is not None:
+                if isinstance(mid, (dict, list)):
+                    mid = str(mid)
+                valid_ids.append(str(mid))
+
+        # 按优先级检测action关键字
+        if (
+            "NOOP" in text
+            or "NO_OP" in text
+            or "NO-OP" in text
+            or "NO CHANGE" in text
+            or "DUPLICATE" in text
+        ):
+            return {"action": "NOOP", "to_delete": [], "reason": "detected_from_text"}
+
+        if "DELETE" in text:
+            # 尝试提取要删除的ID
+            to_delete = [vid for vid in valid_ids if vid in str(response)]
+            return {"action": "DELETE", "to_delete": to_delete, "reason": "detected_from_text"}
+
+        if "UPDATE" in text:
+            to_delete = [vid for vid in valid_ids if vid in str(response)]
+            return {"action": "UPDATE", "to_delete": to_delete, "reason": "detected_from_text"}
+
+        # 默认策略：保守地ADD（保留新记忆）
+        # 理由：删除有用信息的代价 > 保留重复信息的代价
+        # 相似 ≠ 重复，不能仅凭检索到相似记忆就删除新记忆
+        return {"action": "ADD", "to_delete": [], "reason": "default_add_conservative"}
+
+    def _normalize_decision(
+        self, decision: dict[str, Any], similar_memories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Normalize and validate decision dict."""
+        # Validate action
+        action = decision.get("action", "").upper()
+        if action not in self.AVAILABLE_ACTIONS:
+            # 尝试从event字段获取（兼容mem0格式）
+            action = decision.get("event", "").upper()
+        if action not in self.AVAILABLE_ACTIONS:
+            action = "ADD"
+        decision["action"] = action
+
+        # Normalize to_delete field
+        if "to_delete" in decision and isinstance(decision["to_delete"], list):
+            pass
+        elif decision.get("target_id"):
+            decision["to_delete"] = [decision["target_id"]]
+        elif decision.get("id") and action in ["UPDATE", "DELETE"]:
+            decision["to_delete"] = [decision["id"]]
+        else:
+            decision["to_delete"] = []
+
+        # Validate IDs against similar memories
+        valid_ids = set()
+        for m in similar_memories:
+            mid = m.get("id")
+            if mid is not None:
+                if isinstance(mid, (dict, list)):
+                    mid = str(mid)
+                valid_ids.add(str(mid))
+
+        normalized_to_delete = [
+            tid for tid in decision["to_delete"] if tid and str(tid).strip() in valid_ids
+        ]
+        decision["to_delete"] = normalized_to_delete
+
+        # 如果UPDATE/DELETE但没有有效的to_delete，改为NOOP
+        if decision["action"] in ["UPDATE", "DELETE"] and not decision["to_delete"]:
+            decision["action"] = "NOOP"
+
+        return decision
 
     @staticmethod
     def _extract_json_block(text: str) -> str:

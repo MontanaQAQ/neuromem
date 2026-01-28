@@ -76,6 +76,23 @@ class LLMGenerator:
         if not all([api_key, base_url, model_name]):
             raise ValueError("缺少必需的 LLM 配置: api_key, base_url, model_name")
 
+        # 收集额外参数（如 enable_thinking, top_p 等）
+        extra_params = {}
+
+        # 已知的额外参数列表
+        extra_param_names = [
+            "enable_thinking",  # Qwen 思维链控制
+            "top_p",  # nucleus sampling
+            "frequency_penalty",  # 频率惩罚
+            "presence_penalty",  # 存在惩罚
+            "stop",  # 停止词
+        ]
+
+        for param_name in extra_param_names:
+            value = config.get(f"{prefix}.{param_name}")
+            if value is not None:
+                extra_params[param_name] = value
+
         return cls(
             api_key=api_key,
             base_url=base_url,
@@ -83,6 +100,7 @@ class LLMGenerator:
             max_tokens=max_tokens,
             temperature=temperature,
             seed=seed,
+            **extra_params,  # 传递额外参数
         )
 
     def generate(self, prompt: str, **override_params: Any) -> str:

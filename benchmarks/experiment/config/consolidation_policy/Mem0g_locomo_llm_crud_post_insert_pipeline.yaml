@@ -69,6 +69,38 @@ operators:
     action: conflict_resolution.llm_crud
     similarity_threshold: 0.8
     top_k: 5
+    llm_max_tokens: 128
+    decision_prompt: |
+      Memory conflict detection. Compare NEW memory with OLD memories.
+
+      ## Examples
+
+      Example 1 - Same info (NOOP):
+      NEW: User likes pizza
+      OLD: [id1] User likes pizza
+      Output: {"action":"NOOP","to_delete":[],"reason":"duplicate"}
+
+      Example 2 - Update info (UPDATE):
+      NEW: User now likes sushi
+      OLD: [id1] User likes pizza
+      Output: {"action":"UPDATE","to_delete":["id1"],"reason":"preference changed"}
+
+      Example 3 - Contradiction (DELETE):
+      NEW: User hates coffee
+      OLD: [id1] User loves coffee
+      Output: {"action":"DELETE","to_delete":["id1"],"reason":"contradicts"}
+
+      Example 4 - New info (ADD):
+      NEW: User is an engineer
+      OLD: [id1] User likes pizza
+      Output: {"action":"ADD","to_delete":[],"reason":"different topic"}
+
+      ## Your Task
+
+      NEW: {new_memory}
+      OLD: {existing_memories}
+
+      Output JSON only:
 
   post_retrieval:
     action: none

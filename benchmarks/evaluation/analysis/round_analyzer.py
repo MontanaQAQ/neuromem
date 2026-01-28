@@ -151,6 +151,13 @@ def run_analysis(
     print(f"开始分析 ({len(valid_strategies)} 个策略)")
     print("=" * 70)
 
+    # 获取任务过滤列表（如果配置中指定）
+    tasks_filter = config.get("tasks")
+    if tasks_filter:
+        print(f"\n任务过滤: 仅评估 {len(tasks_filter)} 个任务: {tasks_filter}")
+    else:
+        print("\n任务过滤: 未指定，评估所有任务")
+
     # 存储所有指标
     all_f1 = {}
     all_insert = {}
@@ -162,10 +169,14 @@ def run_analysis(
     for strategy in valid_strategies:
         print(f"\n[{strategy}]")
 
-        # 聚合指标
-        f1_metrics = analyzer.aggregate_across_tasks(loader, strategy, "f1")
-        insert_metrics = analyzer.aggregate_across_tasks(loader, strategy, "insert_time")
-        retrieval_metrics = analyzer.aggregate_across_tasks(loader, strategy, "retrieval_time")
+        # 聚合指标（传递任务过滤器）
+        f1_metrics = analyzer.aggregate_across_tasks(loader, strategy, "f1", tasks_filter)
+        insert_metrics = analyzer.aggregate_across_tasks(
+            loader, strategy, "insert_time", tasks_filter
+        )
+        retrieval_metrics = analyzer.aggregate_across_tasks(
+            loader, strategy, "retrieval_time", tasks_filter
+        )
 
         print(f"  F1 Scores: {f1_metrics}")
         print(f"  Insert Times (ms): {insert_metrics}")
@@ -176,13 +187,17 @@ def run_analysis(
         all_retrieval[strategy] = retrieval_metrics
 
         # Category F1分析
-        category_f1 = category_analyzer.aggregate_across_tasks(loader, strategy)
+        category_f1 = category_analyzer.aggregate_across_tasks(loader, strategy, tasks_filter)
         all_category_f1[strategy] = category_f1
         print(f"  Category F1: {category_f1}")
 
         # 时间分解分析
-        insert_breakdown = time_analyzer.aggregate_across_tasks(loader, strategy, "insert")
-        retrieval_breakdown = time_analyzer.aggregate_across_tasks(loader, strategy, "retrieval")
+        insert_breakdown = time_analyzer.aggregate_across_tasks(
+            loader, strategy, "insert", tasks_filter
+        )
+        retrieval_breakdown = time_analyzer.aggregate_across_tasks(
+            loader, strategy, "retrieval", tasks_filter
+        )
         all_insert_breakdown[strategy] = insert_breakdown
         all_retrieval_breakdown[strategy] = retrieval_breakdown
         print(
@@ -489,8 +504,12 @@ def generate_markdown(
     # Insert时间分解表
     if insert_breakdown_metrics:
         md += "## Insert Time Breakdown (ms)\n\n"
-        md += "| Strategy | Pre | Memory | Post | Total |\n"
-        md += "|----------|-----|--------|------|-------|\n"
+        md += "**Pre-Insert Stage**: Data preprocessing, embedding generation, and consolidation operations.\n\n"
+        md += "**Memory-Insert Stage**: Core memory insertion operations (vector indexing, storage writes).\n\n"
+        md += "**Post-Insert Stage**: Post-processing, secondary index updates, and cleanup.\n\n"
+
+        md += "| Strategy | Pre (ms) | Memory (ms) | Post (ms) | Total (ms) |\n"
+        md += "|----------|----------|-------------|-----------|------------|\n"
 
         for strategy in strategies:
             b = insert_breakdown_metrics.get(strategy, {})
@@ -513,12 +532,121 @@ def generate_markdown(
     # Retrieval时间分解表
     if retrieval_breakdown_metrics:
         md += "## Retrieval Time Breakdown (ms)\n\n"
-        md += "| Strategy | Pre | Memory | Post | Total |\n"
-        md += "|----------|-----|--------|------|-------|\n"
+        md += "**Pre-Retrieval Stage**: Query preprocessing, embedding generation, and query expansion.\n\n"
+        md += "**Memory-Retrieval Stage**: Core memory retrieval operations (vector search, ranking).\n\n"
+        md += "**Post-Retrieval Stage**: Result post-processing, re-ranking, and formatting.\n\n"
+
+        md += "| Strategy | Pre (ms) | Memory (ms) | Post (ms) | Total (ms) |\n"
+        md += "|----------|----------|-------------|-----------|------------|\n"
 
         for strategy in strategies:
             b = retrieval_breakdown_metrics.get(strategy, {})
             md += f"| {strategy} | {b.get('pre', 0):.2f} | {b.get('memory', 0):.2f} | {b.get('post', 0):.2f} | {b.get('total', 0):.2f} |\n"
+
+        md += "\n"
+
+    # 添加综合性能洞察部分
+    if insert_breakdown_metrics and retrieval_breakdown_metrics:
+        md += "## Performance Insights\n\n"
+
+        # 找出最优策略
+        best_f1_strategy = max(
+            strategies,
+            key=lambda s: float(
+                np.mean(list(f1_metrics.get(s, {}).values())) if f1_metrics.get(s) else 0
+            ),
+        )
+        best_f1_score = float(np.mean(list(f1_metrics.get(best_f1_strategy, {}).values())))
+
+        # 找出最快的插入策略
+        if insert_metrics:
+            fastest_insert = min(
+                strategies,
+                key=lambda s: float(
+                    np.mean(list(insert_metrics.get(s, {}).values()))
+                    if insert_metrics.get(s)
+                    else float("inf")
+                ),
+            )
+            fastest_insert_time = float(
+                np.mean(list(insert_metrics.get(fastest_insert, {}).values()))
+            )
+
+        # 找出最快的检索策略
+        if retrieval_metrics:
+            fastest_retrieval = min(
+                strategies,
+                key=lambda s: float(
+                    np.mean(list(retrieval_metrics.get(s, {}).values()))
+                    if retrieval_metrics.get(s)
+                    else float("inf")
+                ),
+            )
+            fastest_retrieval_time = float(
+                np.mean(list(retrieval_metrics.get(fastest_retrieval, {}).values()))
+            )
+
+        md += "### Top Performers\n\n"
+        md += f"- **Best F1 Score**: {best_f1_strategy} ({best_f1_score:.4f})\n"
+        if insert_metrics:
+            md += f"- **Fastest Insert**: {fastest_insert} ({fastest_insert_time:.2f} ms)\n"
+        if retrieval_metrics:
+            md += (
+                f"- **Fastest Retrieval**: {fastest_retrieval} ({fastest_retrieval_time:.2f} ms)\n"
+            )
+        md += "\n"
+
+        md += "### Stage-wise Performance Analysis\n\n"
+
+        # Insert阶段分析
+        md += "#### Insert Stage Analysis\n\n"
+
+        # 分析哪些策略在pre-insert阶段最慢
+        md += "**Pre-Insert Stage Impact**: Strategies with longest pre-processing times:\n\n"
+        pre_insert_sorted = sorted(
+            [(s, insert_breakdown_metrics.get(s, {}).get("pre", 0)) for s in strategies],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:3]
+        for i, (strat, time) in enumerate(pre_insert_sorted, 1):
+            md += f"{i}. {strat}: {time:.2f} ms\n"
+        md += "\n"
+
+        # 分析哪些策略在post-insert阶段最慢
+        md += "**Post-Insert Stage Impact**: Strategies with longest post-processing times:\n\n"
+        post_insert_sorted = sorted(
+            [(s, insert_breakdown_metrics.get(s, {}).get("post", 0)) for s in strategies],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:3]
+        for i, (strat, time) in enumerate(post_insert_sorted, 1):
+            md += f"{i}. {strat}: {time:.2f} ms\n"
+        md += "\n"
+
+        # Retrieval阶段分析
+        md += "#### Retrieval Stage Analysis\n\n"
+
+        # 分析哪些策略在pre-retrieval阶段最慢
+        md += "**Pre-Retrieval Stage Impact**: Strategies with longest pre-processing times:\n\n"
+        pre_retrieval_sorted = sorted(
+            [(s, retrieval_breakdown_metrics.get(s, {}).get("pre", 0)) for s in strategies],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:3]
+        for i, (strat, time) in enumerate(pre_retrieval_sorted, 1):
+            md += f"{i}. {strat}: {time:.2f} ms\n"
+        md += "\n"
+
+        # 分析哪些策略在post-retrieval阶段最慢
+        md += "**Post-Retrieval Stage Impact**: Strategies with longest post-processing times:\n\n"
+        post_retrieval_sorted = sorted(
+            [(s, retrieval_breakdown_metrics.get(s, {}).get("post", 0)) for s in strategies],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:3]
+        for i, (strat, time) in enumerate(post_retrieval_sorted, 1):
+            md += f"{i}. {strat}: {time:.2f} ms\n"
+        md += "\n"
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(md)

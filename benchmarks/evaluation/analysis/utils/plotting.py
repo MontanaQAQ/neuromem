@@ -28,6 +28,13 @@ SYSTEM_MARKERS = {
     "Mem0g": "^",  # 三角形
 }
 
+# 系统名称显示映射（用于图例）
+SYSTEM_DISPLAY_NAMES = {
+    "TiM": "Lsh Hash",
+    "MemoryOS": "Queue-Segment",
+    "Mem0g": "Property Graph",
+}
+
 # 操作策略 → 颜色（深色高对比度配色 - 适合打印和学术论文）
 STRATEGY_COLORS = {
     # 基线
@@ -85,10 +92,12 @@ def parse_config_name(config_name: str) -> tuple[str, str, str, str]:
 
     Args:
         config_name: 如 "PreInsert_TiM_rewrite_compress"
+                     (使用内部配置名称，如 TiM, MemoryOS, Mem0g)
 
     Returns:
         (dimension, system, strategy_key, strategy_label)
         例如: ("PreInsert", "TiM", "rewrite", "Rewrite-Compress")
+        注意: system 返回的是内部名称，需要通过 SYSTEM_DISPLAY_NAMES 转换为显示名称
     """
     parts = config_name.split("_")
     dimension = parts[0] if parts else "Unknown"
@@ -262,13 +271,14 @@ def plot_comparison(
 
             plotted_configs[unique_key] = encoding
 
+            display_system = SYSTEM_DISPLAY_NAMES.get(encoding["system"], encoding["system"])
             ax.plot(
                 rounds,
                 values,
                 marker=encoding["marker"],
                 color=encoding["color"],
                 linestyle=encoding["linestyle"],
-                label=f"{encoding['system']}-{encoding['strategy_label']}",
+                label=f"{display_system}-{encoding['strategy_label']}",  # 使用显示名称
                 linewidth=1.5,
                 markersize=6,
                 alpha=0.85,
@@ -348,7 +358,7 @@ def create_dual_legend(ax, plotted_configs):
             color=system_colors.get(sys, "#666666"),
             linestyle="",
             markersize=14,
-            label=sys,
+            label=SYSTEM_DISPLAY_NAMES.get(sys, sys),  # 使用显示名称
             markeredgewidth=1.5,
             markerfacecolor=system_colors.get(sys, "#666666"),
         )
@@ -760,12 +770,13 @@ def plot_cost_effectiveness_evolution(
     color = STRATEGY_COLORS.get(strategy_key, "#000000")
     linestyle = STRATEGY_LINESTYLES.get(strategy_key, "-")
     marker = SYSTEM_MARKERS.get(system, "o")
+    display_system = SYSTEM_DISPLAY_NAMES.get(system, system)
 
     # 绘制曲线
     ax.plot(
         rounds,
         ce_values,
-        label=f"{system} - {strategy_label}",
+        label=f"{display_system} - {strategy_label}",  # 使用显示名称
         color=color,
         linestyle=linestyle,
         marker=marker,
@@ -916,6 +927,8 @@ def plot_cost_effectiveness_comparison(
     # 第二组：形状代表系统（Memory Base）
     legend_systems = []
     for system, marker in sorted(used_systems, key=lambda x: x[0]):
+        # 使用显示名称，如果没有映射则使用原始名称
+        display_name = SYSTEM_DISPLAY_NAMES.get(system, system)
         legend_systems.append(
             Line2D(
                 [0],
@@ -925,7 +938,7 @@ def plot_cost_effectiveness_comparison(
                 linestyle="None",
                 markersize=8,
                 markeredgewidth=1.5,
-                label=system,
+                label=display_name,
             )
         )
 

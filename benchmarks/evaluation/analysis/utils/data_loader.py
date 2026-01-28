@@ -95,12 +95,16 @@ class DataLoader:
             print(f"Error loading {json_files[0]}: {e}")
             return None
 
-    def iter_tasks(self, strategy: str) -> Iterator[TaskData]:
+    def iter_tasks(
+        self, strategy: str, tasks_filter: list[str] | None = None
+    ) -> Iterator[TaskData]:
         """
         迭代策略下的所有task
 
         Args:
             strategy: 策略目录名
+            tasks_filter: 可选的任务过滤列表（如 ['conv-26', 'conv-30']）
+                         如果提供，只加载这些任务；否则加载所有任务
 
         Yields:
             TaskData对象
@@ -108,14 +112,29 @@ class DataLoader:
         strategy_dir = self.base_dir / strategy
         tasks = discover_tasks(strategy_dir)
 
+        # 应用任务过滤
+        if tasks_filter is not None:
+            tasks = [t for t in tasks if t in tasks_filter]
+
         for task in tasks:
             task_data = self.load_task(strategy, task)
             if task_data is not None:
                 yield task_data
 
-    def get_tasks(self, strategy: str) -> list[str]:
-        """获取策略下的所有task名称"""
-        return discover_tasks(self.base_dir / strategy)
+    def get_tasks(self, strategy: str, tasks_filter: list[str] | None = None) -> list[str]:
+        """获取策略下的所有task名称
+
+        Args:
+            strategy: 策略目录名
+            tasks_filter: 可选的任务过滤列表
+
+        Returns:
+            任务名称列表
+        """
+        tasks = discover_tasks(self.base_dir / strategy)
+        if tasks_filter is not None:
+            tasks = [t for t in tasks if t in tasks_filter]
+        return tasks
 
 
 class RoundAnalyzer:
@@ -260,6 +279,7 @@ class RoundAnalyzer:
         loader: DataLoader,
         strategy: str,
         metric_func: str = "f1",
+        tasks_filter: list[str] | None = None,
     ) -> dict[int, float]:
         """
         跨所有task聚合某个指标
@@ -268,6 +288,7 @@ class RoundAnalyzer:
             loader: 数据加载器
             strategy: 策略目录名
             metric_func: 指标类型 ("f1", "insert_time", "retrieval_time")
+            tasks_filter: 可选的任务过滤列表
 
         Returns:
             {round_idx: avg_metric}
@@ -286,7 +307,7 @@ class RoundAnalyzer:
         else:
             raise ValueError(f"未知的指标类型: {metric_func}")
 
-        for task_data in loader.iter_tasks(strategy):
+        for task_data in loader.iter_tasks(strategy, tasks_filter):
             round_metrics = analyze_fn(task_data)
             for round_idx, value in round_metrics.items():
                 all_round_metrics[round_idx].append(value)
@@ -394,9 +415,15 @@ class CategoryAnalyzer:
         self,
         loader: DataLoader,
         strategy: str,
+        tasks_filter: list[str] | None = None,
     ) -> dict[int, float]:
         """
         跨所有task聚合Category F1
+
+        Args:
+            loader: 数据加载器
+            strategy: 策略目录名
+            tasks_filter: 可选的任务过滤列表
 
         Returns:
             {category: avg_f1}
@@ -405,7 +432,7 @@ class CategoryAnalyzer:
 
         all_category_metrics = defaultdict(list)
 
-        for task_data in loader.iter_tasks(strategy):
+        for task_data in loader.iter_tasks(strategy, tasks_filter):
             category_metrics = self.analyze_f1_by_category(task_data)
             for cat, value in category_metrics.items():
                 all_category_metrics[cat].append(value)
@@ -542,9 +569,16 @@ class TimeBreakdownAnalyzer:
         loader: DataLoader,
         strategy: str,
         timing_type: str = "insert",
+        tasks_filter: list[str] | None = None,
     ) -> dict[str, float]:
         """
         跨所有task聚合时间分解
+
+        Args:
+            loader: 数据加载器
+            strategy: 策略目录名
+            timing_type: 时间类型 ("insert" 或 "retrieval")
+            tasks_filter: 可选的任务过滤列表
 
         Returns:
             {"pre": avg_ms, "memory": avg_ms, "post": avg_ms, "total": avg_ms}
@@ -559,7 +593,7 @@ class TimeBreakdownAnalyzer:
             else self.analyze_retrieval_breakdown
         )
 
-        for task_data in loader.iter_tasks(strategy):
+        for task_data in loader.iter_tasks(strategy, tasks_filter):
             breakdown = analyze_fn(task_data)
             for key, value in breakdown.items():
                 all_breakdowns[key].append(value)

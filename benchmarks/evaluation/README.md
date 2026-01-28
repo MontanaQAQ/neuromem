@@ -25,6 +25,50 @@
    - 美化技术细节
    - 配色方案和字体配置
 
+### 🆕 增强功能 (2026-01-28)
+
+**分析报告现在包含 Pre/Post Insert/Retrieval 详细时间分析！**
+
+生成的 `analysis_report.md` 现在自动包含：
+
+1. **Insert Time Breakdown (ms)** - 插入时间三阶段分解
+   - **Pre-Insert Stage** (ms): 数据预处理、embedding生成、整合操作
+   - **Memory-Insert Stage** (ms): 核心内存插入（向量索引、存储写入）
+   - **Post-Insert Stage** (ms): 后处理、二级索引更新、清理
+
+2. **Retrieval Time Breakdown (ms)** - 检索时间三阶段分解
+   - **Pre-Retrieval Stage** (ms): 查询预处理、embedding生成、查询扩展
+   - **Memory-Retrieval Stage** (ms): 核心检索操作（向量搜索、排序）
+   - **Post-Retrieval Stage** (ms): 结果后处理、重排序、格式化
+
+3. **Performance Insights** - 性能洞察
+   - 自动识别最优策略（最高F1、最快Insert、最快Retrieval）
+   - 阶段性能排名（Pre/Post阶段最慢策略Top 3）
+   - 具体毫秒时间值，便于识别性能瓶颈
+
+**示例报告片段**:
+```markdown
+## Insert Time Breakdown (ms)
+
+**Pre-Insert Stage**: Data preprocessing, embedding generation, and consolidation operations.
+
+| Strategy | Pre (ms) | Memory (ms) | Post (ms) | Total (ms) |
+|----------|----------|-------------|-----------|------------|
+| PostInsert_Mem0g_llm_crud | 1292.63 | 55.44 | 2502.18 | 3850.25 |
+| PostInsert_Mem0g_none | 1837.23 | 85.28 | 0.04 | 1922.55 |
+
+## Performance Insights
+
+**Post-Insert Stage Impact**: Strategies with longest post-processing times:
+1. PostInsert_Mem0g_llm_crud: 2502.18 ms  ← 明显的性能瓶颈！
+2. PostInsert_Mem0g_link_evolution: 174.95 ms
+```
+
+**关键洞察**:
+- llm_crud策略的Post-Insert阶段占用65%的总时间（2502ms），是主要瓶颈
+- none策略几乎无Post-Insert开销（0.04ms），插入最快
+- 所有策略的Pre-Retrieval阶段占50%以上时间，主要用于embedding生成
+
 ### 🚀 快速开始 (5分钟决策)
 
 ```bash

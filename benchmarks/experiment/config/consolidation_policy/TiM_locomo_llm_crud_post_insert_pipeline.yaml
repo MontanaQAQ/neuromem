@@ -78,33 +78,39 @@ operators:
     action: conflict_resolution.llm_crud
     similarity_threshold: 0.8
     top_k: 5
+    llm_max_tokens: 128
     debug_summary_only: true
     decision_prompt: |
-      You are a JSON decision API. Output ONLY a single minified JSON object, no prose, no markdown, no code fences.
+      Memory conflict detection. Compare NEW memory with OLD memories.
 
-      Schema:
-      {
-        "action": "ADD|UPDATE|DELETE|NOOP",
-        "to_delete": ["<id>", ...],
-        "reason": "<short explanation>"
-      }
+      ## Examples
 
-      Rules:
-      - Use UPPERCASE for action exactly as one of ADD, UPDATE, DELETE, NOOP.
-      - Use double quotes for all JSON strings (not single quotes).
-      - If uncertain, default to {"action":"ADD","to_delete":[],"reason":"insufficient evidence"}.
-      - "to_delete" must contain only IDs present in the Existing facts list (the values inside square brackets []).
-      - UPDATE or DELETE: put the affected existing fact IDs into to_delete.
-      - NOOP: to_delete must be [].
+      Example 1 - Same info (NOOP):
+      NEW: User likes pizza
+      OLD: [id1] User likes pizza
+      Output: {"action":"NOOP","to_delete":[],"reason":"duplicate"}
 
-      Inputs:
-      New fact:
-      {new_memory}
+      Example 2 - Update info (UPDATE):
+      NEW: User now likes sushi
+      OLD: [id1] User likes pizza
+      Output: {"action":"UPDATE","to_delete":["id1"],"reason":"preference changed"}
 
-      Existing facts:
-      {existing_memories}
+      Example 3 - Contradiction (DELETE):
+      NEW: User hates coffee
+      OLD: [id1] User loves coffee
+      Output: {"action":"DELETE","to_delete":["id1"],"reason":"contradicts"}
 
-      Now respond with ONLY the JSON object.
+      Example 4 - New info (ADD):
+      NEW: User is an engineer
+      OLD: [id1] User likes pizza
+      Output: {"action":"ADD","to_delete":[],"reason":"different topic"}
+
+      ## Your Task
+
+      NEW: {new_memory}
+      OLD: {existing_memories}
+
+      Output JSON only:
 
   post_retrieval:
     action: none
