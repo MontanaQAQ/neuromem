@@ -126,12 +126,18 @@ class LLMCRUDAction(BasePostInsertAction):
         for r in results:
             rid = r.get("id") or r.get("entry_id") or r.get("node_id")
             if rid is not None:
+                # 确保 ID 是简单类型（字符串/数字），避免字典/列表导致后续 unhashable 错误
+                if isinstance(rid, (dict, list)):
+                    rid = str(rid)
                 r["id"] = rid
             normalized.append(r)
 
         # Filter out the new memory itself
         new_id = new_memory.get("id")
         if new_id is not None:
+            # 同样处理 new_id
+            if isinstance(new_id, (dict, list)):
+                new_id = str(new_id)
             normalized = [r for r in normalized if r.get("id") != new_id]
         return normalized
 
@@ -168,6 +174,10 @@ class LLMCRUDAction(BasePostInsertAction):
         except Exception as e:
             if not self.debug_summary_only:
                 print(f"[DEBUG LLM_CRUD] LLM call failed: {e}")
+                print(f"[DEBUG LLM_CRUD] Prompt: {prompt[:200]}...")
+                print(
+                    f"[DEBUG LLM_CRUD] Response type: {type(response).__name__ if 'response' in locals() else 'N/A'}"
+                )
             raise
 
         # Parse response
@@ -198,7 +208,16 @@ class LLMCRUDAction(BasePostInsertAction):
                 decision["to_delete"] = []
 
             # Validate IDs against similar memories
-            valid_ids = {m.get("id") for m in similar_memories if m.get("id")}
+            # 确保 ID 是可哈希类型（字符串/数字），避免字典类型导致的 unhashable 错误
+            valid_ids = set()
+            for m in similar_memories:
+                mid = m.get("id")
+                if mid is not None:
+                    # 如果 ID 是字典或列表，转换为字符串
+                    if isinstance(mid, (dict, list)):
+                        mid = str(mid)
+                    valid_ids.add(str(mid))
+
             normalized_to_delete = [
                 tid for tid in decision["to_delete"] if tid and str(tid).strip() in valid_ids
             ]

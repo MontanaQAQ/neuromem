@@ -19,11 +19,18 @@
 
 - [D] UI 组件 (ui/)
   - ProgressBar: 进度条显示
+
+- [E] 数据加载器 (dataloader/)
+  - DataLoaderFactory: 数据集加载器工厂
+  - BaseDataLoader: 数据集加载器基类
 """
 
 # === [A] LLM 调用层 ===
 # === [B] 配置与参数 ===
 from .config import RuntimeConfig, get_required_config, parse_args
+
+# === [E] 数据加载器 ===
+from .dataloader import BaseDataLoader, DataLoaderFactory
 
 # === [C] 辅助工具 ===
 from .helpers import (
@@ -56,4 +63,7 @@ __all__ = [
     "process_logger",
     # UI 组件
     "ProgressBar",
+    # 数据加载器
+    "DataLoaderFactory",
+    "BaseDataLoader",
 ]

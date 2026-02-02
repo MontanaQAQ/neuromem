@@ -16,20 +16,20 @@ CONFIG_FILE="$SCRIPT_DIR/../../config/query_formulation_strategy/MemoryOS_locomo
 # 定义所有任务 ID
 TASK_IDS=(
   "conv-26"
-  # "conv-30"
-  # "conv-41"
-  # "conv-42"
-  # "conv-43"
-  # "conv-44"
-  # "conv-47"
-  # "conv-48"
-  # "conv-49"
-  # "conv-50"
+  "conv-30"
+  "conv-41"
+  "conv-42"
+  "conv-43"
+  "conv-44"
+  "conv-47"
+  "conv-48"
+  "conv-49"
+  "conv-50"
 )
 
 # 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="MemoryOS-keyword_extract"
+MEMORY_NAME="PreRetrieval_MemoryOS_keyword_extract"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 

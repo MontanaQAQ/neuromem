@@ -1,5 +1,15 @@
 # Memory Pipeline Actions 配置手册
 
+> 本目录的文档以 `benchmarks/experiment/libs/**` 的 Registry/Operator 实现为准（即“代码即真相”）。
+
+## 文档导航
+
+- `01_pre_insert.md`：Pre-Insert Actions（插入前预处理）
+- `02_pre_retrieval.md`：Pre-Retrieval Actions（检索前查询处理）
+- `03_post_insert.md`：Post-Insert Actions（插入后维护/优化）
+- `04_post_retrieval.md`：Post-Retrieval Actions（检索后处理/拼接上下文）
+- `05_memory_data_structure.md`：Memory Data Structure（跨阶段数据结构与底层映射）
+
 ## 四个阶段的定位
 
 | 阶段 | 时机 | 核心职责 | 输入 | 输出 |
@@ -13,42 +23,45 @@
 > - **`embedding`**: 向量化透传（Pre-Retrieval阶段）- 仅做基础向量化，不进行复杂优化
 > - **`none`**: 无操作透传（所有阶段）- 直接传递数据，不做任何处理
 
+> **第五个维度（跨阶段）**：`05_memory_data_structure.md` 解释数据在 Benchmark Pipeline 的字段形态（如 `memory_entries / insert_stats / memory_data / history_text`），以及与 NeuroMem 底层 `UnifiedCollection/Storage/Index` 的映射关系。
+
 ---
 
 ## 可用 Actions 配置列表
 
-### 1. Pre-Insert Actions（14个）
+> 本手册使用“Action Key”描述可选动作，Action Key 与 Registry 中注册名一致。
+>
+> Benchmark 配置文件采用如下结构（示例摘自 `benchmarks/experiment/config/**/*.yaml`）：
+>
+> - `operators.<stage>.action: <action_key>`
+> - 其余字段为该 action 的参数（可选）
+>
+> 说明：Operator 同时兼容两种写法：
+> 1) **推荐**：直接写全量 key（如 `extract.triple`、`rerank.semantic`）
+> 2) 兼容：写 `action: extract` + `extract_type: triple`（同理 `transform_type`、`optimize_type` 等）
+
+### 1. Pre-Insert Actions（7个 + 1个废弃别名）
 
 #### 1.1 透传类（1个）
 | Action配置名 | 功能说明 |
 |-------------|---------|
 | `none` | 无操作透传 |
 
-#### 1.2 Transform 类（5个）
+#### 1.2 Transform 类（2个）
 | Action配置名 | 功能说明 |
 |-------------|---------|
-| `transform.chunking` | 文本分块 |
-| `transform.summarize` | 文本摘要 |
-| `transform.segment` | 主题分段 |
 | `transform.segment_denoise` | 分段去噪 |
-| `transform.continuity_check` | 连续性检查 |
+| `transform.summarize` | 文本摘要 |
 
-#### 1.3 Extract 类（5个）
+#### 1.3 Extract 类（4个）
 | Action配置名 | 功能说明 |
 |-------------|---------|
 | `extract.keyword` | 关键词提取 |
 | `extract.entity` | 实体提取 |
-| `extract.noun` | 名词提取 |
 | `extract.triple` | 三元组提取 |
-| `extract.multi_summary` | 多级摘要提取 |
+| `extract.fact` | 事实提取 |
 
-#### 1.4 Score 类（2个）
-| Action配置名 | 功能说明 |
-|-------------|---------|
-| `score.importance` | 重要性评分 |
-| `score.heat` | 热度评分 |
-
-#### 1.5 已废弃别名
+#### 1.4 已废弃别名（向后兼容）
 | Action配置名 | 功能说明 | 替代方案 |
 |-------------|---------|---------|
 | `tri_embed` | 三元组提取（已废弃） | 使用 `extract.triple` |
@@ -80,7 +93,7 @@
 
 ---
 
-### 3. Post-Insert Actions（9个，按策略分类）
+### 3. Post-Insert Actions（8个，按策略分类）
 
 #### 3.1 透传类（1个）
 | Action配置名 | 功能说明 |
@@ -99,20 +112,16 @@
 | `decay_eviction.forgetting_curve` | 遗忘曲线驱逐 | MemoryBank |
 | `decay_eviction.time_decay` | 时间衰减驱逐 | LD-Agent |
 
-#### 3.4 Structure Enrichment 策略（2个）
+#### 3.4 Structure Enrichment 策略（3个）
 | Action配置名 | 功能说明 | 代表系统 |
 |-------------|---------|---------|
 | `structure_enrichment.link_evolution` | 链接演化 | A-Mem |
 | `structure_enrichment.graph_construction` | 图构建 | HippoRAG |
-
-#### 3.5 Tier Migration 策略（1个）
-| Action配置名 | 功能说明 | 代表系统 |
-|-------------|---------|---------|
-| `tier_migration.heat_migration` | 基于热度的层级迁移 | MemoryOS |
+| `structure_enrichment.heat_migration` | 基于热度的层级迁移 | MemoryOS |
 
 ---
 
-### 4. Post-Retrieval Actions（16个）
+### 4. Post-Retrieval Actions（14个）
 
 #### 4.1 透传类（1个）
 | Action配置名 | 功能说明 |
@@ -142,6 +151,8 @@
 | `merge.multi_tier` | 多层融合 | MemGPT |
 | `scm_three_way` | SCM三路合并 | SCM |
 
+> 注意：`scm_three_way` 在语义上属于 Merge，但其 Action Key **不带** `merge.` 前缀（与 `PostRetrieval` Operator 的 action_key 拼接逻辑兼容）。
+
 #### 4.5 Augment 类（2个）
 | Action配置名 | 功能说明 | 代表系统 |
 |-------------|---------|---------|
@@ -150,54 +161,41 @@
 
 ---
 
-## 配置示例
+## 配置示例（Benchmark YAML）
 
 ### 最小化配置（仅透传）
 ```yaml
-pre_insert:
-  - none
-
-pre_retrieval:
-  - embedding
-
-post_insert:
-  - none
-
-post_retrieval:
-  - none
+operators:
+  pre_insert:
+    action: none
+  pre_retrieval:
+    action: embedding
+  post_insert:
+    action: none
+  post_retrieval:
+    action: none
 ```
 
 ### 典型向量检索配置
 ```yaml
-pre_insert:
-  - transform.chunking
-  - extract.keyword
-
-pre_retrieval:
-  - optimize.keyword_extract
-  - embedding
-
-post_retrieval:
-  - filter.top_k
+operators:
+  pre_insert:
+    action: extract.keyword
+  pre_retrieval:
+    action: optimize.keyword_extract
+  post_retrieval:
+    action: filter.top_k
 ```
 
 ### 高级图谱 + RAG 配置
 ```yaml
-pre_insert:
-  - extract.triple
-  - extract.entity
-  - score.importance
-
-post_insert:
-  - structure_enrichment.graph_construction
-  - structure_enrichment.link_evolution
-
-pre_retrieval:
-  - enhancement.route
-  - embedding
-
-post_retrieval:
-  - merge.multi_query
-  - rerank.ppr
-  - filter.token_budget
+operators:
+  pre_insert:
+    action: extract.triple
+  post_insert:
+    action: structure_enrichment.graph_construction
+  pre_retrieval:
+    action: enhancement.route
+  post_retrieval:
+    action: rerank.ppr
 ```

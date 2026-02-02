@@ -10,30 +10,23 @@
 runtime:
   dataset: "locomo"  # 数据集名称
   # task_id: "conv-26"  # 任务ID，可通过命令行 --task_id 覆盖
-  memory_insert_verbose: false  # 是否打印记忆插入的详细信息（Memory Source部分）
-  memory_test_verbose: true    # 是否打印记忆测试的详细信息（QA部分）
-  test_segments: 10             # 测试分段数，将总问题数分成几段进行测试
+  test_segments: 5             # 测试分段数，将总问题数分成几段进行测试
   service_timeout: 600.0        # 服务调用超时时间（秒）- TiM需要LLM三元组提取和蒸馏操作，需要更长超时
 
   # Prompt 模板配置（阶段二：MemoryTest）
   prompt_template: |
-    Based on the above context, answer the following question concisely.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
 
-    Question: {question}
-    Answer:
-
-  # 第五类问题专用 Prompt（选择题格式，更简洁）
-  prompt_template_category5: |
-    Based on the above context, answer the following question.
-
-    Question: {question}
-    Answer:
-
+    Q: {question}
+    A:
   # LLM 配置
   # api_key: token-abc123
   # base_url: http://sage2:8000/v1
   # model_name: /home/cyb/Llama-3.1-8B-Instruct
-  # max_tokens: 256
+  # max_tokens: 32
   # temperature: 0
   # seed: 42
 
@@ -41,10 +34,10 @@ runtime:
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  max_tokens: 256
+  max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: "TiM-decompose"
+  memory_name: "PreRetrieve_TiM_decompose"
 
   # Embedding 配置
   embedding_base_url: "http://localhost:8091/v1"  # Embedding 服务器地址

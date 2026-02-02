@@ -8,9 +8,11 @@
 | Filter | 过滤和筛选结果 | 3 |
 | Rerank | 重新排序结果 | 4 |
 | Merge | 合并多路结果 | 4 |
-| Augment | 增强结果质量 | 1 |
+| Augment | 增强结果质量 | 2 |
 
 > **💡 透传操作**: `none_action.py` 用于简单检索系统，直接返回原始检索结果，不做后处理。
+
+> **⚠️ 命名注意**：`scm_three_way` 语义上属于 Merge，但其 Action Key **不带** `merge.` 前缀（registry 注册名就是 `scm_three_way`）。
 
 ---
 

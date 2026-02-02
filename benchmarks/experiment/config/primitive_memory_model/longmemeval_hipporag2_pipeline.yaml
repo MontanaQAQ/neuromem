@@ -1,0 +1,88 @@
+﻿# ============================================================
+# HippoRAG2 Pipeline 配置 (改进版)
+# 论文: HippoRAG: Neurobiologically Inspired Long-Term Memory for LLMs
+# 变体: HippoRAG2 - 更深的 PPR + 更好的 Rerank
+# 特点: 相比基础版 HippoRAG，增加了 PPR 深度和增强的重排序
+# ============================================================
+
+runtime:
+  dataset: "longmemeval"
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  # 配置1（Llama-3.1-8B，用于对比）：
+  # api_key: "token-abc123"
+  # base_url: "http://sage2:8000/v1"
+  # model_name: "/home/cyb/Llama-3.1-8B-Instruct"
+  # max_tokens: 32
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "HippoRAG2"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+# ============================================================
+# 服务配置 - HippoRAG2 加强检索
+# ============================================================
+services:
+  services_type: "hierarchical.semantic_inverted_knowledge_graph"
+  semantic_inverted_knowledge_graph:
+    vector_dim: 1024
+    hierarchy_levels: 3
+    routing_strategy: "cascade"
+    enable_cross_layer_query: true
+    max_hops: 4                      # 更深的遍历
+    default_index: "semantic_index"
+
+# ============================================================
+# Operator 配置
+# ============================================================
+operators:
+  pre_insert:
+    action: "extract.triple"
+    triple_extraction_prompt: |
+      You are a knowledge graph builder. Extract factual triples from the dialogue. Be exhaustive, include time and location when present.
+
+      Output format:
+      (Subject, Predicate, Object)
+      ...
+
+      Dialogue:
+      {dialogue}
+
+  post_insert:
+    action: "structure_enrichment.link_evolution"
+    link_policy: "synonym_edge"
+    knn_k: 10
+    similarity_threshold: 0.7
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"
+    top_k: 15
+    conversation_format_prompt: |
+      The following is relevant knowledge from the graph.
+
+# 运行示例：
+#   python packages/sage-benchmark/.../memory_test_pipeline.py \
+#     --config .../longmemeval_hipporag2_pipeline.yaml --task_id group-1

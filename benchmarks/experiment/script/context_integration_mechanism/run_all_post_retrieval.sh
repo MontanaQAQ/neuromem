@@ -11,22 +11,28 @@ set -e  # 遇到错误立即退出
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 PYTHON_SCRIPT="$SCRIPT_DIR/../../memory_test_pipeline.py"
-CONFIG_DIR="$SCRIPT_DIR/../../config/result_optimization_strategy"
+CONFIG_DIR="$SCRIPT_DIR/../../config/context_integration_mechanism"
 
-# 定义所有配置文件
+# 定义所有配置文件（15个：3个架构 x 5种PostRetrieval策略）
 CONFIG_FILES=(
-  # TiM 系列
+  # TiM 系列（5种策略）
   "TiM_locomo_none_post_retrieval_pipeline.yaml"
-  "TiM_locomo_time_weighted_post_retrieval.yaml"
-  "TiM_locomo_threshold_post_retrieval.yaml"
-  # MemoryOS 系列
+  "TiM_locomo_top_k_post_retrieval_pipeline.yaml"
+  "TiM_locomo_semantic_post_retrieval_pipeline.yaml"
+  "TiM_locomo_multi_query_post_retrieval_pipeline.yaml"
+  "TiM_locomo_augment_post_retrieval_pipeline.yaml"
+  # MemoryOS 系列（5种策略）
   "MemoryOS_locomo_none_post_retrieval_pipeline.yaml"
-  "MemoryOS_locomo_time_weighted_post_retrieval.yaml"
-  "MemoryOS_locomo_augment_post_retrieval.yaml"
-  # Mem0g 系列
+  "MemoryOS_locomo_top_k_post_retrieval_pipeline.yaml"
+  "MemoryOS_locomo_semantic_post_retrieval_pipeline.yaml"
+  "MemoryOS_locomo_multi_query_post_retrieval_pipeline.yaml"
+  "MemoryOS_locomo_augment_post_retrieval_pipeline.yaml"
+  # Mem0g 系列（5种策略）
   "Mem0g_locomo_none_post_retrieval_pipeline.yaml"
-  "Mem0g_locomo_link_expand_post_retrieval.yaml"
-  "Mem0g_locomo_threshold_post_retrieval.yaml"
+  "Mem0g_locomo_top_k_post_retrieval_pipeline.yaml"
+  "Mem0g_locomo_semantic_post_retrieval_pipeline.yaml"
+  "Mem0g_locomo_multi_query_post_retrieval_pipeline.yaml"
+  "Mem0g_locomo_augment_post_retrieval_pipeline.yaml"
 )
 
 # 定义测试任务 ID

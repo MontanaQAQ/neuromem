@@ -1,0 +1,60 @@
+﻿# ============================================================
+# 数据结构实验: LSH Hash (向量索引代表)
+# 论文: TiM
+# 特点: LSH近似向量检索，高效大规模检索
+# 配置名称: longmemeval_lsh_hash_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: longmemeval
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: DataStructure_lsh_hash
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "partitional.lsh_hash"
+  lsh_hash:
+    vector_dim: 1024
+    lsh_nbits: 128
+    lsh_rotate_data: true
+    lsh_train_thresholds: false
+    retrieval_top_k: 10
+  memory_retrieval_adapter: none
+
+# ============================================================
+# 统一 Operator 配置（所有数据结构实验相同）
+# D2=none, D3=none, D4=embedding, D5=none
+# ============================================================
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "none"
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"

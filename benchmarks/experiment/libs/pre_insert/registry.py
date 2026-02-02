@@ -1,25 +1,36 @@
 """PreInsert Action 注册表
 
-管理所有 PreInsert Action 的注册和获取。
+职责/Responsibilities:
+- 统一管理 PreInsert 阶段的算子(Action)注册与获取
+- 确立「规范名称」与「兼容别名」策略，避免命名漂移
+
+规范命名（Canonical Names）:
+ - none
+ - enrich.keyword
+ - enrich.summarize
+ - enrich.segment_compress
+ - enrich.entity
+ - rewrite.fact_extract
+ - rewrite.triplet_extract
+
+兼容别名（Aliases）保持向后兼容，例如：
+- enrichment.* / decomposition.* / rewrite.* / tri_embed / none.pass
+
+注意：为兼容历史配置，保留 transform.* / extract.* / enrichment.* / decomposition.* 等别名。
 """
 
 from .base import BasePreInsertAction
-from .extract import (
+from .enrich import (
     EntityExtractAction,
     KeywordExtractAction,
-    MultiSummaryAction,
-    NounExtractAction,
-    TripleExtractAction,
+    SummarizeAction,
 )
 from .none_action import NoneAction
-from .score import HeatScoreAction, ImportanceScoreAction
-from .transform import (
-    ChunkingAction,
-    SegmentDenoiseAction,
-    SummarizeAction,
-    TopicSegmentAction,
+from .rewrite import (
+    FactExtractAction,
+    TripleExtractAction,
 )
-from .transform.continuity_check import ContinuityCheckAction
+from .rewrite.compress import CompressAction
 
 
 class PreInsertActionRegistry:
@@ -35,7 +46,7 @@ class PreInsertActionRegistry:
         """注册一个 Action
 
         Args:
-            name: Action 名称（支持点分隔的层级名，如 "transform.chunking"）
+            name: Action 名称（支持点分隔的层级名，如 "decomposition.entity"）
             action_class: Action 类
         """
         cls._actions[name] = action_class
@@ -82,31 +93,59 @@ class PreInsertActionRegistry:
         return name in cls._actions
 
 
-# 注册所有内置 Action
 def _register_builtin_actions():
-    """注册所有内置 Action"""
-    # 透传类
+    """注册所有内置 Action
+
+    先注册规范名称（canonical），再补充兼容别名（aliases）。
+    """
+    # 1) 规范名称（canonical）—— none/enrich/rewrite 三类
     PreInsertActionRegistry.register("none", NoneAction)
+    PreInsertActionRegistry.register("enrich.keyword", KeywordExtractAction)
+    PreInsertActionRegistry.register("enrich.summarize", SummarizeAction)
+    # Canonical rewrite compress
+    PreInsertActionRegistry.register("rewrite.compress", CompressAction)
+    PreInsertActionRegistry.register("enrich.entity", EntityExtractAction)
+    PreInsertActionRegistry.register("rewrite.fact_extract", FactExtractAction)
+    PreInsertActionRegistry.register("rewrite.triplet_extract", TripleExtractAction)
 
-    # Transform 类
-    PreInsertActionRegistry.register("transform.chunking", ChunkingAction)
+    # 2) 兼容别名（aliases）—— 保留历史/替代命名以免配置失效
+    # 旧/替代：none.*
+    PreInsertActionRegistry.register("none.pass", NoneAction)
+    PreInsertActionRegistry.register("none.noop", NoneAction)
+
+    # 旧命名空间：enrichment/decomposition（保持兼容）
+    PreInsertActionRegistry.register("enrichment.keyword", KeywordExtractAction)
+    PreInsertActionRegistry.register("enrichment.summarize", SummarizeAction)
+    PreInsertActionRegistry.register("decomposition.entity", EntityExtractAction)
+    PreInsertActionRegistry.register("decomposition.fact", FactExtractAction)
+    PreInsertActionRegistry.register("decomposition.triple", TripleExtractAction)
+    PreInsertActionRegistry.register("decomposition.segment_denoise", CompressAction)
+
+    # 历史 transform/extract 命名（保持兼容）
+    PreInsertActionRegistry.register("transform.segment_compress", CompressAction)
+    PreInsertActionRegistry.register("transform.segment_denoise", CompressAction)
+    # 旧 enrich 名保持兼容
+    PreInsertActionRegistry.register("enrich.segment_denoise", CompressAction)
     PreInsertActionRegistry.register("transform.summarize", SummarizeAction)
-    PreInsertActionRegistry.register("transform.segment", TopicSegmentAction)
-    PreInsertActionRegistry.register("transform.segment_denoise", SegmentDenoiseAction)
-    PreInsertActionRegistry.register("transform.continuity_check", ContinuityCheckAction)
-
-    # Extract 类
     PreInsertActionRegistry.register("extract.keyword", KeywordExtractAction)
     PreInsertActionRegistry.register("extract.entity", EntityExtractAction)
-    PreInsertActionRegistry.register("extract.noun", NounExtractAction)
+    PreInsertActionRegistry.register("extract.fact", FactExtractAction)
     PreInsertActionRegistry.register("extract.triple", TripleExtractAction)
-    PreInsertActionRegistry.register("extract.multi_summary", MultiSummaryAction)
+    # 历史 rewrite 名保持兼容
+    PreInsertActionRegistry.register("rewrite.fact", FactExtractAction)
+    PreInsertActionRegistry.register("rewrite.triple", TripleExtractAction)
+    # 新增别名：compress 迁移至 rewrite 命名
+    PreInsertActionRegistry.register("rewrite.compress", CompressAction)
+    PreInsertActionRegistry.register("rewrite.segment_compress", CompressAction)
 
-    # Score 类
-    PreInsertActionRegistry.register("score.importance", ImportanceScoreAction)
-    PreInsertActionRegistry.register("score.heat", HeatScoreAction)
+    # 额外别名
+    PreInsertActionRegistry.register("enrich.segment_compress", CompressAction)
 
-    # 向后兼容别名（已废弃，请使用 extract.triple）
+    # 额外别名：更贴近语义的命名（不改类名，仅作为注册别名）
+    # - KeywordExtractAction 也可理解为 Note 抽取
+    PreInsertActionRegistry.register("extract.note", KeywordExtractAction)
+
+    # 历史遗留别名
     PreInsertActionRegistry.register("tri_embed", TripleExtractAction)
 
 

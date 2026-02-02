@@ -1,41 +1,35 @@
 # ============================================================
-# PostRetrieval 实验: Mem0g + None (Baseline)
-# 记忆体结构: Mem0g (向量 + 知识图谱)
-# PostRetrieval 策略: none
-# 配置名称: Mem0g_locomo_none_post_retrieval_pipeline.yaml
+# PostRetrieval Experiment: Mem0g + None
+# Memory Structure: Mem0g (Semantic Inverted Knowledge Graph)
+# PostRetrieval Strategy: none (No post-processing, baseline)
+# Config Name: Mem0g_locomo_none_post_retrieval_pipeline.yaml
 # ============================================================
 
 runtime:
-  dataset: locomo
+  dataset: "locomo"
   memory_insert_verbose: false
   memory_test_verbose: true
-  test_segments: 10
-  service_timeout: 600.0
+  test_segments: 5
+
   prompt_template: |
-    Based on the above context, answer the following question concisely.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
 
-    Question: {question}
-    Answer:
-  prompt_template_category5: |
-    Based on the above context, answer the following question.
+    Q: {question}
+    A:
 
-    Question: {question}
-    Answer:
-
-  # LLM 配置
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
-  llm_base_url: "http://172.17.0.1:1040/v1"
-  llm_model: "pangu_embedded_1b"
-  max_tokens: 256
+  max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: Mem0g-postretrieval-none
+  memory_name: "PostRetrieval_Mem0g_none"
 
-  # Embedding 配置
-  embedding_base_url: http://localhost:8091/v1
-  embedding_model: BAAI/bge-m3
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
 
 services:
   services_type: "hierarchical.semantic_inverted_knowledge_graph"
@@ -46,14 +40,12 @@ services:
     enable_cross_layer_query: true
     max_hops: 3
     default_index: "semantic_index"
-  memory_retrieval_adapter: none
+  memory_retrieval_adapter: "none"
 
 operators:
   pre_insert:
-    action: extract.triple
-    extraction_method: llm
-    max_triplets: 10
-    keep_original: true
+    action: "extract.triple"
+    extraction_method: "llm"
     triple_extraction_prompt: |
       You are a knowledge graph builder. Extract factual triples from the dialogue.
       Focus on entities (people, organizations, locations) and their relationships.
@@ -69,13 +61,41 @@ operators:
 
       Triples:
 
-  pre_retrieval:
-    action: embedding
-
   post_insert:
-    action: conflict_resolution.semantic_consolidation
-    retrieve_count: 10
-    min_merge_count: 5
+    action: "conflict_resolution.llm_crud"
+    top_k: 10
+    debug_summary_only: true
+    decision_prompt: |
+      You are a JSON decision API. Output ONLY a single minified JSON object, no prose, no markdown, no code fences.
+
+      Schema:
+      {
+        "action": "ADD|UPDATE|DELETE|NOOP",
+        "to_delete": ["<id>", ...],
+        "reason": "<short explanation>"
+      }
+
+      Rules:
+      - Use UPPERCASE for action exactly as one of ADD, UPDATE, DELETE, NOOP.
+      - If uncertain, default to {"action":"ADD","to_delete":[],"reason":"insufficient evidence"}.
+      - "to_delete" must contain only IDs present in the Existing facts list (the values inside square brackets []).
+      - UPDATE or DELETE: put the affected existing fact IDs into to_delete.
+      - NOOP: to_delete must be [].
+
+      Inputs:
+      New fact:
+      {new_memory}
+
+      Existing facts:
+      {existing_memories}
+
+      Now respond with ONLY the JSON object.
+
+  pre_retrieval:
+    action: "embedding"
 
   post_retrieval:
-    action: none
+    action: "none"
+
+    conversation_format_prompt: |
+      The following is relevant context retrieved from memory.

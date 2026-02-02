@@ -14,9 +14,7 @@
 runtime:
   dataset: ""                    # REQUIRED: 数据集名称
   # task_id: ""                  # 任务ID，可通过命令行覆盖
-  memory_insert_verbose: false   # 是否打印记忆插入详细信息
-  memory_test_verbose: true      # 是否打印记忆测试详细信息
-  test_segments: 10              # 测试分段数
+  test_segments: 5              # 测试分段数
 
   # LLM 服务配置
   api_key: ""                    # REQUIRED: LLM API Key
@@ -33,10 +31,6 @@ runtime:
   # 测试 Prompt 模板
   prompt_template: |
     Based on the above context, answer the following question concisely using exact words from the context whenever possible. If the information is not mentioned in the conversation, respond with "Not mentioned in the conversation".
-
-    Question: {question}
-    Answer:
-
 # ============================================================
 # 服务配置
 # ============================================================

@@ -1,0 +1,66 @@
+# LongMemEval 数据集评估配置
+#
+# 用于 round_analyzer.py 对 LongMemEval 实验输出进行汇总分析
+# 注意：LongMemEval 的 category 字段通常为字符串（如 temporal-reasoning）
+
+dataset:
+  name: "longmemeval"
+  description: "LongMemEval Long-form Memory Evaluation Dataset"
+
+# 数据路径配置
+paths:
+  # 原始实验 JSON 结果目录（memory_test_pipeline.py 的输出）
+  base_dir: ".sage/benchmarks/benchmark_memory/longmemeval"
+
+  # 统计汇总输出目录（CSV/PNG/MD）
+  output_dir: ".sage/benchmarks/benchmark_memory/longmemeval/output/round_analysis"
+
+# 实验目录前缀
+# 这里主要分析 DataStructure_* 的实验
+prefixes:
+  - "DataStructure_"
+
+# 评估器配置
+# LongMemEval 目前使用通用 token-level F1（PorterStemmer）
+# 如果后续需要支持“可接受答案集合”等特殊口径，可扩展专用 evaluator
+evaluator:
+  name: "generic_f1"
+
+metrics:
+  - name: "f1"
+    display_name: "F1 Score"
+    ylabel: "F1 Score"
+    description: "Token-level F1 with Porter Stemmer"
+
+  - name: "insert_time"
+    display_name: "Insert Time per Item"
+    ylabel: "Time (ms)"
+    description: "Average insert time per memory item"
+
+  - name: "retrieval_time"
+    display_name: "Retrieval Time per Query"
+    ylabel: "Time (ms)"
+    description: "Average retrieval time per query"
+
+# Category 配置
+# LongMemEval 的 category 往往是字符串，这里仅用于报告展示；实际列名会从数据里自动收集
+categories:
+  labels: {}
+  descriptions: {}
+
+output:
+  formats:
+    - png
+    - csv
+    - md
+
+  charts:
+    comparison: true
+    single_strategy: true
+    dpi: 300
+    figsize: [12, 7]
+
+report:
+  include_summary: true
+  include_detailed: true
+  language: "en"

@@ -7,31 +7,26 @@
 
 runtime:
   dataset: locomo
-  memory_insert_verbose: false
-  memory_test_verbose: true
-  test_segments: 10
+  test_segments: 5
   service_timeout: 600.0
   prompt_template: |
-    Based on the above context, answer the following question concisely.
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
 
-    Question: {question}
-    Answer:
-  prompt_template_category5: |
-    Based on the above context, answer the following question.
-
-    Question: {question}
-    Answer:
-
+    Q: {question}
+    A:
   # LLM 配置
   api_key: "iloveshuhao"
   base_url: "http://172.17.0.1:1040/v1"
   model_name: "pangu_embedded_1b"
   llm_base_url: "http://172.17.0.1:1040/v1"
   llm_model: "pangu_embedded_1b"
-  max_tokens: 256
+  max_tokens: 32
   temperature: 0
   seed: 42
-  memory_name: DS-fqv_combination
+  memory_name: DataStructure_feature_queue_vectorstore
 
   # Embedding 配置
   embedding_base_url: http://localhost:8091/v1
@@ -58,39 +53,17 @@ services:
 
 # ============================================================
 # 统一 Operator 配置（所有数据结构实验相同）
+# D2=none, D3=none, D4=embedding, D5=none
 # ============================================================
 operators:
   pre_insert:
-    action: extract.triple
-    extraction_method: llm
-    max_triplets: 10
-    keep_original: true
-    triple_extraction_prompt: |
-      You are a factual knowledge extractor.
-      Analyze the dialogue below and extract all subject–predicate–object triples.
-
-      Guidelines:
-      - Map "I", "me", "my" to the name of the speaker provided in the dialogue log.
-      - Resolve pronouns to specific entities.
-      - Use natural-language predicates in active voice.
-
-      Output ONLY in this format:
-      (Subject, Predicate, Object)
-      ...
-
-      Dialogue:
-      {dialogue}
-
-  pre_retrieval:
-    action: embedding
+    action: "none"
 
   post_insert:
-    action: conflict_resolution.semantic_consolidation
-    retrieve_count: 10
-    min_merge_count: 5
+    action: "none"
+
+  pre_retrieval:
+    action: "embedding"
 
   post_retrieval:
-    action: rerank.time_weighted
-    decay_rate: 0.05
-    time_weight: 0.3
-    score_weight: 0.7
+    action: "none"

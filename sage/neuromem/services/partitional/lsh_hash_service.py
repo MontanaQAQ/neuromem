@@ -85,23 +85,28 @@ class LSHHashService(BaseMemoryService):
 
         创建 LSH 哈希索引，用于快速近似相似度搜索。
         """
-        embedding_dim = self.config.get("embedding_dim", 768)
-        num_tables = self.config.get("num_tables", 10)
-        hash_size = self.config.get("hash_size", 8)
+        # 从配置中获取参数
+        self.config.get("embedding_dim", 768)
+        self.config.get("num_tables", 10)
+        hash_size = self.config.get("hash_size", 128)
+
+        # LSHIndex 实际使用的参数
+        n_gram = self.config.get("n_gram", 3)
+        num_perm = self.config.get("num_perm", hash_size)  # 优先使用num_perm，否则用hash_size
+        threshold = self.config.get("threshold", 0.5)
 
         self.collection.add_index(
             name="lsh_index",
             index_type="lsh",
             config={
-                "dim": embedding_dim,
-                "num_tables": num_tables,
-                "hash_size": hash_size,
+                "n_gram": n_gram,
+                "num_perm": num_perm,
+                "threshold": threshold,
             },
         )
 
         self.logger.info(
-            f"Created LSH index with dim={embedding_dim}, "
-            f"num_tables={num_tables}, hash_size={hash_size}"
+            f"Created LSH index with n_gram={n_gram}, num_perm={num_perm}, threshold={threshold}"
         )
 
     def insert(

@@ -138,7 +138,7 @@ class LLMGenerator:
         Args:
             prompt: 输入的 Prompt
             default: 解析失败时的默认值，如果为 None 则返回空字典
-            **override_params: 覆盖默认参数的临时参数
+            **override_params: 覆盖默认参数的临时参数（不包括 default）
 
         Returns:
             解析后的 JSON 对象（dict 或 list）
@@ -148,6 +148,9 @@ class LLMGenerator:
             >>> print(result)
             {'name': 'Alice', 'age': 25}
         """
+        # 从 override_params 中移除 default（如果存在），避免传递给 API
+        override_params.pop("default", None)
+
         response = self.generate(prompt, **override_params)
         return self._parse_json(response, default)
 
@@ -226,9 +229,21 @@ class LLMGenerator:
             if end_idx > 0:
                 response_cleaned = response_cleaned[:end_idx]
 
-            return json.loads(response_cleaned)
+            # 尝试直接解析
+            try:
+                return json.loads(response_cleaned)
+            except json.JSONDecodeError:
+                # LLM 可能返回单引号的 Python dict 格式，尝试用 ast.literal_eval
+                import ast
 
-        except json.JSONDecodeError as e:
+                try:
+                    return ast.literal_eval(response_cleaned)
+                except (ValueError, SyntaxError):
+                    # 最后尝试将单引号替换为双引号
+                    response_fixed = response_cleaned.replace("'", '"')
+                    return json.loads(response_fixed)
+
+        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
             print(f"[WARNING] JSON parsing error: {e}")
             return default
 

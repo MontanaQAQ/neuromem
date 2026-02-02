@@ -1,0 +1,66 @@
+﻿# ============================================================
+# PostRetrieval Experiment (Llama): MemoryOS + None
+# Memory Structure: MemoryOS (Hierarchical Memory)
+# PostRetrieval Strategy: none
+# Config Name: Llama MemoryOS_locomo_none_post_retrieval_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+
+  # LLM - Llama unified config
+  api_key: "token-abc123"
+  base_url: "http://sage2:8001/v1"
+  model_name: "meta-llama/Meta-Llama-3-8B-Instruct"
+  llm_base_url: "http://sage2:8001/v1"
+  llm_model: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "PostRetrieval_MemoryOS_none_Llama"
+
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "structure_enrichment.heat_migration"
+    migrate_policy: "heat"
+    heat_threshold: 5.0
+    stm_capacity: 20
+    upgrade_transform: "multi_summary"
+
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+    extractor: "spacy"
+    spacy_model: "en_core_web_sm"
+    extract_types: ["NOUN", "PROPN", "VERB"]
+    max_keywords: 10
+
+  post_retrieval:
+    action: "none"
+
+    conversation_format_prompt: |
+      The following is relevant context from different memory tiers.

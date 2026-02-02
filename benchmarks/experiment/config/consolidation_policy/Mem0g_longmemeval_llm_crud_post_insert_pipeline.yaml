@@ -1,0 +1,74 @@
+﻿# ============================================================
+# PostInsert 实验: Mem0g + LLM CRUD
+# 记忆体结构: Mem0g (向量 + 知识图谱)
+# PostInsert 策略: conflict_resolution.llm_crud
+# 配置名称: Mem0g_longmemeval_llm_crud_post_insert.yaml
+# ============================================================
+
+runtime:
+  dataset: longmemeval
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: PostInsert_Mem0g_llm_crud
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "hierarchical.semantic_inverted_knowledge_graph"
+  semantic_inverted_knowledge_graph:
+    vector_dim: 1024
+    hierarchy_levels: 3
+    routing_strategy: "parallel"
+    enable_cross_layer_query: true
+    max_hops: 3
+    default_index: "semantic_index"
+  memory_retrieval_adapter: none
+
+operators:
+  pre_insert:
+    action: extract.triple
+    extraction_method: llm
+    max_triplets: 10
+    keep_original: true
+    triple_extraction_prompt: |
+      You are a knowledge graph builder. Extract factual triples from the dialogue.
+      Focus on entities (people, organizations, locations) and their relationships.
+
+      Rules:
+      1. Output format: (Subject, Predicate, Object) - one triple per line
+      2. Resolve ALL pronouns to actual entity names
+      3. Extract relationships, attributes, and temporal information
+      4. Be concise and factual
+
+      Dialogue:
+      {dialogue}
+
+      Triples:
+
+  pre_retrieval:
+    action: embedding
+
+  post_insert:
+    action: conflict_resolution.llm_crud
+    similarity_threshold: 0.8
+    top_k: 5
+
+  post_retrieval:
+    action: none

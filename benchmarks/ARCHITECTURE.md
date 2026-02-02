@@ -190,8 +190,7 @@ pre_insert/
 ├── base.py             # 基类和数据模型
 ├── none_action.py      # 透传策略
 ├── transform/          # 文本转换策略
-├── extract/            # 知识提取策略
-└── score/              # 重要性评分策略
+└── extract/            # 知识提取策略
 ```
 
 **支持的 Actions**:
@@ -199,20 +198,16 @@ pre_insert/
 | Action | 说明 | 条目数 | 应用场景 |
 |--------|------|--------|----------|
 | `none` | 透传原始对话 | 1 条 | STM, 基础测试 |
-| `transform` | 文本格式转换 | 1 条 | 格式标准化 |
-| `extract` | 提取事实/实体 | N 条 | 知识抽取 |
-| `score` | 重要性评分 | 1 条 | 选择性遗忘 |
-| `multi_embed` | 多向量生成 | 1 条 | ReMI 算法 |
-| `tri_embed` | 三元组提取 | N 条 | 知识图谱 |
+| `transform` | 文本格式转换 | 2 条 | 片段化、摘要化 |
+| `extract` | 提取事实/实体/三元组 | 4 条 | 知识抽取、图谱构建 |
 
 **配置示例**:
 ```yaml
 operators:
   pre_insert:
-    action: "extract"
-    extract_prompt: |
-      Extract all facts from the conversation.
-      Output JSON array: [{"fact": "..."}, ...]
+    action: "extract.triple"
+    max_triplets: 10
+    keep_original: false
 ```
 
 ##### PostInsert 策略（记忆插入后处理）
@@ -234,7 +229,7 @@ post_insert/
 ├── structure_enrichment/           # 结构增强策略
 │   ├── link_evolution.py           # 链接演化
 │   └── graph_construction.py       # 图构建
-└── tier_migration/                 # 分层迁移策略
+└── structure_enrichment/                 # 分层迁移策略
     └── heat_migration.py           # 热度迁移
 ```
 
@@ -254,7 +249,7 @@ post_insert/
 | `structure_enrichment.link_evolution` | 链接演化（关联强化） | A-Mem |
 | `structure_enrichment.graph_construction` | 图结构构建 | HippoRAG |
 | **分层迁移 (Tier Migration)** | | |
-| `tier_migration.heat_migration` | 热度分层迁移 | MemoryOS |
+| `structure_enrichment.heat_migration` | 热度分层迁移 | MemoryOS |
 
 ##### PreRetrieval 策略（记忆检索前预处理）
 
@@ -432,8 +427,8 @@ class RuntimeConfig:
 ```
 script/
 ├── primitive_memory_model/
-│   ├── run_locomo_stm.sh               # LoCoMo STM 批量测试
-│   ├── run_locomo_tim.sh               # LoCoMo TiM 批量测试
+│   ├── run_stm_locomo.sh               # LoCoMo STM 批量测试
+│   ├── run_tim_locomo.sh               # LoCoMo TiM 批量测试
 │   └── ...
 ├── consolidation_policy/
 ├── context_integration_mechanism/
@@ -441,13 +436,13 @@ script/
 ├── normalization_strategy/
 ├── query_formulation_strategy/
 ├── result_optimization_strategy/
-├── run_conflict_resolution_stm.sh      # Conflict Resolution 测试
-└── run_longmemeval_stm.sh              # LongMemEval 测试
+├── run_stm_locomo_conflict_resolution.sh      # Conflict Resolution 测试
+└── run_stm_locomo_longmemeval.sh              # LongMemEval 测试
 ```
 
 #### 2.4.2 脚本结构
 
-以 [`run_locomo_stm.sh`](./experiment/script/primitive_memory_model/run_locomo_stm.sh) 为例：
+以 [`run_stm_locomo.sh`](./experiment/script/primitive_memory_model/run_stm_locomo.sh) 为例：
 
 ```bash
 #!/bin/bash
@@ -489,7 +484,7 @@ done
 **使用方法**:
 ```bash
 cd benchmarks/experiment
-bash script/primitive_memory_model/run_locomo_stm.sh
+bash script/primitive_memory_model/run_stm_locomo.sh
 ```
 
 ---

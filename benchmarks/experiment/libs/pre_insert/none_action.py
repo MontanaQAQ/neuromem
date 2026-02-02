@@ -18,7 +18,6 @@ class NoneAction(BasePreInsertAction):
 
     def _init_action(self) -> None:
         """无需初始化任何工具"""
-        pass
 
     def execute(self, input_data: PreInsertInput) -> PreInsertOutput:
         """直接透传，将对话转换为单条记忆条目

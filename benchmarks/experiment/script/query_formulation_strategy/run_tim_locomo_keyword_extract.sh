@@ -29,7 +29,7 @@ TASK_IDS=(
 
 # 创建日志目录结构
 DATASET="locomo"
-MEMORY_NAME="TiM-keyword_extract"
+MEMORY_NAME="PreRetrieval_TiM_keyword_extract"
 LOG_BASE_DIR="$PROJECT_ROOT/.sage/output/benchmarks/benchmark_memory/$DATASET/$MEMORY_NAME"
 mkdir -p "$LOG_BASE_DIR"
 

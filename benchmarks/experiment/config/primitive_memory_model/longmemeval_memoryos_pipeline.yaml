@@ -1,0 +1,85 @@
+﻿# ============================================================
+# MemoryOS Pipeline 配置
+# 论文: Memory OS of AI Agent
+# 特点: 三层 STM/MTM/LPM + Heat Score + Segment 架构
+# ============================================================
+
+runtime:
+  dataset: "longmemeval"
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  # 配置1（Llama-3.1-8B，用于对比）：
+  # api_key: "token-abc123"
+  # base_url: "http://sage2:8000/v1"
+  # model_name: "/home/cyb/Llama-3.1-8B-Instruct"
+  # max_tokens: 32
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "MemoryOS"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+# ============================================================
+# 服务配置
+# ============================================================
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024                  # BAAI/bge-m3 向量维度
+    fifo_max_size: 20                 # FIFO队列大小（对应原STM容量）
+    segment_strategy: "time"          # 分段策略：time/keyword/topic
+    segment_threshold: 3600           # 1小时分段（对应原MTM的Session gap）
+    enable_feature_extraction: true   # 启用特征提取（对应原BM25索引）
+    combination_strategy: "weighted"  # 组合策略
+    weights:
+      feature_index: 0.3              # Feature权重（对应原LPM知识）
+      fifo_index: 0.4                 # FIFO权重（对应原STM最新对话）
+      segment_index: 0.3              # Segment权重（对应原MTM上下文）
+  memory_retrieval_adapter: "none"
+
+# ============================================================
+# Operator 配置
+# ============================================================
+operators:
+  pre_insert:
+    action: "extract.entity"
+    method: "simple"
+
+  post_insert:
+    action: "transform"
+    transform_type: "summarize"
+    summarize_prompt: |
+      Summarize the key content into 1-2 concise sentences.
+
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+
+  post_retrieval:
+    action: "merge.multi_tier"
+    top_k: 10
+    weights:
+      feature: 0.3
+      fifo: 0.4
+      segment: 0.3
+    conversation_format_prompt: |
+      The following is relevant context across STM/MTM/LPM.

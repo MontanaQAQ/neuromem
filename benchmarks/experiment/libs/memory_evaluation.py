@@ -31,15 +31,6 @@ Question: {question}
 Answer:""",
         )
 
-        # 第五类问题专用 prompt（更简洁，适合选择题）
-        self.question_answer_prompt_category5 = self.config.get(
-            "runtime.prompt_template_category5",
-            """Based on the above context, answer the following question.
-
-Question: {question}
-Answer:""",
-        )
-
         # 初始化 LLM 生成器
         self.generator = LLMGenerator.from_config(config)
 
@@ -65,36 +56,13 @@ Answer:""",
             data["answer"] = None
             return data
 
-        # ============================================================
-        # 数据集特定处理：locomo 第五类问题（张冠李戴测试）
-        # 强制将第五类问题格式化为选择题，以避免分数虚高
-        # ============================================================
-        # 默认使用标准 prompt
-        selected_prompt = self.question_answer_prompt
-
-        if self.dataset == "locomo":
-            category = question_metadata.get("category")
-
-            if category == 5:
-                # 从 question_metadata 获取 adversarial_answer
-                adversarial_answer = question_metadata.get("adversarial_answer", "")
-                if adversarial_answer:
-                    # 拼装选择题格式
-                    question = (
-                        f"{question} Select the correct answer: "
-                        f"(a) {adversarial_answer} "
-                        f"(b) Not mentioned in the conversation."
-                    )
-                    # 第五类问题使用专用 prompt
-                    selected_prompt = self.question_answer_prompt_category5
-
         # 构建完整Prompt：history_text（阶段一） + question_answer_prompt（阶段二）
         full_prompt = history_text
         if full_prompt:
             full_prompt += "\n\n"
 
         # 拼接问答部分（阶段二）
-        question_prompt = selected_prompt.replace("{question}", question)
+        question_prompt = self.question_answer_prompt.replace("{question}", question)
         full_prompt += question_prompt
 
         prompt = full_prompt

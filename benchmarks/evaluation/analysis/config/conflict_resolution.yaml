@@ -1,0 +1,60 @@
+# Conflict Resolution dataset evaluation configuration
+#
+# This configuration file defines the evaluation approach for Conflict Resolution dataset
+# Including data paths, evaluation metrics, output formats, etc.
+
+dataset:
+  name: "conflict_resolution"
+  description: "Conflict Resolution Dataset from MemAgentBench"
+
+# Data path configuration
+paths:
+  base_dir: ".sage/benchmarks/benchmark_memory/conflict_resolution"
+  output_dir: ".sage/benchmarks/benchmark_memory/conflict_resolution/output/round_analysis"
+
+# Experiment directory prefixes
+prefixes:
+  - "DataStructure_"
+
+# Evaluator configuration
+evaluator:
+  # Use generic_f1 evaluator for Conflict Resolution dataset
+  name: "generic_f1"
+
+# Metrics configuration
+metrics:
+  - name: "f1"
+    display_name: "F1 Score"
+    ylabel: "F1 Score"
+    description: "Token-level F1 with Porter Stemmer"
+
+  - name: "insert_time"
+    display_name: "Insert Time per Item"
+    ylabel: "Time (ms)"
+    description: "Average insert time per memory item"
+
+  - name: "retrieval_time"
+    display_name: "Retrieval Time per Query"
+    ylabel: "Time (ms)"
+    description: "Average retrieval time per query"
+
+# Output configuration
+output:
+  # Generated file types
+  formats:
+    - png  # Charts
+    - csv  # Data tables
+    - md   # Markdown reports
+
+  # Chart configuration
+  charts:
+    comparison: true      # Generate strategy comparison charts
+    single_strategy: true # Generate single strategy detail charts
+    dpi: 300
+    figsize: [12, 7]
+
+# Report configuration
+report:
+  include_summary: true
+  include_detailed: true
+  language: "en"  # Report language: en, zh

@@ -1,0 +1,60 @@
+﻿# ============================================================
+# SCM (Self-Controlled Memory) Pipeline 配置
+# 论文: SCM4LLMs - Enhancing Large Language Model with Self-Controlled Memory Framework
+# 特点: Memory Stream + Token Budget + 三元决策 (drop/summary/raw)
+# ============================================================
+
+runtime:
+  dataset: "longmemeval"
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  # 配置1（Llama-3.1-8B，用于对比）：
+  # api_key: "token-abc123"
+  # base_url: "http://sage2:8000/v1"
+  # model_name: "/home/cyb/Llama-3.1-8B-Instruct"
+  # max_tokens: 32
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "SCM"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+# ============================================================
+# Operator 配置
+# ============================================================
+operators:
+  pre_insert:
+    action: "none"
+  post_insert:
+    action: "conflict_resolution.scm_token_guard"
+    token_budget: 2048
+    summary_ratio: 0.5
+    drop_threshold: 0.1
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+    extractor: "spacy"
+  post_retrieval:
+    action: "merge"
+    merge_type: "priority"
+    conversation_format_prompt: |
+      The following is memory content filtered by SCM.

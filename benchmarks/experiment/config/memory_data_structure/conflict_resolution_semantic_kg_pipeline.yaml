@@ -1,0 +1,72 @@
+# ============================================================
+# 数据结构实验: Semantic Inverted Knowledge Graph (复杂语义图谱)
+# 论文: HippoRAG
+# 特点: 三层检索：语义→倒排→图谱，PPR重排序
+# 配置名称: locomo_semantic_kg_pipeline.yaml
+# ============================================================
+
+runtime:
+  dataset: conflict_resolution
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: DataStructure_semantic_inverted_kg
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "hierarchical.semantic_inverted_knowledge_graph"
+  semantic_inverted_knowledge_graph:
+    # 三层检索配置
+    vector_dim: 1024
+
+    # 语义层
+    semantic_index_type: "faiss"
+    semantic_top_k: 50
+
+    # 倒排层
+    inverted_index_type: "bm25"
+    inverted_top_k: 30
+
+    # 图谱层
+    hierarchy_levels: 3
+    routing_strategy: "parallel"
+    enable_cross_layer_query: true
+    max_hops: 3
+    default_index: "semantic_index"
+  memory_retrieval_adapter: none
+
+# ============================================================
+# 统一 Operator 配置（所有数据结构实验相同）
+# D2=none, D3=none, D4=embedding, D5=none
+# ============================================================
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "none"
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"

@@ -5,12 +5,8 @@
 """
 
 from sage.common.core import BatchFunction
-from sage.data.sources.longmemeval import LongMemEvalDataLoader
 
-from sage.data.sources.locomo.dataloader import LocomoDataLoader
-from sage.data.sources.memagentbench.conflict_resolution_loader import (
-    ConflictResolutionDataLoader,
-)
+from benchmarks.experiment.utils.dataloader import DataLoaderFactory
 
 
 class MemorySource(BatchFunction):
@@ -37,44 +33,28 @@ class MemorySource(BatchFunction):
         self.dataset = config.get("dataset")
         self.task_id = config.get("task_id")
 
-        # Create data loader
-        if self.dataset == "locomo":
-            self.loader = LocomoDataLoader()
-        elif self.dataset == "conflict_resolution":
-            self.loader = ConflictResolutionDataLoader()
-        elif self.dataset == "longmemeval":
-            self.loader = LongMemEvalDataLoader()
-        else:
-            raise ValueError(f"Unsupported dataset: {self.dataset}")
+        # Create data loader (使用工厂模式)
+        self.loader = DataLoaderFactory.create(self.dataset)
 
         # 获取数据集核心信息
-        self.turns = self.loader.get_turn(self.task_id)
+        self.turns = self.loader.sessions(self.task_id)
 
-        # 统计总的dialog数量和数据包数量
-        self.total_dialogs = sum((max_dialog_idx + 1) for _, max_dialog_idx in self.turns)
-
-        # Calculate total packets based on dataset type
-        # - conflict_resolution: 1 fact per packet (increment by 1)
-        # - locomo: 2 dialogs per packet (increment by 2)
-        if self.dataset == "conflict_resolution":
-            self.total_packets = self.total_dialogs  # Each fact is one packet
-        else:
-            self.total_packets = sum((max_dialog_idx // 2) + 1 for _, max_dialog_idx in self.turns)
+        # 从 loader 获取统计信息
+        self.total_messages = self.loader.message_count(self.task_id)
+        self.total_dialogs = self.loader.dialog_count(self.task_id)
 
         # 打印当前任务信息
         print(f"📊 样本 {self.task_id} 统计信息:")
         print(f"   - 总会话数: {len(self.turns)}")
-        print(f"   - 总对话数: {self.total_dialogs}")
-        print(f"   - 总数据包: {self.total_packets}")
+        print(f"   - 总消息数: {self.total_messages}")
+        print(f"   - 总对话轮次: {self.total_dialogs}")
         for idx, (session_id, max_dialog_idx) in enumerate(self.turns):
-            dialog_count = max_dialog_idx + 1
-            print(
-                f"   - 会话 {idx + 1} (session_id={session_id}): {dialog_count} 个对话 (max_dialog_idx={max_dialog_idx})"
-            )
+            msg_count = max_dialog_idx + 1
+            print(f"   - 会话 {idx + 1} (session_id={session_id}): {msg_count} 条消息")
 
         # 初始化任务指针
         self.session_idx = 0  # 当前session在turns列表中的索引
-        self.dialog_ptr = 0  # 当前dialog指针（偶数）
+        self.dialog_ptr = 0  # 当前dialog指针
         self.packet_idx = 0  # 当前数据包序号（从0开始）
 
     def execute(self):
@@ -114,11 +94,11 @@ class MemorySource(BatchFunction):
             self.task_id, session_x=session_id, dialog_y=self.dialog_ptr
         )
 
+        # 计算 dialog 增量（根据实际返回的消息数）
+        dialog_increment = len(dialogs) if dialogs else 2
+
         # 计算下一个 dialog_ptr (用于判断是否为 session 最后一个包)
-        if self.dataset == "conflict_resolution":
-            next_dialog_ptr = self.dialog_ptr + 1
-        else:
-            next_dialog_ptr = self.dialog_ptr + 2
+        next_dialog_ptr = self.dialog_ptr + dialog_increment
 
         # 判断是否为当前 session 的最后一个数据包
         is_session_end = next_dialog_ptr > max_dialog_idx
@@ -131,17 +111,19 @@ class MemorySource(BatchFunction):
             "dialogs": dialogs,
             "dialog_len": len(dialogs),
             "packet_idx": self.packet_idx,  # Current packet index (from 0)
-            "total_packets": self.total_packets,  # Total packets
+            "total_packets": self.total_dialogs,  # Total packets
             "is_session_end": is_session_end,  # 是否为当前 session 的最后一个包
         }
 
-        # Move pointer to next dialog
-        # For conflict_resolution: each dialog has 1 fact, so increment by 1
-        # For locomo: each dialog has 2 turns (Q&A), so increment by 2
-        if self.dataset == "conflict_resolution":
-            self.dialog_ptr += 1  # Single fact per dialog
-        else:
-            self.dialog_ptr += 2  # Pair of dialogs (Q&A)
+        # # DEBUG: 打印 execute 返回数据
+        # print(f"\n[DEBUG execute] packet={self.packet_idx}, session={session_id}, dialog_ptr={self.dialog_ptr}")
+        # for i, d in enumerate(dialogs):
+        #     speaker = d.get('speaker', 'N/A')
+        #     text = d.get('text', '')[:80]
+        #     print(f"  [{self.dialog_ptr + i}] {speaker}: {text}...")
+
+        # 移动指针到下一个 dialog
+        self.dialog_ptr += dialog_increment
 
         self.packet_idx += 1  # Packet index increment
 

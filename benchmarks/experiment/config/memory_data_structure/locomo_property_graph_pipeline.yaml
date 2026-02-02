@@ -1,0 +1,55 @@
+# ============================================================
+# 数据结构实验: Property Graph (属性图)
+# 论文来源: Mem0ᵍ
+# 特点: RDF风格属性图，支持节点/边属性查询
+# ============================================================
+
+runtime:
+  dataset: locomo
+  test_segments: 5
+  service_timeout: 600.0
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  llm_base_url: "http://172.17.0.1:1040/v1"
+  llm_model: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: DataStructure_property_graph
+
+  # Embedding 配置
+  embedding_base_url: http://localhost:8091/v1
+  embedding_model: BAAI/bge-m3
+
+services:
+  services_type: "hierarchical.property_graph"
+  property_graph:
+    directed: true
+  memory_retrieval_adapter: none
+
+# ============================================================
+# 统一 Operator 配置（所有数据结构实验相同）
+# D2=none, D3=none, D4=embedding, D5=none
+# ============================================================
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "none"
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"

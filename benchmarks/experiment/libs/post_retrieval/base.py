@@ -8,7 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 
 UTC = UTC
 
@@ -21,11 +21,11 @@ class MemoryItem:
     """
 
     text: str
-    score: Optional[float]
+    score: float | None
     metadata: dict[str, Any]
     original_index: int
 
-    def get_timestamp(self, field: str = "timestamp") -> Optional[datetime]:
+    def get_timestamp(self, field: str = "timestamp") -> datetime | None:
         """解析时间戳字段
 
         Args:
@@ -52,10 +52,7 @@ class MemoryItem:
                 "%Y-%m-%d %H:%M:%S",
             ):
                 try:
-                    dt = datetime.strptime(value, fmt)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=UTC)
-                    return dt
+                    return datetime.strptime(value, fmt).replace(tzinfo=UTC)
                 except Exception:  # noqa: BLE001
                     continue
 
@@ -124,14 +121,13 @@ class BasePostRetrievalAction(ABC):
 
         子类在此方法中初始化所需的工具（如 LLM、Embedding、Tokenizer 等）。
         """
-        pass
 
     @abstractmethod
     def execute(
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """执行 Action 逻辑
 
@@ -146,7 +142,6 @@ class BasePostRetrievalAction(ABC):
         Raises:
             ValueError: 当输入数据不合法时
         """
-        pass
 
     def _convert_to_items(self, memory_data: list[dict[str, Any]]) -> list[MemoryItem]:
         """将原始记忆数据转换为 MemoryItem 列表
@@ -159,9 +154,11 @@ class BasePostRetrievalAction(ABC):
         """
         items = []
         for idx, item in enumerate(memory_data):
+            # 支持 'content' 和 'text' 两种字段
+            text = item.get("text") or item.get("content", "")
             items.append(
                 MemoryItem(
-                    text=item.get("text", ""),
+                    text=text,
                     score=item.get("score"),
                     metadata=item.get("metadata", {}),
                     original_index=idx,

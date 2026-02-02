@@ -1,0 +1,90 @@
+﻿# ============================================================
+# MemoryBank Pipeline 配置
+# 论文: MemoryBank: Enhancing Large Language Models with Long-Term Memory
+# 特点: 分层记忆 + Ebbinghaus 遗忘 + 多层摘要
+# ============================================================
+
+runtime:
+  dataset: "longmemeval"
+  test_segments: 5
+
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  # LLM 配置
+  # 配置1（Llama-3.1-8B，用于对比）：
+  # api_key: "token-abc123"
+  # base_url: "http://sage2:8000/v1"
+  # model_name: "/home/cyb/Llama-3.1-8B-Instruct"
+  # max_tokens: 32
+  # temperature: 0
+  # seed: 42
+
+  # 新配置（PanGu Embedded 1B）：
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "MemoryBank"
+
+  # Embedding 配置
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+# ============================================================
+# 服务配置 - MemoryBank 三层记忆架构
+# 原始架构: STM + MTM + LTM + Ebbinghaus 遗忘曲线
+# 当前实现: Feature (BM25) + Summary (FIFO) + Vectorstore (FAISS)
+# 注: 简化实现，不包含遗忘曲线动态迁移
+# ============================================================
+services:
+  services_type: "partitional.feature_summary_vectorstore_combination"
+  feature_summary_vectorstore_combination:
+    vector_dim: 1024                  # BGE-M3 向量维度
+    summary_max_size: 50              # 摘要队列大小（对应 STM 容量）
+    combination_strategy: "weighted"  # 加权融合策略
+    weights:
+      vector_index: 0.5               # 向量权重 (LTM)
+      feature_index: 0.3              # BM25 权重 (MTM)
+      summary_index: 0.2              # 摘要权重 (STM)
+    enable_feature_extraction: true   # 启用特征提取
+    enable_summary_generation: true   # 启用摘要生成
+
+# ============================================================
+# Operator 配置
+# ============================================================
+operators:
+  pre_insert:
+    action: "extract.entity"
+    method: "simple"
+    add_to_metadata: true
+
+  post_insert:
+    action: "transform"
+    transform_type: "summarize"
+    only_on_session_end: true
+    summarize_prompt: |
+      Summarize the key events or facts from this dialogue in 1-2 sentences.
+
+  pre_retrieval:
+    action: "optimize"
+    optimize_type: "keyword_extract"
+    extractor: "spacy"
+    spacy_model: "en_core_web_sm"
+
+  post_retrieval:
+    action: "merge.multi_tier"
+    top_k: 10
+    weights:
+      vector: 0.5
+      feature: 0.3
+      summary: 0.2
+    conversation_format_prompt: |
+      The following is relevant context combined from STM, MTM, and LTM.

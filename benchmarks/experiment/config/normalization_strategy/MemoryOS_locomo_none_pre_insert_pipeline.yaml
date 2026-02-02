@@ -1,0 +1,55 @@
+﻿---
+# MemoryOS (pre_insert=none) - locomo 变体
+# 基于: benchmarks/experiment/config/primitive_memory_model/locomo_memoryos_pipeline.yaml
+runtime:
+  dataset: "locomo"
+  memory_insert_verbose: false
+  memory_test_verbose: true
+  test_segments: 5
+  prompt_template: |
+    Answer in a short phrase (3-8 words). Plain text only. No ** or formatting.
+    - For "what/who": just the thing/person
+    - For "when": just the date/time
+    - For "why": start with "because"
+
+    Q: {question}
+    A:
+  api_key: "iloveshuhao"
+  base_url: "http://172.17.0.1:1040/v1"
+  model_name: "pangu_embedded_1b"
+  max_tokens: 32
+  temperature: 0
+  seed: 42
+  memory_name: "PreInsert_MemoryOS_none"
+  embedding_base_url: "http://localhost:8091/v1"
+  embedding_model: "BAAI/bge-m3"
+
+services:
+  services_type: "partitional.feature_queue_segment_combination"
+  feature_queue_segment_combination:
+    vector_dim: 1024
+    fifo_max_size: 20
+    segment_strategy: "time"
+    segment_threshold: 3600
+    enable_feature_extraction: true
+    combination_strategy: "weighted"
+    weights:
+      feature_index: 0.3
+      fifo_index: 0.4
+      segment_index: 0.3
+  memory_retrieval_adapter: "none"
+
+operators:
+  pre_insert:
+    action: "none"
+
+  post_insert:
+    action: "none"
+
+  pre_retrieval:
+    action: "embedding"
+
+  post_retrieval:
+    action: "none"
+    conversation_format_prompt: |
+      The following is relevant context from different memory tiers.

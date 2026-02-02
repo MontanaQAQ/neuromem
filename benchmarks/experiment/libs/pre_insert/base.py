@@ -67,7 +67,6 @@ class BasePreInsertAction(ABC):
         - LLM 客户端
         - 其他配置参数
         """
-        pass
 
     @abstractmethod
     def execute(self, input_data: PreInsertInput) -> PreInsertOutput:
@@ -79,7 +78,6 @@ class BasePreInsertAction(ABC):
         Returns:
             PreInsertOutput: 处理后的记忆条目
         """
-        pass
 
     def _set_default_fields(self, entry: dict[str, Any]) -> dict[str, Any]:
         """为记忆条目设置默认字段

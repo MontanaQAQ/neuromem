@@ -5,13 +5,9 @@
 """
 
 from sage.common.core import MapFunction
-from sage.data.sources.locomo.dataloader import LocomoDataLoader
-from sage.data.sources.longmemeval import LongMemEvalDataLoader
-from sage.data.sources.memagentbench.conflict_resolution_loader import (
-    ConflictResolutionDataLoader,
-)
 
 from benchmarks.experiment.utils import (
+    DataLoaderFactory,
     ProgressBar,
     calculate_test_thresholds,
 )
@@ -47,23 +43,14 @@ class PipelineCaller(MapFunction):
         # 注意：这个超时必须 >= pipeline_service_timeout，否则调用方会先超时
         self.service_timeout = config.get("runtime.service_timeout", 300.0)
 
-        # 根据数据集类型初始化加载器
-        if self.dataset == "locomo":
-            self.loader = LocomoDataLoader()
-        elif self.dataset == "conflict_resolution":
-            self.loader = ConflictResolutionDataLoader()
-        elif self.dataset == "longmemeval":
-            self.loader = LongMemEvalDataLoader()
-        else:
-            raise ValueError(f"Unsupported dataset: {self.dataset}")
+        # 根据数据集类型初始化加载器（使用工厂模式）
+        self.loader = DataLoaderFactory.create(self.dataset)
 
         # 进度条将在第一个数据包到达时初始化（因为需要从数据中获取总数）
         self.progress_bar = None
 
         # 问题驱动测试的状态跟踪
-        self.total_questions = self.loader.get_total_valid_questions(
-            self.task_id
-        )  # 该task的总问题数
+        self.total_questions = self.loader.question_count(self.task_id)  # 该task的总问题数
         self.last_tested_count = 0  # 上次测试时的问题数量
 
         # Calculate test thresholds based on dataset type
@@ -99,9 +86,9 @@ class PipelineCaller(MapFunction):
         # 跟踪已发送的 timing 位置（只返回增量）
         self.sent_insert_timing_count = 0
 
-        # 调试打印开关（默认False）
+        # 调试打印开关（默认：insert=False, test=True）
         self.memory_insert_verbose = config.get("runtime.memory_insert_verbose", False)
-        self.memory_test_verbose = config.get("runtime.memory_test_verbose", False)
+        self.memory_test_verbose = config.get("runtime.memory_test_verbose", True)
 
     def execute(self, data):
         """调用服务处理对话
@@ -219,7 +206,7 @@ class PipelineCaller(MapFunction):
         # 阶段2：记忆测试（问题驱动）
         # ============================================================
         # 检查当前可见问题数量
-        current_questions = self.loader.get_question_list(
+        current_questions = self.loader.get_evaluation(
             task_id,
             session_x=session_id,
             dialog_y=dialog_id + dialog_len - 1,
