@@ -130,7 +130,6 @@ benchmark = [
     "pytest-cov>=4.0.0",                # 覆盖率报告
     "pytest-benchmark>=4.0.0",          # 性能基准测试框架
     "ruff>=0.1.0",                      # 代码检查和格式化
-    "mypy>=1.0.0",                      # 静态类型检查
     "pre-commit>=3.0.0",                # Git pre-commit hooks
 ]
 
@@ -192,14 +191,6 @@ ignore = [
     "E501",  # 行过长（由格式化工具处理）
     "B905",  # zip without strict（Python 3.9 兼容性）
 ]
-
-# 静态类型检查 (MyPy)
-[tool.mypy]
-python_version = "3.10"                 # Python 版本
-warn_return_any = true                  # 警告返回 Any 类型
-warn_unused_configs = true              # 警告未使用的配置
-disallow_untyped_defs = false           # 允许无类型定义
-ignore_missing_imports = true           # 忽略缺失的导入
 
 # ----------------------------------------------------------------------------
 # 测试配置 (Pytest)
