@@ -93,7 +93,7 @@ dependencies = [
     "PyJWT>=2.8.0,<2.9.0",                  # JWT 支持（兼容 zhipuai）
     "boto3>=1.34.0,<2.0.0",                 # AWS SDK 核心客户端
     "aioboto3>=14.1.0,<15.0.0",             # AWS Bedrock 异步客户端
-    "tenacity>=8.2.0,<9.0.0",               # 重试机制（API 调用）
+    "tenacity>=8.2.0",                      # 重试机制（API 调用，兼容 9.x）
 
     # 后端存储（必需）
     "redis>=5.0.0,<6.0.0",              # Redis KV 存储后端
