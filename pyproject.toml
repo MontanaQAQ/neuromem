@@ -10,8 +10,8 @@
 # ----------------------------------------------------------------------------
 [build-system]
 requires = [
-    "setuptools>=65.0",    # 现代 setuptools
-    "wheel",               # wheel 构建支持
+    "setuptools>=65.0", # 现代 setuptools
+    "wheel",            # wheel 构建支持
 ]
 build-backend = "setuptools.build_meta"
 
@@ -26,17 +26,20 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 # 许可证
-license = {text = "Apache-2.0"}
+license = { text = "Apache-2.0" }
 
 # 项目作者
-authors = [
-    {name = "IntelliStream Team", email = "shuhao_zhang@hust.edu.cn"}
-]
+authors = [{ name = "IntelliStream Team", email = "shuhao_zhang@hust.edu.cn" }]
 
 # PyPI 搜索关键词
 keywords = [
-    "memory", "ai", "agents", "vector-database",
-    "knowledge-graph", "rag", "llm"
+    "memory",
+    "ai",
+    "agents",
+    "vector-database",
+    "knowledge-graph",
+    "rag",
+    "llm",
 ]
 
 # PyPI 分类器
@@ -58,79 +61,80 @@ classifiers = [
 # ----------------------------------------------------------------------------
 dependencies = [
     # SAGE 生态组件（已发布到 PyPI）
-    "isage-common[embedding]",          # 日志、嵌入、配置等核心工具（包含 embedding 支持）
-    "isage-vdb",                        # SageDB 向量数据库后端
-    "isage-kernel",                     # SAGE Kernel 服务工厂和运行时
+    "isage-common",             # 日志、嵌入、配置等核心工具
+    "isage-vdb",               # SageDB 向量数据库后端
+    "isage-kernel",            # SAGE Kernel 服务工厂和运行时
 
     # 核心依赖
-    "numpy>=1.26.0,<2.3.0",             # 数组操作和数值计算
-    "pyyaml>=6.0,<7.0",                 # YAML 配置文件解析
-    "networkx>=3.0,<4.0",               # 图结构支持（Graph 内存类型）
-    "python-dateutil>=2.8.0",           # 日期时间处理工具
+    "numpy>=1.26.0,<2.3.0",   # 数组操作和数值计算
+    "pyyaml>=6.0,<7.0",       # YAML 配置文件解析
+    "networkx>=3.0,<4.0",     # 图结构支持（Graph 内存类型）
+    "python-dateutil>=2.8.0", # 日期时间处理工具
 
     # 搜索引擎依赖
-    "bm25s>=0.1.0",                     # BM25s 文本索引
-    "PyStemmer>=2.0.0",                 # Stemmer for BM25s
-    "faiss-cpu>=1.7.0",                 # FAISS 向量索引（CPU版本）
-    "datasketch>=1.5.0",                # LSH 索引支持（MinHash）
+    "bm25s>=0.1.0",      # BM25s 文本索引
+    "PyStemmer>=2.0.0",  # Stemmer for BM25s
+    "faiss-cpu>=1.7.0",  # FAISS 向量索引（CPU版本）
+    "datasketch>=1.5.0", # LSH 索引支持（MinHash）
 
     # Embedding 核心依赖
-    "python-dotenv>=1.1.0,<2.0.0",          # 环境变量管理
-    "nvidia-ml-py>=12.535.108",             # NVIDIA GPU 监控
-    "torch>=2.7.0,<3.0.0",                  # PyTorch 核心库
-    "sentence-transformers>=3.1.0,<4.0.0",  # 本地 transformer 嵌入模型
-    "transformers>=4.52.0,<4.54.0",         # Hugging Face transformers
-    "requests>=2.32.0,<3.0.0",              # HTTP 客户端
-    "aiohttp>=3.12.0,<4.0.0",               # 异步 HTTP 客户端
-    "fastapi>=0.115.0,<1.0.0",              # Web API 框架
-    "uvicorn>=0.34.0,<1.0.0",               # ASGI 服务器
+    "python-dotenv>=1.1.0,<2.0.0",         # 环境变量管理
+    "nvidia-ml-py>=12.535.108",            # NVIDIA GPU 监控
+    "torch>=2.7.0,<3.0.0",                 # PyTorch 核心库
+    "sentence-transformers>=3.1.0,<4.0.0", # 本地 transformer 嵌入模型
+    "transformers>=4.52.0,<4.54.0",        # Hugging Face transformers
+    "requests>=2.32.0,<3.0.0",             # HTTP 客户端
+    "aiohttp>=3.12.0,<4.0.0",              # 异步 HTTP 客户端
+    "fastapi>=0.115.0,<1.0.0",             # Web API 框架
+    "uvicorn>=0.34.0,<1.0.0",              # ASGI 服务器
 
     # Embedding API 客户端
-    "openai>=1.52.0,<1.91.0",               # OpenAI API 客户端
-    "cohere>=5.16.0,<6.0.0",                # Cohere API 客户端
-    "ollama>=0.4.6,<1.0.0",                 # Ollama API 客户端
-    "zhipuai>=2.0.1,<2.9.0",                # ZhipuAI API 客户端（兼容 PyJWT<2.9.0）
-    "PyJWT>=2.8.0,<2.9.0",                  # JWT 支持（兼容 zhipuai）
-    "boto3>=1.34.0,<2.0.0",                 # AWS SDK 核心客户端
-    "aioboto3>=14.1.0,<15.0.0",             # AWS Bedrock 异步客户端
-    "tenacity>=8.2.0",                      # 重试机制（API 调用，兼容 9.x）
+    "openai>=1.52.0,<1.91.0",   # OpenAI API 客户端
+    "cohere>=5.16.0,<6.0.0",    # Cohere API 客户端
+    "ollama>=0.4.6,<1.0.0",     # Ollama API 客户端
+    "zhipuai>=2.0.1,<2.9.0",    # ZhipuAI API 客户端（兼容 PyJWT<2.9.0）
+    "PyJWT>=2.8.0,<2.9.0",      # JWT 支持（兼容 zhipuai）
+    "boto3>=1.34.0,<2.0.0",     # AWS SDK 核心客户端
+    "aioboto3>=14.1.0,<15.0.0", # AWS Bedrock 异步客户端
+    "tenacity>=8.2.0",          # 重试机制（API 调用，兼容 9.x）
 
     # 后端存储（必需）
-    "redis>=5.0.0,<6.0.0",              # Redis KV 存储后端
-    "neo4j>=5.0.0,<6.0.0",              # Neo4j 图数据库后端
+    "redis>=5.0.0,<6.0.0", # Redis KV 存储后端
+    "neo4j>=5.0.0,<6.0.0", # Neo4j 图数据库后端
 ]
 
 # ----------------------------------------------------------------------------
-# 可选依赖组 - 按功能模块分组的可选依赖
-# 用户可根据需要安装：pip install isage-neuromem[benchmark]
+# 可选依赖组 - 开发、测试、基准测试工具
+# 用户可根据需要安装：pip install isage-neuromem[dev]
 # ----------------------------------------------------------------------------
 [project.optional-dependencies]
 
-# 基准测试套件（包含所有测试、开发、评估工具）
-benchmark = [
+# 开发和基准测试套件
+dev = [
     # 数据加载和处理
-    "isage-data",                       # SAGE 数据加载器（LongMemEval、Locomo、MemAgentBench）
+    "isage-data",      # SAGE 数据加载器（LongMemEval、Locomo、MemAgentBench）
     "isage-platform",
-    "pandas>=2.0.0",                    # 数据分析和处理
-    "pyarrow>=10.0.0",                  # Arrow 数据格式（isage-data 依赖）
+    "pandas>=2.0.0",   # 数据分析和处理
+    "pyarrow>=10.0.0", # Arrow 数据格式（isage-data 依赖）
 
     # 可视化和分析
-    "matplotlib>=3.7.0",                # 可视化图表生成
+    "matplotlib>=3.7.0", # 可视化图表生成
 
     # NLP 和 LLM
-    "nltk>=3.8.0",                      # 自然语言处理工具
-    "openai>=1.0.0",                    # OpenAI API 客户端
-    "spacy>=3.0.0",                     # 工业级 NLP 库（关键词提取等）
+    "nltk>=3.8.0",   # 自然语言处理工具
+    "openai>=1.0.0", # OpenAI API 客户端
+    "spacy>=3.0.0",  # 工业级 NLP 库（关键词提取等）
 
     # 系统监控
-    "psutil>=5.9.0",                    # 系统资源监控
+    "psutil>=5.9.0", # 系统资源监控
 
     # 测试和开发工具
-    "pytest>=7.0.0",                    # 测试框架
-    "pytest-cov>=4.0.0",                # 覆盖率报告
-    "pytest-benchmark>=4.0.0",          # 性能基准测试框架
-    "ruff>=0.1.0",                      # 代码检查和格式化
-    "pre-commit>=3.0.0",                # Git pre-commit hooks
+    "pytest>=7.0.0",           # 测试框架
+    "pytest-cov>=4.0.0",       # 覆盖率报告
+    "pytest-benchmark>=4.0.0", # 性能基准测试框架
+    "ruff>=0.1.0",             # 代码检查和格式化
+    "pre-commit>=3.0.0",       # Git pre-commit hooks
+    "isage-pypi-publisher>=0.2.0",
 ]
 
 # ----------------------------------------------------------------------------
@@ -146,12 +150,12 @@ Repository = "https://github.com/intellistream/NeuroMem"
 # 包构建配置
 # ----------------------------------------------------------------------------
 [tool.setuptools.packages.find]
-where = ["."]                           # 源码搜索根目录
-include = ["sage.neuromem*"]            # 包含的包模式
-exclude = ["tests*", "examples*"]       # 排除的包模式
+where = ["."]                     # 源码搜索根目录
+include = ["sage.neuromem*"]      # 包含的包模式
+exclude = ["tests*", "examples*"] # 排除的包模式
 
 [tool.setuptools]
-zip-safe = false                        # 不生成 zip-safe 包
+zip-safe = false # 不生成 zip-safe 包
 
 # ----------------------------------------------------------------------------
 # 开发工具配置
@@ -159,37 +163,37 @@ zip-safe = false                        # 不生成 zip-safe 包
 
 # 代码格式化 (Black)
 [tool.black]
-line-length = 100                       # 最大行长度
-target-version = ['py310', 'py311']     # 目标 Python 版本
+line-length = 100                   # 最大行长度
+target-version = ['py310', 'py311'] # 目标 Python 版本
 
 # 代码检查和格式化 (Ruff)
 [tool.ruff]
-line-length = 100                       # 最大行长度
-target-version = "py310"                # 目标 Python 版本
+line-length = 100        # 最大行长度
+target-version = "py310" # 目标 Python 版本
 
 [tool.ruff.lint]
 # 启用的检查规则
 select = [
-    "E",     # pycodestyle 错误
-    "F",     # Pyflakes
-    "W",     # pycodestyle 警告
-    "I",     # isort
-    "N",     # pep8-naming
-    "UP",    # pyupgrade
-    "B",     # flake8-bugbear
-    "A",     # flake8-builtins
-    "C4",    # flake8-comprehensions
-    "DTZ",   # flake8-datetimez
-    "PIE",   # flake8-pie
-    "PT",    # flake8-pytest-style
-    "RET",   # flake8-return
-    "SIM",   # flake8-simplify
+    "E",   # pycodestyle 错误
+    "F",   # Pyflakes
+    "W",   # pycodestyle 警告
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "PIE", # flake8-pie
+    "PT",  # flake8-pytest-style
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
 ]
 
 # 忽略的规则
 ignore = [
-    "E501",  # 行过长（由格式化工具处理）
-    "B905",  # zip without strict（Python 3.9 兼容性）
+    "E501", # 行过长（由格式化工具处理）
+    "B905", # zip without strict（Python 3.9 兼容性）
 ]
 
 # ----------------------------------------------------------------------------
@@ -215,10 +219,10 @@ log_file_level = "DEBUG"
 
 # 测试运行参数
 addopts = [
-    "-v",                               # 详细输出
-    "--strict-markers",                 # 严格标记检查
-    "--tb=short",                       # 简短回溯
-    "--disable-warnings",               # 禁用警告
+    "-v",                 # 详细输出
+    "--strict-markers",   # 严格标记检查
+    "--tb=short",         # 简短回溯
+    "--disable-warnings", # 禁用警告
     # 覆盖率参数（需要先安装：pip install isage-neuromem[test]）
     # "--cov=.",                        # 覆盖率检查
     # "--cov-report=term-missing",      # 终端覆盖率报告（显示缺失行）
@@ -249,5 +253,5 @@ norecursedirs = [
 ]
 
 # Benchmark 配置 (禁用持久化存储以避免生成 .benchmarks 目录)
-benchmark_disable = false               # 不禁用 benchmark
-benchmark_storage = "null"              # 禁用持久化存储
+benchmark_disable = false  # 不禁用 benchmark
+benchmark_storage = "null" # 禁用持久化存储
