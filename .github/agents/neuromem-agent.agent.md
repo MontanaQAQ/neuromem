@@ -248,3 +248,9 @@ If the agent needs clarification:
 The NeuroMem agent is your specialized assistant for memory management system development. It understands the layered architecture, follows project conventions, and can implement features across the entire stack while maintaining code quality and test coverage.
 
 Use it for implementation tasks, and consult humans for architectural decisions and breaking changes.
+
+## Polyrepo coordination rules
+
+- Treat this repository as the only local source tree; do not assume sibling repositories exist.
+- If a task spans multiple repositories, implement only this repo and explicitly list follow-up repo/version-bump actions.
+- Do not create `venv`/`.venv`; always use the existing configured Python environment.
