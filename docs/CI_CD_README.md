@@ -58,11 +58,11 @@ Runs automatically on:
 
 ### Workflow: `.github/workflows/benchmark.yml`
 
-Purpose-built for the paper1 memory benchmarks that were ported from the SAGE benchmarks repo. The workflow can be triggered manually or via the nightly cron (UTC 02:00) and always runs on a self-hosted runner tagged `self-hosted` + `llm-server` with GPU + vLLM access.
+Purpose-built for the paper1 memory benchmarks that were ported from the SAGE benchmarks repo. The workflow can be triggered manually or via the nightly cron (UTC 02:00) and always runs on a self-hosted runner tagged `self-hosted` + `llm-server` with GPU + sageLLM access.
 
 #### Runner requirements
 
-- vLLM/LLM endpoint reachable from the runner (export `LLM_BASE_URL`, `LLM_MODEL_NAME`, `LLM_API_KEY` in the runner environment or pass them via workflow inputs)
+- sageLLM/OpenAI-compatible LLM endpoint reachable from the runner (export `LLM_BASE_URL`, `LLM_MODEL_NAME`, `LLM_API_KEY` in the runner environment or pass them via workflow inputs)
 - Hugging Face download token via `HF_TOKEN` environment variable (used to fetch datasets/models)
 - Pre-installed benchmark dependencies (handled automatically by `pip install -e .[benchmark]`)
 - Adequate disk space for `.sage/benchmarks` artifacts

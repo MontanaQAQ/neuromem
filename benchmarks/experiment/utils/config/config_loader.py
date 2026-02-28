@@ -84,7 +84,7 @@ class RuntimeConfig:
         """获取配置项，支持点号路径和运行时参数
 
         Args:
-            key: 配置键，支持嵌套访问如 "generator.vllm.api_key"
+            key: 配置键，支持嵌套访问如 "generator.sagellm.api_key"
             default: 默认值
 
         Returns:
@@ -92,7 +92,7 @@ class RuntimeConfig:
 
         Examples:
             config.get("dataset")  # 获取运行时参数
-            config.get("generator.vllm.model_name")  # 获取 YAML 嵌套配置
+            config.get("generator.sagellm.model_name")  # 获取 YAML 嵌套配置
             config.get("pre_insert.action")  # 获取 Operator 配置
         """
         # 优先从运行时参数中获取
