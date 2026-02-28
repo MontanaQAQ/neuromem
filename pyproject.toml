@@ -20,7 +20,7 @@ build-backend = "setuptools.build_meta"
 # ----------------------------------------------------------------------------
 [project]
 name = "isage-neuromem"
-version = "0.2.1.4"
+version = "0.2.1.5"
 description = "NeuroMem - Brain-inspired memory system for AI agents with multi-modal storage"
 readme = "README.md"
 requires-python = ">=3.10"
