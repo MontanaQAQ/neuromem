@@ -6,6 +6,7 @@ vector databases, key-value stores, and graph structures.
 """
 
 from ._version import __author__, __email__, __version__
+from .async_adapter import AsyncMemoryAdapter
 from .memory_collection import UnifiedCollection
 from .memory_manager import MemoryManager
 
@@ -13,6 +14,7 @@ __all__ = [
     "__version__",
     "__author__",
     "__email__",
+    "AsyncMemoryAdapter",
     "MemoryManager",
     "UnifiedCollection",
 ]
