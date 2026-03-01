@@ -116,7 +116,11 @@ sagedb = [
 ]
 
 # 开发和基准测试套件
+full = []
+
 dev = [
+    # dev includes [full] — no need for a separate extras install
+    "isage-neuromem[full]",
     # 数据加载和处理
     "isage-data",      # SAGE 数据加载器（LongMemEval、Locomo、MemAgentBench）
     "isage-platform",
