@@ -109,19 +109,9 @@ dependencies = [
 # ----------------------------------------------------------------------------
 [project.optional-dependencies]
 
-# SageDB 向量数据库后端（可选）
-# 安装：pip install isage-neuromem[sagedb]
-sagedb = [
-    "isage-vdb",  # SageDB 具体实现（L4 同层包，通过 VDBBackend 接口解耦）
-]
-
-# 开发和基准测试套件
-full = []
-
-dev = [
-    # dev includes [full] — no need for a separate extras install
-    "isage-neuromem[full]",
-    # 数据加载和处理
+# SageDB 向量数据库后端与开发数据工具
+full = [
+    "isage-vdb",   # SageDB 具体实现（L4 同层包，通过 VDBBackend 接口解耦）
     "isage-data",      # SAGE 数据加载器（LongMemEval、Locomo、MemAgentBench）
     "isage-platform",
     "pandas>=2.0.0",   # 数据分析和处理
@@ -137,7 +127,11 @@ dev = [
 
     # 系统监控
     "psutil>=5.9.0", # 系统资源监控
+]
 
+dev = [
+    # dev includes [full] — no need for a separate extras install
+    "isage-neuromem[full]",
     # 测试和开发工具
     "pytest>=7.0.0",           # 测试框架
     "pytest-cov>=4.0.0",       # 覆盖率报告
