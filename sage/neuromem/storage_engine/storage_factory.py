@@ -15,7 +15,10 @@ Storage Factory - 可插拔存储后端
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sage.libs.vdb import VDBBackend
 
 
 class StorageBackend(ABC):
@@ -220,46 +223,134 @@ class RedisStorage(StorageBackend):
 
 
 class SageDBStorage(StorageBackend):
-    """
-    SageDB 向量数据库存储
+    """SageDB 向量数据库存储
 
     适合大规模向量数据的持久化和检索。
 
-    配置参数:
-        db_path: 数据库路径（默认 ./sagedb_data）
-        dim: 向量维度（默认 768）
+    架构说明
+    --------
+    ``SageDBStorage`` 是 neuromem 内部 ``StorageBackend`` 接口的具体实现。
+    它通过内部适配器类 ``_SageDBVDBAdapter`` 对接具体的 ``sagedb`` 库，
+    而适配器类实现了 ``sage.libs.vdb.VDBBackend`` 接口。
+
+    这样设计使得：
+
+    - ``SageDBStorage``（L4 neuromem）依赖 ``sage.libs.vdb.VDBBackend``（L3 接口），
+      而**不直接依赖**具体的 ``isage-vdb`` 包。
+    - 未来 ``isage-vdb`` 可以在自身包中注册 ``VDBBackend`` 实现，
+      并通过 ``sage.libs.vdb.create_backend("sagedb", config)`` 供调用，
+      从而彻底解耦两个 L4 同层包。
+
+    配置参数
+    --------
+    db_path : str
+        数据库路径（默认 ``./sagedb_data``）
+    dim : int
+        向量维度（默认 768）
     """
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    # ------------------------------------------------------------------
+    # Inner adapter — bridges sagedb.SageDB to VDBBackend protocol.
+    # Lives here (rather than in isage-vdb) during the transitional period.
+    # TODO: move to isage-vdb once that package registers itself via
+    #       sage.libs.vdb.register_backend("sagedb").
+    # ------------------------------------------------------------------
+
+    class _SageDBVDBAdapter:
+        """Adapts ``sagedb.SageDB`` to the ``VDBBackend`` interface.
+
+        Imported as ``VDBBackend`` at TYPE_CHECKING time for type annotations;
+        at runtime the import is deferred so that ``isage-vdb`` remains an
+        **optional** dependency rather than a required one.
         """
-        初始化 SageDB 存储
+
+        def __init__(self, config: dict[str, Any]) -> None:
+            try:
+                from sagedb import SageDB
+            except ImportError as exc:
+                raise ImportError(
+                    "SageDBStorage requires the 'sagedb' package. "
+                    "Install the optional extra: pip install isage-neuromem[sagedb] "
+                    "or pip install isage-vdb"
+                ) from exc
+
+            self._db = SageDB(
+                db_path=config.get("db_path", "./sagedb_data"),
+                dim=config.get("dim", 768),
+            )
+
+        # --- VDBBackend contract ---
+
+        def add(
+            self,
+            ids: list[str],
+            vectors: list[list[float]],
+            metadata: list[dict[str, Any]],
+        ) -> None:
+            self._db.add(ids=ids, vectors=vectors, metadata=metadata)
+
+        def delete(self, ids: list[str]) -> bool:
+            if hasattr(self._db, "delete"):
+                self._db.delete(ids)
+                return True
+            return False
+
+        def clear(self) -> bool:
+            if hasattr(self._db, "clear"):
+                self._db.clear()
+                return True
+            return False
+
+        def query(
+            self,
+            filter_metadata: dict[str, Any] | None = None,
+            top_k: int = 10,
+            query_vector: list[float] | None = None,
+        ) -> list[dict[str, Any]]:
+            kwargs: dict[str, Any] = {"top_k": top_k}
+            if filter_metadata is not None:
+                kwargs["filter_metadata"] = filter_metadata
+            if query_vector is not None:
+                kwargs["query_vector"] = query_vector
+            return self._db.query(**kwargs)
+
+        def get_all_ids(self) -> list[str]:
+            if hasattr(self._db, "get_all_ids"):
+                return self._db.get_all_ids()
+            return []
+
+        def count(self) -> int:
+            if hasattr(self._db, "count"):
+                return self._db.count()
+            return len(self.get_all_ids())
+
+    # ------------------------------------------------------------------
+
+    def __init__(self, config: dict[str, Any] | None = None):
+        """初始化 SageDB 存储
 
         Args:
             config: SageDB 配置字典
 
         Raises:
-            ImportError: 如果 sagedb 包未安装
+            ImportError: 如果 sagedb 包（isage-vdb）未安装
         """
-        try:
-            from sagedb import SageDB
-        except ImportError as e:
-            raise ImportError(
-                "sagedb package is required for SageDBStorage. Install it with: pip install isage-vdb"
-            ) from e
-
         self.config = config or {}
-        self.sagedb = SageDB(
-            db_path=self.config.get("db_path", "./sagedb_data"),
-            dim=self.config.get("dim", 768),
-        )
+        # _vdb is typed against VDBBackend (L3 interface) at TYPE_CHECKING time.
+        # At runtime it holds the inner adapter instance.
+        self._vdb: VDBBackend = SageDBStorage._SageDBVDBAdapter(self.config)
+
+    # --- StorageBackend contract ---
 
     def put(self, key: str, data: dict[str, Any]) -> bool:
-        # SageDB 需要向量，如果数据中没有向量则无法存储
-        # 这里假设 data 中有 "vector" 字段
-        if "vector" not in data:
-            raise ValueError("SageDBStorage requires 'vector' field in data")
+        """向 SageDB 写入一条向量数据。
 
-        self.sagedb.add(
+        data 中必须包含 ``vector`` 字段；可选包含 ``text`` 和 ``metadata``。
+        """
+        if "vector" not in data:
+            raise ValueError("SageDBStorage.put() requires a 'vector' field in data")
+
+        self._vdb.add(
             ids=[key],
             vectors=[data["vector"]],
             metadata=[{"text": data.get("text", ""), **data.get("metadata", {})}],
@@ -267,38 +358,20 @@ class SageDBStorage(StorageBackend):
         return True
 
     def get(self, key: str) -> dict[str, Any] | None:
-        # SageDB 不支持直接通过 ID 获取，需要通过查询
-        # 这里使用元数据查询
-        results = self.sagedb.query(filter_metadata={"id": key}, top_k=1)
-        if results and len(results) > 0:
-            return results[0]
-        return None
+        results = self._vdb.query(filter_metadata={"id": key}, top_k=1)
+        return results[0] if results else None
 
     def delete(self, key: str) -> bool:
-        # SageDB 删除功能（如果支持）
-        if hasattr(self.sagedb, "delete"):
-            self.sagedb.delete([key])
-            return True
-        return False
+        return self._vdb.delete([key])
 
     def keys(self) -> list[str]:
-        # SageDB 获取所有 ID（如果支持）
-        if hasattr(self.sagedb, "get_all_ids"):
-            return self.sagedb.get_all_ids()
-        return []
+        return self._vdb.get_all_ids()
 
     def clear(self) -> bool:
-        # SageDB 清空数据（如果支持）
-        if hasattr(self.sagedb, "clear"):
-            self.sagedb.clear()
-            return True
-        return False
+        return self._vdb.clear()
 
     def __len__(self) -> int:
-        # SageDB 获取数据量
-        if hasattr(self.sagedb, "count"):
-            return self.sagedb.count()
-        return len(self.keys())
+        return self._vdb.count()
 
 
 class StorageFactory:

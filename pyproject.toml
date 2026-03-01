@@ -20,7 +20,7 @@ build-backend = "setuptools.build_meta"
 # ----------------------------------------------------------------------------
 [project]
 name = "isage-neuromem"
-version = "0.2.1.5"
+version = "0.2.1.6"
 description = "NeuroMem - Brain-inspired memory system for AI agents with multi-modal storage"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -62,7 +62,7 @@ classifiers = [
 dependencies = [
     # SAGE 生态组件（已发布到 PyPI）
     "isage-common",             # 日志、嵌入、配置等核心工具
-    "isage-vdb",               # SageDB 向量数据库后端
+    "isage-libs>=0.2.4.29",    # L3 接口层：VDBBackend 等抽象接口
     "isage-kernel",            # SAGE Kernel 服务工厂和运行时
 
     # 核心依赖
@@ -108,6 +108,12 @@ dependencies = [
 # 用户可根据需要安装：pip install isage-neuromem[dev]
 # ----------------------------------------------------------------------------
 [project.optional-dependencies]
+
+# SageDB 向量数据库后端（可选）
+# 安装：pip install isage-neuromem[sagedb]
+sagedb = [
+    "isage-vdb",  # SageDB 具体实现（L4 同层包，通过 VDBBackend 接口解耦）
+]
 
 # 开发和基准测试套件
 dev = [
