@@ -230,115 +230,56 @@ class SageDBStorage(StorageBackend):
     架构说明
     --------
     ``SageDBStorage`` 是 neuromem 内部 ``StorageBackend`` 接口的具体实现。
-    它通过内部适配器类 ``_SageDBVDBAdapter`` 对接具体的 ``sagedb`` 库，
-    而适配器类实现了 ``sage.libs.vdb.VDBBackend`` 接口。
+    它通过 ``sage.libs.vdb.create_backend("sagedb", config)`` 获取向量数据库后端，
+    而 ``sagedb`` 后端由 ``isage-vdb`` 包在自身 ``__init__`` 中注册到
+    ``sage.libs.vdb`` 注册表。
 
     这样设计使得：
 
     - ``SageDBStorage``（L4 neuromem）依赖 ``sage.libs.vdb.VDBBackend``（L3 接口），
       而**不直接依赖**具体的 ``isage-vdb`` 包。
-    - 未来 ``isage-vdb`` 可以在自身包中注册 ``VDBBackend`` 实现，
-      并通过 ``sage.libs.vdb.create_backend("sagedb", config)`` 供调用，
-      从而彻底解耦两个 L4 同层包。
+    - ``isage-vdb`` 在自身包中注册 ``SageVDBBackend``，通过注册表解耦两个 L4 同层包。
 
     配置参数
     --------
-    db_path : str
-        数据库路径（默认 ``./sagedb_data``）
     dim : int
         向量维度（默认 768）
+    index_type : str
+        ANNS 索引类型（默认 ``"FLAT"``）
+    metric : str
+        距离度量（默认 ``"L2"``）
     """
-
-    # ------------------------------------------------------------------
-    # Inner adapter — bridges sagedb.SageDB to VDBBackend protocol.
-    # Lives here (rather than in isage-vdb) during the transitional period.
-    # TODO: move to isage-vdb once that package registers itself via
-    #       sage.libs.vdb.register_backend("sagedb").
-    # ------------------------------------------------------------------
-
-    class _SageDBVDBAdapter:
-        """Adapts ``sagedb.SageDB`` to the ``VDBBackend`` interface.
-
-        Imported as ``VDBBackend`` at TYPE_CHECKING time for type annotations;
-        at runtime the import is deferred so that ``isage-vdb`` remains an
-        **optional** dependency rather than a required one.
-        """
-
-        def __init__(self, config: dict[str, Any]) -> None:
-            try:
-                from sagedb import SageDB
-            except ImportError as exc:
-                raise ImportError(
-                    "SageDBStorage requires the 'sagedb' package. "
-                    "Install the optional extra: pip install isage-neuromem[sagedb] "
-                    "or pip install isage-vdb"
-                ) from exc
-
-            self._db = SageDB(
-                db_path=config.get("db_path", "./sagedb_data"),
-                dim=config.get("dim", 768),
-            )
-
-        # --- VDBBackend contract ---
-
-        def add(
-            self,
-            ids: list[str],
-            vectors: list[list[float]],
-            metadata: list[dict[str, Any]],
-        ) -> None:
-            self._db.add(ids=ids, vectors=vectors, metadata=metadata)
-
-        def delete(self, ids: list[str]) -> bool:
-            if hasattr(self._db, "delete"):
-                self._db.delete(ids)
-                return True
-            return False
-
-        def clear(self) -> bool:
-            if hasattr(self._db, "clear"):
-                self._db.clear()
-                return True
-            return False
-
-        def query(
-            self,
-            filter_metadata: dict[str, Any] | None = None,
-            top_k: int = 10,
-            query_vector: list[float] | None = None,
-        ) -> list[dict[str, Any]]:
-            kwargs: dict[str, Any] = {"top_k": top_k}
-            if filter_metadata is not None:
-                kwargs["filter_metadata"] = filter_metadata
-            if query_vector is not None:
-                kwargs["query_vector"] = query_vector
-            return self._db.query(**kwargs)
-
-        def get_all_ids(self) -> list[str]:
-            if hasattr(self._db, "get_all_ids"):
-                return self._db.get_all_ids()
-            return []
-
-        def count(self) -> int:
-            if hasattr(self._db, "count"):
-                return self._db.count()
-            return len(self.get_all_ids())
-
-    # ------------------------------------------------------------------
 
     def __init__(self, config: dict[str, Any] | None = None):
         """初始化 SageDB 存储
 
         Args:
-            config: SageDB 配置字典
+            config: SageDB 配置字典，支持 ``dim``、``index_type``、``metric`` 等键。
 
         Raises:
-            ImportError: 如果 sagedb 包（isage-vdb）未安装
+            ImportError: 如果 isage-vdb 包未安装（install: pip install isage-neuromem[sagedb]）
         """
         self.config = config or {}
-        # _vdb is typed against VDBBackend (L3 interface) at TYPE_CHECKING time.
-        # At runtime it holds the inner adapter instance.
-        self._vdb: VDBBackend = SageDBStorage._SageDBVDBAdapter(self.config)
+        try:
+            from sage.libs.vdb import create_backend
+        except ImportError as exc:
+            raise ImportError(
+                "SageDBStorage requires 'isage-libs'. "
+                "Install with: pip install isage-libs"
+            ) from exc
+
+        try:
+            # Triggers sagevdb import which registers SageVDBBackend on first use.
+            import sagevdb  # noqa: F401
+        except ImportError as exc:
+            raise ImportError(
+                "SageDBStorage requires the 'isage-vdb' package. "
+                "Install the optional extra: pip install isage-neuromem[sagedb] "
+                "or: pip install isage-vdb"
+            ) from exc
+
+        # _vdb is typed against VDBBackend (L3 interface).
+        self._vdb: VDBBackend = create_backend("sagedb", self.config)
 
     # --- StorageBackend contract ---
 
