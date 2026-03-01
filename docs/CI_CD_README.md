@@ -144,9 +144,6 @@ pre-commit run --all-files
 # Run specific hook
 pre-commit run ruff --all-files
 
-# Skip hooks (not recommended)
-git commit --no-verify
-
 # Update hook versions
 pre-commit autoupdate
 ```
