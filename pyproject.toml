@@ -157,6 +157,7 @@ Repository = "https://github.com/intellistream/NeuroMem"
 where = ["."]                     # 源码搜索根目录
 include = ["sage.neuromem*"]      # 包含的包模式
 exclude = ["tests*", "examples*"] # 排除的包模式
+namespaces = true                  # 启用 PEP420 namespace package 发现
 
 [tool.setuptools]
 zip-safe = false # 不生成 zip-safe 包
