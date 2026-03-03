@@ -28,8 +28,9 @@ requires-python = ">=3.10"
 # 许可证
 license = { text = "Apache-2.0" }
 
-# 项目作者
-authors = [{ name = "IntelliStream Team", email = "shuhao_zhang@hust.edu.cn" }]
+# 项目作者/维护者
+authors = [{ name = "IntelliStream Team" }]
+maintainers = [{ name = "RuiCheng Zhang (KimmoZAG)" }]
 
 # PyPI 搜索关键词
 keywords = [
@@ -149,6 +150,7 @@ Homepage = "https://github.com/intellistream/NeuroMem"
 Documentation = "https://intellistream.github.io/SAGE/"
 Repository = "https://github.com/intellistream/NeuroMem"
 "Bug Tracker" = "https://github.com/intellistream/NeuroMem/issues"
+Contact = "https://github.com/KimmoZAG"
 
 # ----------------------------------------------------------------------------
 # 包构建配置

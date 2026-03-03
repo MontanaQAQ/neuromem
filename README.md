@@ -10,6 +10,12 @@ Love grows from the smallest of memories ~
 
 🔥 Welcome! NeuroMem is a subproject of [SAGE](https://github.com/intellistream/SAGE), dedicated to exploring memory systems for large language models.
 
+## Owner & Contact
+
+- Repository Owner: [@KimmoZAG](https://github.com/KimmoZAG) (RuiCheng / 张睿诚)
+- Maintainer Contact: Please open an issue in this repo and mention `@KimmoZAG`.
+- PyPI-related ownership and release contact follow the same owner/contact above.
+
 ---
 
 ## Getting Started
