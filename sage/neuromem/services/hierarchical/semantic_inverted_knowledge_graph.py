@@ -212,13 +212,12 @@ class SemanticInvertedKnowledgeGraphService(BaseMemoryService):
         # 否则使用路由策略
         if strategy == "cascade":
             return self._retrieve_cascade(query or "", top_k, **kwargs)
-        elif strategy == "parallel":
+        if strategy == "parallel":
             return self._retrieve_parallel(query or "", top_k, **kwargs)
-        elif strategy == "adaptive":
+        if strategy == "adaptive":
             return self._retrieve_adaptive(query or "", top_k, **kwargs)
-        else:
-            msg = f"Unknown routing strategy: {strategy}"
-            raise ValueError(msg)
+        msg = f"Unknown routing strategy: {strategy}"
+        raise ValueError(msg)
 
     def _retrieve_single_layer(
         self, layer: str, query: str, top_k: int, **kwargs: Any
@@ -404,12 +403,11 @@ class SemanticInvertedKnowledgeGraphService(BaseMemoryService):
         if has_entities:
             # 有实体信息，优先使用KG层
             return self._retrieve_single_layer("kg", query, top_k, **kwargs)
-        elif has_vector or query_length > 10:
+        if has_vector or query_length > 10:
             # 长查询或有向量，使用语义层
             return self._retrieve_single_layer("semantic", query, top_k, **kwargs)
-        else:
-            # 短查询，使用倒排层
-            return self._retrieve_single_layer("inverted", query, top_k, **kwargs)
+        # 短查询，使用倒排层
+        return self._retrieve_single_layer("inverted", query, top_k, **kwargs)
 
     def _expand_via_kg(
         self, candidates: list[dict[str, Any]], query_entities: list[str] | None = None

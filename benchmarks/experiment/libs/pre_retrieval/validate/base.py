@@ -70,10 +70,7 @@ class ValidateAction(BasePreRetrievalAction):
             # 验证失败，根据on_fail配置处理
             if self.on_fail == "raise":
                 raise ValueError(f"Query validation failed: {validation_result['reason']}")
-            elif self.on_fail == "default":
-                final_query = self.default_query
-            else:  # skip
-                final_query = ""
+            final_query = self.default_query if self.on_fail == "default" else ""
         else:
             final_query = processed_query
 

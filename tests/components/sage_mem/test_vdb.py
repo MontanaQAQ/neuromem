@@ -2,7 +2,6 @@ import json
 import os
 
 import numpy as np
-
 from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
 )

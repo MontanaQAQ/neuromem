@@ -11,10 +11,10 @@ Unit tests for LinknoteGraphService
 import pytest
 
 from sage.neuromem.memory_collection import UnifiedCollection
+from sage.neuromem.services import MemoryServiceRegistry
 from sage.neuromem.services.hierarchical import (
     LinknoteGraphService,
 )
-from sage.neuromem.services import MemoryServiceRegistry
 
 
 class TestLinknoteInitialization:
@@ -138,9 +138,7 @@ class TestRetrieval:
         """测试包含起始节点"""
         service, notes = service_with_notes
 
-        related = service.retrieve(
-            notes["A"], top_k=10, max_hops=1, include_start=True
-        )
+        related = service.retrieve(notes["A"], top_k=10, max_hops=1, include_start=True)
 
         # 应该包含起始节点 A
         related_ids = [r["id"] for r in related]
@@ -159,7 +157,7 @@ class TestBacklinksAndNeighbors:
     def test_get_backlinks(self, service):
         """测试获取反向链接"""
         note1_id = service.insert("Note 1")
-        note2_id = service.insert("Note 2")
+        service.insert("Note 2")
         note3_id = service.insert("Note 3", None, {}, insert_params={"links": [note1_id]})
 
         # note1 应该有 note3 的反向链接

@@ -5,7 +5,7 @@
 功能: 使用图的 PageRank 算法重排序记忆
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -26,7 +26,7 @@ class PPRRerankAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """使用 PPR 重排序
 

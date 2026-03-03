@@ -99,10 +99,7 @@ Sources:""",
         routes, route_params = self._select_routes(question)
 
         # 限制路由数量
-        if not self.allow_multi_route:
-            routes = routes[:1]
-        else:
-            routes = routes[: self.max_routes]
+        routes = routes[:1] if not self.allow_multi_route else routes[: self.max_routes]
 
         # 如果没有路由，使用默认路由
         if not routes:
@@ -140,12 +137,11 @@ Sources:""",
         """
         if self.route_strategy == "keyword":
             return self._route_keyword(question)
-        elif self.route_strategy == "classifier":
+        if self.route_strategy == "classifier":
             return self._route_classifier(question)
-        elif self.route_strategy == "llm":
+        if self.route_strategy == "llm":
             return self._route_llm(question)
-        else:
-            return [self.default_route], {}
+        return [self.default_route], {}
 
     def _route_keyword(self, question: str) -> tuple[list[str], dict[str, Any]]:
         """关键词路由"""
@@ -182,8 +178,7 @@ Sources:""",
         if intent in self.route_mapping:
             target = self.route_mapping[intent]
             return [target], {"intent": intent}
-        else:
-            return [self.default_route], {"intent": "unknown"}
+        return [self.default_route], {"intent": "unknown"}
 
     def _classify_intent(self, question: str) -> str:
         """简单的意图分类

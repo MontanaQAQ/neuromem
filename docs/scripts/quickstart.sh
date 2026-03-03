@@ -78,7 +78,7 @@ step() {
 # Check Python version
 check_python() {
     step "Checking Python environment"
-    
+
     if ! command -v python &> /dev/null; then
         if command -v python3 &> /dev/null; then
             PYTHON_CMD="python3"
@@ -87,30 +87,30 @@ check_python() {
             exit 1
         fi
     fi
-    
+
     PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | awk '{print $2}')
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-    
+
     if [ "$PYTHON_MAJOR" -lt 3 ] || { [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]; }; then
         error "Python 3.10+ required (found $PYTHON_VERSION)"
         exit 1
     fi
-    
+
     success "Python $PYTHON_VERSION detected"
 }
 
 # Check dependencies
 check_dependencies() {
     step "Checking system dependencies"
-    
+
     # Check for required packages
     MISSING_DEPS=()
-    
+
     if ! command -v git &> /dev/null; then
         MISSING_DEPS+=("git")
     fi
-    
+
     if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
         error "Missing dependencies: ${MISSING_DEPS[*]}"
         echo ""
@@ -119,35 +119,35 @@ check_dependencies() {
         echo "  macOS: brew install ${MISSING_DEPS[*]}"
         exit 1
     fi
-    
+
     success "All system dependencies satisfied"
 }
 
 # Install Python dependencies
 install_dependencies() {
     step "Installing Python dependencies"
-    
+
     # Check if isage-common is installed
     if ! $PYTHON_CMD -c "import sage.common" &> /dev/null; then
         warn "isage-common not found. Installing..."
         $PYTHON_CMD -m pip install isage-common --upgrade
     fi
-    
+
     # Check if isagevdb is installed
     if ! $PYTHON_CMD -c "import sagevdb" &> /dev/null; then
         warn "isagevdb not found. Installing..."
         $PYTHON_CMD -m pip install isagevdb --upgrade
     fi
-    
+
     success "Dependencies installed"
 }
 
 # Install NeuroMem
 install_neuromem() {
     step "Installing NeuroMem"
-    
+
     cd "$NEUROMEM_ROOT"
-    
+
     if [ "$DEV_MODE" = true ]; then
         info "Installing in development mode (editable)"
         $PYTHON_CMD -m pip install -e . --no-deps
@@ -155,7 +155,7 @@ install_neuromem() {
         info "Installing NeuroMem"
         $PYTHON_CMD -m pip install .
     fi
-    
+
     success "NeuroMem installed successfully"
 }
 
@@ -163,15 +163,15 @@ install_neuromem() {
 setup_hooks() {
     if [ "$DEV_MODE" = true ]; then
         step "Setting up pre-commit hooks"
-        
+
         if ! command -v pre-commit &> /dev/null; then
             info "Installing pre-commit"
             $PYTHON_CMD -m pip install pre-commit
         fi
-        
+
         info "Installing Git hooks"
         pre-commit install
-        
+
         success "Pre-commit hooks installed"
     fi
 }
@@ -179,12 +179,12 @@ setup_hooks() {
 # Run tests
 run_tests() {
     step "Running tests"
-    
+
     if ! $PYTHON_CMD -m pytest --version &> /dev/null; then
         warn "pytest not found. Installing..."
         $PYTHON_CMD -m pip install pytest pytest-cov pytest-mock
     fi
-    
+
     info "Running unit tests (quick check)..."
     if $PYTHON_CMD -m pytest tests/unit/ -x -q --tb=short; then
         success "Tests passed"
@@ -197,7 +197,7 @@ run_tests() {
 # Verify installation
 verify_installation() {
     step "Verifying installation"
-    
+
     if $PYTHON_CMD -c "from neuromem import MemoryManager; print('NeuroMem version:', __import__('neuromem').__version__)" 2>/dev/null; then
         success "NeuroMem installed and importable"
     else
@@ -219,7 +219,7 @@ print_summary() {
     echo -e "  from neuromem import MemoryManager"
     echo -e "  manager = MemoryManager()"
     echo ""
-    
+
     if [ "$DEV_MODE" = true ]; then
         echo -e "${BOLD}Development Commands:${NC}"
         echo ""
@@ -233,7 +233,7 @@ print_summary() {
         echo -e "  pre-commit run --all-files"
         echo ""
     fi
-    
+
     echo -e "${BOLD}Documentation:${NC}"
     echo -e "  ${DIM}# Project README${NC}"
     echo -e "  cat README.md"
@@ -252,16 +252,16 @@ main() {
     echo -e "${BOLD}${BLUE}  Brain-inspired memory system for SAGE${NC}"
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    
+
     if [ "$DEV_MODE" = true ]; then
         info "Mode: ${BOLD}Development${NC} (editable install + pre-commit hooks)"
     else
         info "Mode: ${BOLD}Production${NC} (standard install)"
         info "Tip: Use ${DIM}--dev${NC} for development mode"
     fi
-    
+
     echo ""
-    
+
     # Confirm if not auto-yes
     if [ "$AUTO_YES" = false ]; then
         read -p "Continue with installation? (y/N): " -n 1 -r
@@ -271,19 +271,19 @@ main() {
             exit 0
         fi
     fi
-    
+
     # Installation steps
     check_python
     check_dependencies
     install_dependencies
     install_neuromem
-    
+
     if [ "$DEV_MODE" = true ]; then
         setup_hooks
     fi
-    
+
     verify_installation
-    
+
     # Optional: run tests
     if [ "$AUTO_YES" = false ] && [ "$DEV_MODE" = true ]; then
         echo ""
@@ -295,7 +295,7 @@ main() {
     elif [ "$DEV_MODE" = true ]; then
         run_tests
     fi
-    
+
     print_summary
 }
 

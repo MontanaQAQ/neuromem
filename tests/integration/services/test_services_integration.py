@@ -43,8 +43,7 @@ pytestmark = pytest.mark.skip(reason="Service implementation issues")
 def shared_collection(tmp_path):
     """共享的Collection用于多服务测试"""
     data_dir = tmp_path / "shared_data"
-    col = UnifiedCollection(name="integration_test", config={"data_dir": str(data_dir)})
-    yield col
+    return UnifiedCollection(name="integration_test", config={"data_dir": str(data_dir)})
 
 
 @pytest.fixture

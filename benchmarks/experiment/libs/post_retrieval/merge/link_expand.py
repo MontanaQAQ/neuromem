@@ -5,7 +5,7 @@
 功能: 通过图的链接关系扩展检索结果（邻居节点）
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import (
     BasePostRetrievalAction,
@@ -32,7 +32,7 @@ class LinkExpandMergeAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """通过链接扩展合并结果
 
@@ -110,8 +110,8 @@ class LinkExpandMergeAction(BasePostRetrievalAction):
         *,
         depth: int = 1,
         top_n: int = 5,
-        edge_types: Optional[list[str]] = None,
-        context: Optional[dict[str, Any]] = None,
+        edge_types: list[str] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """调用服务扩展邻居节点
 

@@ -3,7 +3,7 @@
 功能: 只保留前 K 个最高分的记忆
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -22,7 +22,7 @@ class TopKFilterAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """保留 Top-K 结果
 

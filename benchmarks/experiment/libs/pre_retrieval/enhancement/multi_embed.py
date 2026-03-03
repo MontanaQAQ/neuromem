@@ -11,7 +11,7 @@
 - 输出加权平均向量或独立向量
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from benchmarks.experiment.utils import EmbeddingGenerator
 
@@ -86,7 +86,7 @@ class MultiEmbedAction(BasePreRetrievalAction):
                     print(f"[WARNING] Failed to generate {name} embedding: {e}")
 
         # 根据output_format处理
-        query_embedding: Optional[list[float]] = None
+        query_embedding: list[float] | None = None
         metadata: dict[str, Any] = {
             "original_query": question,
             "multi_embed_format": self.output_format,
@@ -142,7 +142,7 @@ class MultiEmbedAction(BasePreRetrievalAction):
 
     def _weighted_average(
         self, embeddings_dict: dict[str, list[float]], weights_dict: dict[str, float]
-    ) -> Optional[list[float]]:
+    ) -> list[float] | None:
         """计算加权平均向量
 
         Args:
@@ -177,7 +177,6 @@ class MultiEmbedAction(BasePreRetrievalAction):
 
         # 归一化
         if total_weight > 0:
-            weighted_avg = [v / total_weight for v in weighted_sum]
-            return weighted_avg
+            return [v / total_weight for v in weighted_sum]
 
         return first_embedding

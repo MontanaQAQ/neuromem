@@ -8,7 +8,7 @@
 用途: MemoryBank 的 Ebbinghaus 遗忘曲线需要配合检索强化使用
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import (
     BasePostRetrievalAction,
@@ -39,7 +39,7 @@ class ReinforceAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """执行记忆强化
 

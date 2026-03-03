@@ -70,7 +70,7 @@ class TestSegmentIndexBasic:
         index = SegmentIndex()
 
         index.add("id1", "hello world", {})
-        original_segment = index.data_to_segment["id1"]
+        index.data_to_segment["id1"]
         assert index.size() == 1
 
         # 更新（相同 ID）
@@ -172,11 +172,13 @@ class TestSegmentIndexTimeStrategy:
     def test_time_strategy_duration_limit(self):
         """测试时长限制分段（需要等待）"""
         # 注意：这个测试会耗时较长，使用较短的时长
-        index = SegmentIndex({
-            "strategy": "time",
-            "segment_size": 100,  # 很大，不会触发大小限制
-            "segment_duration": 1,  # 1 秒
-        })
+        index = SegmentIndex(
+            {
+                "strategy": "time",
+                "segment_size": 100,  # 很大，不会触发大小限制
+                "segment_duration": 1,  # 1 秒
+            }
+        )
 
         # 添加第一条数据
         index.add("id1", "text1", {})
@@ -341,7 +343,7 @@ class TestSegmentIndexInfo:
         assert len(info["segments"]) == 2
 
         # 验证每个段的信息
-        for segment_id, segment_info in info["segments"].items():
+        for _segment_id, segment_info in info["segments"].items():
             assert "size" in segment_info
             assert "metadata" in segment_info
             assert segment_info["size"] > 0

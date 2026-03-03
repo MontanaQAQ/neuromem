@@ -138,7 +138,7 @@ jobs:
         test-suite:
           - name: "Unit Tests"
             path: "tests/unit"
-          - name: "Integration Tests"  
+          - name: "Integration Tests"
             path: "tests/integration"
           - name: "E2E Tests"
             path: "tests/e2e"
@@ -302,7 +302,7 @@ jobs:
           echo "✅ Benchmark Readiness: ${{ needs.test-benchmark-readiness.result }}"
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
+
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.validate.result }}" != "success" ] || \
              [ "${{ needs.build.result }}" != "success" ] || \
@@ -310,5 +310,5 @@ jobs:
             echo "❌ Critical tests failed!"
             exit 1
           fi
-          
+
           echo "✨ All critical tests passed!"

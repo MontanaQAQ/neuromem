@@ -14,7 +14,7 @@ SegmentService - 分段记忆服务
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from ..base_service import BaseMemoryService
@@ -167,7 +167,7 @@ class SegmentService(BaseMemoryService):
         # 扩展元数据
         extended_metadata = {
             **metadata,
-            "timestamp": insert_params.get("timestamp", datetime.now().isoformat()),
+            "timestamp": insert_params.get("timestamp", datetime.now(UTC).isoformat()),
         }
 
         # 向量添加到 metadata（UnifiedCollection 需要）
@@ -206,13 +206,12 @@ class SegmentService(BaseMemoryService):
 
         if strategy == "time":
             return self._check_time_window(metadata)
-        elif strategy == "topic":
+        if strategy == "topic":
             return self._check_topic_shift(text, metadata)
-        elif strategy == "hybrid":
+        if strategy == "hybrid":
             # 满足任一条件即创建新段
             return self._check_time_window(metadata) or self._check_topic_shift(text, metadata)
-        else:
-            return False
+        return False
 
     def _check_time_window(self, metadata: dict[str, Any]) -> bool:
         """检查时间窗口是否超出"""
@@ -226,10 +225,10 @@ class SegmentService(BaseMemoryService):
 
         # 比较时间戳
         first_timestamp = datetime.fromisoformat(
-            first_item["metadata"].get("timestamp", datetime.now().isoformat())
+            first_item["metadata"].get("timestamp", datetime.now(UTC).isoformat())
         )
         current_timestamp = datetime.fromisoformat(
-            metadata.get("timestamp", datetime.now().isoformat())
+            metadata.get("timestamp", datetime.now(UTC).isoformat())
         )
 
         time_diff = (current_timestamp - first_timestamp).total_seconds()
@@ -354,7 +353,7 @@ class SegmentService(BaseMemoryService):
         Returns:
             时间范围内的数据列表
         """
-        end_time = end_time or datetime.now()
+        end_time = end_time or datetime.now(UTC)
 
         return self.retrieve(
             query=None,

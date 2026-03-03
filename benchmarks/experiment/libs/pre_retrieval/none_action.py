@@ -21,7 +21,6 @@ class NoneAction(BasePreRetrievalAction):
 
     def _init_action(self) -> None:
         """无需初始化配置"""
-        pass
 
     def execute(self, input_data: PreRetrievalInput) -> PreRetrievalOutput:
         """直接返回原始查询

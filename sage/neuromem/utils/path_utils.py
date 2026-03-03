@@ -1,4 +1,5 @@
 """Path utilities for NeuroMem."""
+
 import os
 from pathlib import Path
 

@@ -169,16 +169,15 @@ Sub-questions:""",
         """执行查询分解"""
         if self.decompose_strategy == "llm":
             return self._decompose_llm(question)
-        elif self.decompose_strategy == "rule":
+        if self.decompose_strategy == "rule":
             return self._decompose_rule(question)
-        elif self.decompose_strategy == "hybrid":
+        if self.decompose_strategy == "hybrid":
             # 先尝试规则，失败则用LLM
             sub_queries = self._decompose_rule(question)
             if len(sub_queries) <= 1:
                 sub_queries = self._decompose_llm(question)
             return sub_queries
-        else:
-            return [question]
+        return [question]
 
     def _decompose_llm(self, question: str) -> list[str]:
         """使用LLM分解查询"""

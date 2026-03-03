@@ -41,7 +41,7 @@ class TestFAISSIndex:
         assert index_cosine.normalize is True
 
         # 缺少 dim 应该报错
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Vector dimension 'dim' is required"):
             FAISSIndex({})
 
     def test_add_and_query(self):

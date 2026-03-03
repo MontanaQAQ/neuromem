@@ -70,10 +70,9 @@ class TextStorage:
         self.backend.clear_disk_data(path)
 
 
-"""测试预期输出
-Retrieved: hello world
-After clear:
-"""
+# 测试预期输出
+# Retrieved: hello world
+# After clear:
 
 if __name__ == "__main__":
     import hashlib

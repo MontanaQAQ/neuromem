@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 def get_time_filename():
@@ -7,14 +7,12 @@ def get_time_filename():
     例如: '251117_1646' 表示 2025年11月17日 16:46
     """
     # 获取当前时间
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     # 格式化为 'YYMMDD_HHMM' 格式
     # %y: 年份的后两位, %m: 月份, %d: 日期
     # %H: 24小时制的小时, %M: 分钟
-    time_str = now.strftime("%y%m%d")
-
-    return time_str
+    return now.strftime("%y%m%d")
 
 
 def get_runtime_timestamp():
@@ -22,6 +20,6 @@ def get_runtime_timestamp():
     返回格式为 '时分' 的时间字符串，用于文件名
     例如: '1722' 表示 17:22
     """
-    now = datetime.now()
+    now = datetime.now(UTC)
     # 格式化为 'HHMM' 格式
     return now.strftime("%H%M")

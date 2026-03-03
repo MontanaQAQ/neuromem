@@ -14,8 +14,6 @@
 - 不修改原始查询文本
 """
 
-from typing import Optional
-
 from ..base import BasePreRetrievalAction, PreRetrievalInput, PreRetrievalOutput
 
 
@@ -33,7 +31,7 @@ class EmbeddingAction(BasePreRetrievalAction):
         """
         # EmbeddingGenerator将由PreRetrieval主类统一管理
         # 这里只存储配置
-        self.embedding_dim: Optional[int] = self.config.get("embedding_dim")
+        self.embedding_dim: int | None = self.config.get("embedding_dim")
 
     def execute(self, input_data: PreRetrievalInput) -> PreRetrievalOutput:
         """生成查询向量

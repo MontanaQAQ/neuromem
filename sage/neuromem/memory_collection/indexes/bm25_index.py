@@ -112,11 +112,10 @@ class BM25Index(BaseIndex):
         # 创建分词器
         if is_zh:
             return bm25s.tokenization.Tokenizer(stopwords=self.custom_stopwords or "zh")
-        else:
-            stemmer = Stemmer.Stemmer("english")
-            return bm25s.tokenization.Tokenizer(
-                stopwords=self.custom_stopwords or "en", stemmer=stemmer
-            )
+        stemmer = Stemmer.Stemmer("english")
+        return bm25s.tokenization.Tokenizer(
+            stopwords=self.custom_stopwords or "en", stemmer=stemmer
+        )
 
     def _rebuild_index(self) -> None:
         """

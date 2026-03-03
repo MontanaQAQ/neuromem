@@ -87,7 +87,7 @@ class TestDocumentationValidation:
         links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
         for link_text, link_path in links:
-            if link_path.startswith("http") or link_path.startswith("#"):
+            if link_path.startswith(("http", "#")):
                 continue
 
             if link_path.startswith("../"):
@@ -105,7 +105,7 @@ class TestDocumentationValidation:
         links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
         for link_text, link_path in links:
-            if link_path.startswith("http") or link_path.startswith("#"):
+            if link_path.startswith(("http", "#")):
                 continue
 
             base = docs_dir / "partitional"
@@ -124,7 +124,7 @@ class TestDocumentationValidation:
         links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
 
         for link_text, link_path in links:
-            if link_path.startswith("http") or link_path.startswith("#"):
+            if link_path.startswith(("http", "#")):
                 continue
 
             if link_path.startswith("../"):

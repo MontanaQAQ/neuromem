@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import contextlib
+from typing import Any
 
 from ..base import (
     BasePostRetrievalAction,
@@ -59,7 +60,7 @@ class SCMThreeWayMergeAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         # 读取检索结果
         memory_data = input_data.data.get("memory_data", [])
@@ -200,14 +201,12 @@ class SCMThreeWayMergeAction(BasePostRetrievalAction):
         }
 
         # 控制台简要调试输出
-        try:
+        with contextlib.suppress(Exception):
             print(
                 f"[DEBUG SCM Three-Way] history_used={used_history_tokens}/{self.max_history_tokens} "
                 f"pre_used={used_pre_tokens}/{self.max_pre_turn_tokens} decisions={decisions} "
                 f"llm_called={llm_called} calls={llm_calls} model={(llm_model or '-')} base={(llm_base_url or '-')}"
             )
-        except Exception:
-            pass
 
         return PostRetrievalOutput(memory_items=result_items, metadata=meta)
 
@@ -282,7 +281,7 @@ class SCMThreeWayMergeAction(BasePostRetrievalAction):
         new_text: str,
         *,
         decision: str,
-        extra_meta: Optional[dict[str, Any]] = None,
+        extra_meta: dict[str, Any] | None = None,
     ) -> MemoryItem:
         meta = dict(item.metadata or {})
         if extra_meta:

@@ -59,10 +59,7 @@ class RewriteAction(BasePreRetrievalAction):
         rewritten_query = self._llm_generator.generate(prompt).strip()
 
         # 根据配置决定最终查询
-        if self.replace_original:
-            final_query = rewritten_query
-        else:
-            final_query = question
+        final_query = rewritten_query if self.replace_original else question
 
         # 构建元数据
         metadata = {

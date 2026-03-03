@@ -4,15 +4,15 @@
 
 import pytest
 
-# Skip all LSH tests - LSH Index not yet registered in IndexFactory
-pytestmark = pytest.mark.skip(reason="LSH Index not registered in IndexFactory")
-
 from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
 from sage.neuromem.services.partitional import (
     LSHHashService,
 )
+
+# Skip all LSH tests - LSH Index not yet registered in IndexFactory
+pytestmark = pytest.mark.skip(reason="LSH Index not registered in IndexFactory")
 
 
 class MockEmbedder:
@@ -69,7 +69,7 @@ class TestLSHHashServiceBasic:
         collection = UnifiedCollection("test_collection")
         embedder = MockEmbedder()
 
-        service = LSHHashService(
+        LSHHashService(
             collection,
             {
                 "embedder": embedder,
@@ -217,9 +217,7 @@ class TestLSHHashServiceRetrieve:
         service.insert("文本2", metadata={"category": "B"})
         service.insert("文本3", metadata={"category": "A"})
 
-        results = service.retrieve(
-            "查询", top_k=10, filters={"category": "A"}
-        )
+        results = service.retrieve("查询", top_k=10, filters={"category": "A"})
 
         # 过滤后只应返回 category=A 的数据
         assert all(r["metadata"]["category"] == "A" for r in results)

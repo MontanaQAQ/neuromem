@@ -8,7 +8,7 @@ MemGPT 风格的多层记忆融合：
 论文原文: Figure 3 - MemGPT System Architecture
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import (
     BasePostRetrievalAction,
@@ -389,7 +389,7 @@ class MultiTierMergeAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """执行多层融合
 

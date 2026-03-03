@@ -61,7 +61,6 @@ class BaseIndex(ABC):
             - 如果 data_id 已存在，应该更新索引
             - 索引只存 data_id，不存原始数据
         """
-        pass
 
     @abstractmethod
     def remove(self, data_id: str) -> None:
@@ -74,7 +73,6 @@ class BaseIndex(ABC):
         Note:
             - 如果 data_id 不存在，不应抛出错误
         """
-        pass
 
     @abstractmethod
     def query(self, query: Any, **params: Any) -> list[str]:
@@ -100,7 +98,6 @@ class BaseIndex(ABC):
             - 不同索引类型对 query 和 params 的要求不同
             - 应该在子类文档中明确说明
         """
-        pass
 
     @abstractmethod
     def contains(self, data_id: str) -> bool:
@@ -113,7 +110,6 @@ class BaseIndex(ABC):
         Returns:
             是否存在
         """
-        pass
 
     @abstractmethod
     def size(self) -> int:
@@ -123,7 +119,6 @@ class BaseIndex(ABC):
         Returns:
             数据条数
         """
-        pass
 
     @abstractmethod
     def save(self, path: Path | str) -> None:
@@ -137,7 +132,6 @@ class BaseIndex(ABC):
             - 应该保存所有必要的索引数据
             - 调用 load 后应该能完全恢复索引状态
         """
-        pass
 
     @abstractmethod
     def load(self, path: Path | str) -> None:
@@ -154,7 +148,6 @@ class BaseIndex(ABC):
             - 应该完全恢复索引状态
             - 加载后索引应该立即可用
         """
-        pass
 
     @abstractmethod
     def clear(self) -> None:
@@ -165,7 +158,6 @@ class BaseIndex(ABC):
             - 子类可以覆盖此方法提供更高效的实现
             - 默认实现：不操作（索引创建时默认为空）
         """
-        pass
 
     def __repr__(self) -> str:
         """返回索引的字符串表示"""

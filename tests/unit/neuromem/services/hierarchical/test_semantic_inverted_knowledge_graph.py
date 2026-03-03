@@ -48,7 +48,7 @@ def collection(tmp_path, service_config):
     # 使用Service初始化（会自动setup索引）
     SemanticInvertedKnowledgeGraphService(col, service_config)
 
-    yield col
+    return col
     # Note: UnifiedCollection doesn't have close() method
 
 
@@ -231,9 +231,7 @@ class TestSingleLayerRetrieval:
 
     def test_retrieve_inverted_layer(self, populated_collection, service_config):
         """测试倒排层查询"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         results = service.retrieve(query="machine learning", top_k=3, layer="inverted")
 
@@ -248,22 +246,16 @@ class TestSingleLayerRetrieval:
 
     def test_retrieve_kg_layer(self, populated_collection, service_config):
         """测试KG层查询"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
-        results = service.retrieve(
-            query="", top_k=5, layer="kg", segment_id="tech"
-        )
+        results = service.retrieve(query="", top_k=5, layer="kg", segment_id="tech")
 
         assert isinstance(results, list)
         # KG层通过segment查询
 
     def test_invalid_layer(self, populated_collection, service_config):
         """测试无效层级"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         with pytest.raises(ValueError, match="Unknown layer"):
             service.retrieve(query="test", layer="invalid_layer")
@@ -274,13 +266,9 @@ class TestCascadeStrategy:
 
     def test_cascade_retrieval(self, populated_collection, service_config):
         """测试级联检索"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
-        results = service.retrieve(
-            query="machine learning algorithms", top_k=3, strategy="cascade"
-        )
+        results = service.retrieve(query="machine learning algorithms", top_k=3, strategy="cascade")
 
         assert isinstance(results, list)
         assert len(results) <= 3
@@ -292,9 +280,7 @@ class TestCascadeStrategy:
 
     def test_cascade_without_cross_layer(self, populated_collection, service_config):
         """测试级联但禁用跨层查询"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         results = service.retrieve(
             query="deep learning", top_k=2, strategy="cascade", enable_cross_layer=False
@@ -309,9 +295,7 @@ class TestParallelStrategy:
 
     def test_parallel_retrieval(self, populated_collection, service_config):
         """测试并行检索"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         results = service.retrieve(
             query="natural language processing", top_k=3, strategy="parallel"
@@ -326,9 +310,7 @@ class TestParallelStrategy:
 
     def test_parallel_with_custom_weights(self, populated_collection, service_config):
         """测试自定义权重的并行检索"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         custom_weights = {"semantic": 0.6, "inverted": 0.3, "kg": 0.1}
 
@@ -347,9 +329,7 @@ class TestAdaptiveStrategy:
 
     def test_adaptive_with_entities(self, populated_collection, service_config):
         """测试带实体的自适应查询（应选择KG层）"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         results = service.retrieve(
             query="test",
@@ -363,9 +343,7 @@ class TestAdaptiveStrategy:
 
     def test_adaptive_long_query(self, populated_collection, service_config):
         """测试长查询（应选择语义层）"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         long_query = "This is a very long query with many words that should trigger semantic layer"
 
@@ -375,9 +353,7 @@ class TestAdaptiveStrategy:
 
     def test_adaptive_short_query(self, populated_collection, service_config):
         """测试短查询（应选择倒排层）"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         results = service.retrieve(query="learning", top_k=2, strategy="adaptive")
 
@@ -426,9 +402,7 @@ class TestStatistics:
 
     def test_get_layer_stats(self, populated_collection, service_config):
         """测试获取层级统计"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         stats = service.get_layer_stats()
 
@@ -438,7 +412,7 @@ class TestStatistics:
         assert "kg" in stats
 
         # 检查统计结构
-        for layer_name, layer_stats in stats.items():
+        for _layer_name, layer_stats in stats.items():
             assert "size" in layer_stats
             assert "type" in layer_stats
 
@@ -467,9 +441,7 @@ class TestInvalidStrategy:
 
     def test_unknown_routing_strategy(self, populated_collection, service_config):
         """测试未知路由策略"""
-        service = SemanticInvertedKnowledgeGraphService(
-            populated_collection, service_config
-        )
+        service = SemanticInvertedKnowledgeGraphService(populated_collection, service_config)
 
         with pytest.raises(ValueError, match="Unknown routing strategy"):
             service.retrieve(query="test", strategy="unknown_strategy")

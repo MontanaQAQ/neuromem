@@ -32,8 +32,7 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def collection(temp_data_dir):
     """创建 UnifiedCollection"""
-    col = UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
-    yield col
+    return UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
     # UnifiedCollection 不需要 close()
 
 
@@ -185,9 +184,7 @@ class TestRetrieveWeighted:
 
         # 检索（提供查询向量）
         query_vector = np.random.randn(128).tolist()
-        results = service.retrieve(
-            "Document", top_k=1, query_vector=query_vector
-        )
+        results = service.retrieve("Document", top_k=1, query_vector=query_vector)
 
         assert len(results) >= 0
 
@@ -220,9 +217,7 @@ class TestRetrieveCascade:
             service.insert(f"Machine learning tutorial {i}", metadata={"id": i})
 
         # 使用级联策略检索
-        results = service.retrieve(
-            "Machine learning", top_k=5, strategy="cascade"
-        )
+        results = service.retrieve("Machine learning", top_k=5, strategy="cascade")
 
         assert len(results) <= 5
 

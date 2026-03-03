@@ -188,14 +188,13 @@ class FeatureQueueSegmentCombinationService(BaseMemoryService):
 
         if strategy == "weighted":
             return self._retrieve_weighted(query or "", top_k, segment_id, **kwargs)
-        elif strategy == "voting":
+        if strategy == "voting":
             return self._retrieve_voting(query or "", top_k, segment_id, **kwargs)
-        elif strategy == "cascade":
+        if strategy == "cascade":
             return self._retrieve_cascade(query or "", top_k, segment_id, **kwargs)
-        elif strategy == "recent":
+        if strategy == "recent":
             return self._retrieve_recent(query or "", top_k, segment_id, **kwargs)
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}")
+        raise ValueError(f"Unknown strategy: {strategy}")
 
     def _retrieve_weighted(
         self, query: str, top_k: int, segment_id: str | None = None, **kwargs
@@ -294,17 +293,15 @@ class FeatureQueueSegmentCombinationService(BaseMemoryService):
 
     def get_current_segment(self, top_k: int = 10) -> list[dict]:
         """获取当前分段的数据"""
-        results = self.collection.retrieve(
+        return self.collection.retrieve(
             index_name="segment_index",
             query="",  # 空查询返回当前segment
             top_k=top_k,
         )
-        return results
 
     def get_recent_items(self, count: int = 10) -> list[dict]:
         """获取最近的N个项目"""
-        results = self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
-        return results
+        return self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
 
     # ========== 工具方法 ==========
 

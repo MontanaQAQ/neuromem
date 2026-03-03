@@ -2,9 +2,7 @@
 测试 SegmentService
 """
 
-from datetime import datetime, timedelta
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from sage.neuromem.memory_collection import (
     UnifiedCollection,
@@ -88,7 +86,7 @@ class TestSegmentServiceBasic:
     def test_setup_indexes(self):
         """测试 Segment 索引创建"""
         collection = UnifiedCollection("test_collection")
-        service = SegmentService(collection)
+        SegmentService(collection)
 
         assert "segment_index" in collection.indexes
 
@@ -127,24 +125,20 @@ class TestSegmentServiceTimeMode:
             },
         )
 
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # 插入第一条（第一段）
         service.insert("消息1", metadata={"timestamp": now.isoformat()})
 
         # 插入第二条（同一段，5秒后）
-        service.insert(
-            "消息2", metadata={"timestamp": (now + timedelta(seconds=5)).isoformat()}
-        )
+        service.insert("消息2", metadata={"timestamp": (now + timedelta(seconds=5)).isoformat()})
 
         # 检查当前段有2条数据
         segment = service.get_current_segment()
         assert len(segment) == 2
 
         # 插入第三条（新段，15秒后，超过窗口）
-        service.insert(
-            "消息3", metadata={"timestamp": (now + timedelta(seconds=15)).isoformat()}
-        )
+        service.insert("消息3", metadata={"timestamp": (now + timedelta(seconds=15)).isoformat()})
 
         # 注意：当前SegmentIndex的时间窗口分段需要显式的segment_start标记
         # 由于UnifiedCollection不支持传递kwargs，所有数据目前在同一段中
@@ -203,9 +197,7 @@ class TestSegmentServiceRetrieve:
         service.insert("消息2")
 
         # 查询指定段（使用第一条的 ID 作为段 ID）
-        results = service.retrieve(
-            query=None, top_k=10, segment_id=id1
-        )
+        results = service.retrieve(query=None, top_k=10, segment_id=id1)
 
         # 应该返回该段的数据
         assert isinstance(results, list)
@@ -239,7 +231,7 @@ class TestSegmentServiceGetCurrentSegment:
         service = SegmentService(collection)
 
         for i in range(10):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         segment = service.get_current_segment(limit=5)
         assert len(segment) <= 5
@@ -253,7 +245,7 @@ class TestSegmentServiceGetSegmentByTime:
         collection = UnifiedCollection("test_collection")
         service = SegmentService(collection)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         yesterday = now - timedelta(days=1)
 
         # 插入不同时间的数据
@@ -436,13 +428,11 @@ class TestSegmentServiceTopicShift:
     def test_check_time_window_within_window(self):
         """测试时间窗口检查：在时间窗口内"""
         collection = UnifiedCollection("test_collection")
-        service = SegmentService(
-            collection, {"segment_strategy": "time", "time_window": 3600}
-        )
+        service = SegmentService(collection, {"segment_strategy": "time", "time_window": 3600})
 
         # 插入第一条数据
-        now = datetime.now()
-        id1 = service.insert("第一条消息", metadata={"timestamp": now.isoformat()})
+        now = datetime.now(UTC)
+        service.insert("第一条消息", metadata={"timestamp": now.isoformat()})
 
         # 插入第二条数据（1分钟后，在窗口内）
         later = now + timedelta(seconds=60)
@@ -452,13 +442,11 @@ class TestSegmentServiceTopicShift:
     def test_check_time_window_exceeds_window(self):
         """测试时间窗口检查：超出时间窗口"""
         collection = UnifiedCollection("test_collection")
-        service = SegmentService(
-            collection, {"segment_strategy": "time", "time_window": 3600}
-        )
+        service = SegmentService(collection, {"segment_strategy": "time", "time_window": 3600})
 
         # 插入第一条数据
-        now = datetime.now()
-        id1 = service.insert("第一条消息", metadata={"timestamp": now.isoformat()})
+        now = datetime.now(UTC)
+        service.insert("第一条消息", metadata={"timestamp": now.isoformat()})
 
         # 插入第二条数据（2小时后，超出窗口）
         later = now + timedelta(seconds=7200)
@@ -469,9 +457,7 @@ class TestSegmentServiceTopicShift:
         """测试话题切换检查：无当前段"""
         collection = UnifiedCollection("test_collection")
         embedder = MockEmbedder()
-        service = SegmentService(
-            collection, {"segment_strategy": "topic", "embedder": embedder}
-        )
+        service = SegmentService(collection, {"segment_strategy": "topic", "embedder": embedder})
 
         # 没有当前段时，不应创建新段
         result = service._check_topic_shift("测试文本", {})
@@ -516,7 +502,7 @@ class TestSegmentServiceTopicShift:
                 "segment_strategy": "hybrid",
                 "embedder": embedder,
                 "time_window": 3600,
-            }
+            },
         )
         assert service_hybrid._should_create_new_segment("text", {}) is False
 
@@ -543,9 +529,9 @@ class TestSegmentServiceTopicShiftAdvanced:
         )
 
         # 插入相似话题的多条数据
-        id1 = service.insert("Python编程语言")
-        id2 = service.insert("Python语法特性")
-        id3 = service.insert("Python代码示例")
+        service.insert("Python编程语言")
+        service.insert("Python语法特性")
+        service.insert("Python代码示例")
 
         # 获取嵌入向量并插入新数据，测试相似度计算
         new_text = "Python开发工具"
@@ -578,15 +564,13 @@ class TestSegmentServiceTopicShiftAdvanced:
     def test_check_time_window_missing_first_item(self):
         """测试时间窗口检查：第一条数据缺失"""
         collection = UnifiedCollection("test_collection")
-        service = SegmentService(
-            collection, {"segment_strategy": "time", "time_window": 3600}
-        )
+        service = SegmentService(collection, {"segment_strategy": "time", "time_window": 3600})
 
         # 设置当前段ID为不存在的ID
         service._current_segment_id = "non_existent_segment"
 
         # 检查时间窗口
-        result = service._check_time_window({"timestamp": datetime.now().isoformat()})
+        result = service._check_time_window({"timestamp": datetime.now(UTC).isoformat()})
         assert result is False
 
     def test_topic_shift_with_calculated_embedding(self):
@@ -604,8 +588,8 @@ class TestSegmentServiceTopicShiftAdvanced:
         )
 
         # 插入数据（会自动计算embedding）
-        id1 = service.insert("机器学习算法")
-        id2 = service.insert("深度学习模型")
+        service.insert("机器学习算法")
+        service.insert("深度学习模型")
 
         # 插入不带embedding的新数据，触发自动计算
         id3 = service.insert("神经网络训练", metadata={})

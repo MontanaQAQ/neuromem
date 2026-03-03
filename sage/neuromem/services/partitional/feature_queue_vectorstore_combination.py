@@ -186,16 +186,15 @@ class FeatureQueueVectorstoreCombinationService(BaseMemoryService):
 
         if strategy == "weighted":
             return self._retrieve_weighted(query or "", top_k, query_vector, **kwargs)
-        elif strategy == "voting":
+        if strategy == "voting":
             return self._retrieve_voting(query or "", top_k, query_vector, **kwargs)
-        elif strategy == "rrf":
+        if strategy == "rrf":
             return self._retrieve_rrf(query or "", top_k, query_vector, **kwargs)
-        elif strategy == "linear":
+        if strategy == "linear":
             return self._retrieve_linear(query or "", top_k, query_vector, **kwargs)
-        elif strategy == "recent":
+        if strategy == "recent":
             return self._retrieve_recent(query or "", top_k, **kwargs)
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}")
+        raise ValueError(f"Unknown strategy: {strategy}")
 
     def _retrieve_weighted(
         self, query: str, top_k: int, query_vector: list[float] | None = None, **kwargs
@@ -322,8 +321,7 @@ class FeatureQueueVectorstoreCombinationService(BaseMemoryService):
 
     def get_recent_items(self, count: int = 10) -> list[dict]:
         """获取最近的N个项目"""
-        results = self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
-        return results
+        return self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
 
     # ========== 工具方法 ==========
 

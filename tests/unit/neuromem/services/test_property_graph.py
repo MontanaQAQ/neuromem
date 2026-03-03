@@ -11,10 +11,10 @@ Unit tests for PropertyGraphService
 import pytest
 
 from sage.neuromem.memory_collection import UnifiedCollection
+from sage.neuromem.services import MemoryServiceRegistry
 from sage.neuromem.services.hierarchical import (
     PropertyGraphService,
 )
-from sage.neuromem.services import MemoryServiceRegistry
 
 
 class TestPropertyGraphInitialization:
@@ -72,9 +72,7 @@ class TestBasicOperations:
     def test_insert_entity_with_relationships(self, service):
         """测试插入带关系的实体"""
         # 先插入目标实体
-        company_id = service.insert(
-            "Apple Inc.", metadata={"entity_type": "Company"}
-        )
+        company_id = service.insert("Apple Inc.", metadata={"entity_type": "Company"})
 
         # 插入源实体并建立关系
         person_id = service.insert(
@@ -102,12 +100,8 @@ class TestRelationshipManagement:
         service = PropertyGraphService(collection)
 
         # 创建实体
-        company = service.insert(
-            "Google", metadata={"entity_type": "Company"}
-        )
-        person = service.insert(
-            "Larry Page", metadata={"entity_type": "Person"}
-        )
+        company = service.insert("Google", metadata={"entity_type": "Company"})
+        person = service.insert("Larry Page", metadata={"entity_type": "Person"})
 
         return service, {"company": company, "person": person}
 
@@ -217,10 +211,7 @@ class TestRetrieval:
         )
 
         assert len(tech_companies) == 2  # Apple and Google
-        assert all(
-            e["metadata"]["properties"]["industry"] == "Technology"
-            for e in tech_companies
-        )
+        assert all(e["metadata"]["properties"]["industry"] == "Technology" for e in tech_companies)
 
     def test_retrieve_by_specific_property(self, service_with_data):
         """测试按特定属性值检索"""
@@ -281,9 +272,7 @@ class TestRelatedEntities:
         service, entities = service_with_graph
 
         # Steve Jobs 的出边 (FOUNDED/CEO -> Apple)
-        related = service.get_related_entities(
-            entities["steve"], direction="outgoing"
-        )
+        related = service.get_related_entities(entities["steve"], direction="outgoing")
 
         # 应该能找到 Apple
         related_ids = [e["id"] for e in related]

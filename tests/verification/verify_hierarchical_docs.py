@@ -24,9 +24,8 @@ def check_file_exists(path: Path, description: str) -> bool:
     if path.exists():
         print(f"✅ {description}: {path.name}")
         return True
-    else:
-        print(f"❌ {description} 缺失: {path}")
-        return False
+    print(f"❌ {description} 缺失: {path}")
+    return False
 
 
 def check_documentation():
@@ -232,9 +231,8 @@ def main():
     if all(results):
         print("✅ 所有检查通过！T2.8 完成。")
         return 0
-    else:
-        print("❌ 部分检查失败，请修复问题。")
-        return 1
+    print("❌ 部分检查失败，请修复问题。")
+    return 1
 
 
 if __name__ == "__main__":

@@ -264,8 +264,7 @@ class SageDBStorage(StorageBackend):
             from sage.libs.vdb import create_backend
         except ImportError as exc:
             raise ImportError(
-                "SageDBStorage requires 'isage-libs'. "
-                "Install with: pip install isage-libs"
+                "SageDBStorage requires 'isage-libs'. Install with: pip install isage-libs"
             ) from exc
 
         try:

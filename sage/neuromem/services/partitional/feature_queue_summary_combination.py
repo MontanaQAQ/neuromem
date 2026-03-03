@@ -205,14 +205,13 @@ class FeatureQueueSummaryCombinationService(BaseMemoryService):
 
         if strategy == "weighted":
             return self._retrieve_weighted(query, top_k, include_summaries, **kwargs)
-        elif strategy == "voting":
+        if strategy == "voting":
             return self._retrieve_voting(query, top_k, include_summaries, **kwargs)
-        elif strategy == "cascade":
+        if strategy == "cascade":
             return self._retrieve_cascade(query, top_k, include_summaries, **kwargs)
-        elif strategy == "recent":
+        if strategy == "recent":
             return self._retrieve_recent(query, top_k, **kwargs)
-        else:
-            raise ValueError(f"Unknown strategy: {strategy}")
+        raise ValueError(f"Unknown strategy: {strategy}")
 
     def _retrieve_weighted(
         self, query: str, top_k: int, include_summaries: bool = False, **kwargs
@@ -335,13 +334,11 @@ class FeatureQueueSummaryCombinationService(BaseMemoryService):
 
     def get_recent_items(self, count: int = 10) -> list[dict]:
         """获取最近的N个项目"""
-        results = self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
-        return results
+        return self.collection.retrieve(index_name="fifo_index", query="", top_k=count)
 
     def get_summaries(self, count: int = 10) -> list[dict]:
         """获取最近的摘要"""
-        results = self.collection.retrieve(index_name="summary_index", query="", top_k=count)
-        return results
+        return self.collection.retrieve(index_name="summary_index", query="", top_k=count)
 
     # ========== 工具方法 ==========
 

@@ -37,7 +37,7 @@ class MockService(BaseMemoryService):
         return self.collection.insert(text, metadata, index_names=["test_index"])
 
     def retrieve(self, query, top_k=5, **kwargs):
-        data_ids = self.collection.query_by_index("test_index", top_k=top_k)
+        self.collection.query_by_index("test_index", top_k=top_k)
         return self.collection.retrieve("test_index", query, top_k=top_k)
 
 

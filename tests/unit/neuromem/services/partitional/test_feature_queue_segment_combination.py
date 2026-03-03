@@ -32,8 +32,7 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def collection(temp_data_dir):
     """创建 UnifiedCollection"""
-    col = UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
-    yield col
+    return UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
 
 
 @pytest.fixture
@@ -59,9 +58,7 @@ class TestServiceRegistration:
 
     def test_service_registered(self):
         """测试 Service 已注册到 Registry"""
-        service_cls = MemoryServiceRegistry.get_service_class(
-            "feature_queue_segment_combination"
-        )
+        service_cls = MemoryServiceRegistry.get_service_class("feature_queue_segment_combination")
         assert service_cls is FeatureQueueSegmentCombinationService
 
 

@@ -7,9 +7,7 @@
 
 import math
 from datetime import UTC, datetime
-from typing import Any, Optional
-
-UTC = UTC
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -37,7 +35,7 @@ class TimeWeightedRerankAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """使用时间衰减重排序
 

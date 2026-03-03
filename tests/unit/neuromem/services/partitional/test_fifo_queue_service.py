@@ -2,8 +2,6 @@
 测试 FIFOQueueService
 """
 
-import pytest
-
 from sage.neuromem.memory_collection import (
     UnifiedCollection,
 )
@@ -33,7 +31,7 @@ class TestFIFOQueueServiceBasic:
     def test_setup_indexes(self):
         """测试索引创建"""
         collection = UnifiedCollection("test_collection")
-        service = FIFOQueueService(collection, {"max_size": 10})
+        FIFOQueueService(collection, {"max_size": 10})
 
         # 检查索引是否创建
         assert "fifo_queue" in collection.indexes
@@ -106,7 +104,7 @@ class TestFIFOQueueServiceRetrieve:
 
         # 插入5条数据
         for i in range(5):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         results = service.retrieve(query=None, top_k=3)
 
@@ -122,7 +120,7 @@ class TestFIFOQueueServiceRetrieve:
         service = FIFOQueueService(collection, {"max_size": 10})
 
         for i in range(5):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         results = service.retrieve(query=None, top_k=100)
 
@@ -138,9 +136,7 @@ class TestFIFOQueueServiceRetrieve:
         service.insert("消息3", metadata={"type": "question"})
 
         # 过滤只要 question 类型
-        results = service.retrieve(
-            query=None, top_k=10, filters={"type": "question"}
-        )
+        results = service.retrieve(query=None, top_k=10, filters={"type": "question"})
 
         assert len(results) == 2
         assert all(r["metadata"]["type"] == "question" for r in results)
@@ -155,7 +151,7 @@ class TestFIFOQueueServiceGetRecent:
         service = FIFOQueueService(collection, {"max_size": 10})
 
         for i in range(5):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         results = service.get_recent()
 
@@ -167,7 +163,7 @@ class TestFIFOQueueServiceGetRecent:
         service = FIFOQueueService(collection)
 
         for i in range(10):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         results = service.get_recent(limit=3)
 
@@ -184,7 +180,7 @@ class TestFIFOQueueServiceClear:
 
         # 插入数据
         for i in range(5):
-            service.insert(f"消息{i+1}")
+            service.insert(f"消息{i + 1}")
 
         assert len(service.get_recent()) == 5
 

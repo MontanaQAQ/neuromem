@@ -252,8 +252,7 @@ class LinknoteGraphService(BaseMemoryService):
             return []
 
         # 获取邻居节点 (无向图中即为所有相关笔记)，不包含自己
-        neighbors = graph_index.query(note_id, hop=1, include_start=False)
-        return neighbors
+        return graph_index.query(note_id, hop=1, include_start=False)
 
     def get_neighbors(self, note_id: str, max_hops: int = 1) -> list[str]:
         """

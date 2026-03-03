@@ -5,7 +5,7 @@
 功能: 不做任何处理，直接透传检索结果
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from .base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -15,13 +15,12 @@ class NoneAction(BasePostRetrievalAction):
 
     def _init_action(self) -> None:
         """无需初始化"""
-        pass
 
     def execute(
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """直接返回原始检索结果
 

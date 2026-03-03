@@ -224,13 +224,12 @@ class FeatureSummaryVectorStoreCombinationService(BaseMemoryService):
         # 根据策略选择融合方法
         if strategy == "weighted":
             return self._retrieve_weighted(query or "", top_k, **kwargs)
-        elif strategy == "voting":
+        if strategy == "voting":
             return self._retrieve_voting(query or "", top_k, **kwargs)
-        elif strategy == "cascade":
+        if strategy == "cascade":
             return self._retrieve_cascade(query or "", top_k, **kwargs)
-        else:
-            msg = f"Unknown combination strategy: {strategy}"
-            raise ValueError(msg)
+        msg = f"Unknown combination strategy: {strategy}"
+        raise ValueError(msg)
 
     def _retrieve_weighted(self, query: str, top_k: int, **kwargs: Any) -> list[dict[str, Any]]:
         """

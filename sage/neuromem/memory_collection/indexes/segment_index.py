@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -109,7 +109,7 @@ class SegmentIndex(BaseIndex):
         Returns:
             当前时间戳
         """
-        return datetime.now().timestamp()
+        return datetime.now(UTC).timestamp()
 
     def _create_new_segment(self, segment_id: str | None = None, **metadata: Any) -> str:
         """
@@ -150,15 +150,15 @@ class SegmentIndex(BaseIndex):
         """
         if self.strategy == "time":
             return self._get_time_segment(metadata)
-        elif self.strategy == "keyword":
+        if self.strategy == "keyword":
             return self._get_keyword_segment(metadata)
-        else:  # custom
-            # 自定义策略：使用元数据中的 "segment_id"
-            segment_id = metadata.get("segment_id", "default")
-            # 确保段存在
-            if segment_id not in self.segments:
-                self._create_new_segment(segment_id)
-            return segment_id
+        # custom
+        # 自定义策略：使用元数据中的 "segment_id"
+        segment_id = metadata.get("segment_id", "default")
+        # 确保段存在
+        if segment_id not in self.segments:
+            self._create_new_segment(segment_id)
+        return segment_id
 
     def _get_time_segment(self, metadata: dict[str, Any]) -> str:
         """

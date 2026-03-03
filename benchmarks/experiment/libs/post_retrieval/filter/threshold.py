@@ -3,7 +3,7 @@
 功能: 根据分数阈值过滤低分记忆
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -23,7 +23,7 @@ class ThresholdFilterAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """根据阈值过滤结果
 

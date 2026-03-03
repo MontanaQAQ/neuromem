@@ -360,12 +360,10 @@ class InvertedVectorStoreCombinationService(BaseMemoryService):
             return dict.fromkeys(scores, 1.0)
 
         # Min-Max 归一化
-        normalized = {
+        return {
             data_id: (score - min_score) / (max_score - min_score)
             for data_id, score in scores.items()
         }
-
-        return normalized
 
     def _ids_to_results(self, data_ids: list[str]) -> list[dict[str, Any]]:
         """

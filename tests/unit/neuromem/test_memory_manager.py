@@ -196,7 +196,7 @@ class TestMemoryManagerPersistence:
             collection = manager.create_collection("test_col")
 
             # 添加数据
-            data_id = collection.insert("hello", {"type": "greeting"})
+            collection.insert("hello", {"type": "greeting"})
 
             # 添加索引
             collection.add_index("fifo", "fifo", {"max_size": 10})
@@ -357,7 +357,7 @@ class TestMemoryManagerIntegration:
             # 2. 创建 Collection
             collection = manager.create_collection("test_col")
             id1 = collection.insert("hello", {"type": "greeting"})
-            id2 = collection.insert("world", {"type": "noun"})
+            collection.insert("world", {"type": "noun"})
 
             # 3. 添加索引
             collection.add_index("fifo", "fifo", {"max_size": 10})

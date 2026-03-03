@@ -146,16 +146,16 @@ def create_index(
     metadata: Optional[Dict[str, Any]] = None
 ) -> Index:
     """Create a new vector index.
-    
+
     Args:
         name: Index name.
         dim: Vector dimension.
         backend_type: Backend type (FAISS, SageVDB).
         metadata: Optional metadata dict.
-        
+
     Returns:
         Index: Created index instance.
-        
+
     Raises:
         ValueError: If dim is invalid.
     """
@@ -221,12 +221,12 @@ from neuromem.memory_collection.indexes import BM25Index
 
 class TestBM25Index:
     """Test BM25Index functionality."""
-    
+
     def test_create_index(self):
         """Test index creation."""
         index = BM25Index(name="test")
         assert index.name == "test"
-    
+
     def test_query_empty_index(self):
         """Test querying empty index."""
         index = BM25Index(name="test")

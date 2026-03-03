@@ -121,7 +121,11 @@ class TestServiceCreation:
 
             def retrieve(self, query, top_k=5, **kwargs):
                 data_ids = self.collection.query_by_index("mock_index", top_k=top_k)
-                return [self.collection.get(id) for id in data_ids if self.collection.get(id)]
+                return [
+                    self.collection.get(data_id)
+                    for data_id in data_ids
+                    if self.collection.get(data_id)
+                ]
 
         self.MockService = MockService
 
@@ -154,11 +158,9 @@ class TestServiceCreation:
         """测试错误消息包含可用 Service 列表"""
         collection = UnifiedCollection("test")
 
-        try:
+        with pytest.raises(ValueError, match="Available:") as exc_info:
             MemoryServiceRegistry.create("invalid", collection)
-        except ValueError as e:
-            assert "Available:" in str(e)
-            assert "mock_service" in str(e)
+        assert "mock_service" in str(exc_info.value)
 
 
 class TestRegistryQueries:
@@ -232,7 +234,11 @@ class TestRegistryIntegration:
 
             def retrieve(self, query, top_k=5, **kwargs):
                 data_ids = self.collection.query_by_index("test_idx", query, top_k=top_k)
-                return [self.collection.get(id) for id in data_ids if self.collection.get(id)]
+                return [
+                    self.collection.get(data_id)
+                    for data_id in data_ids
+                    if self.collection.get(data_id)
+                ]
 
         # 2. 创建 Collection 和 Service
         collection = UnifiedCollection("integration_collection")
@@ -277,8 +283,8 @@ class TestRegistryIntegration:
 
         # 同一个 Collection，不同 Service
         collection = UnifiedCollection("shared_collection")
-        service_a = MemoryServiceRegistry.create("service_alpha", collection)
-        service_b = MemoryServiceRegistry.create("service_beta", collection)
+        MemoryServiceRegistry.create("service_alpha", collection)
+        MemoryServiceRegistry.create("service_beta", collection)
 
         # 验证索引共存
         indexes = collection.list_indexes()

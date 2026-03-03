@@ -74,9 +74,7 @@ class TestUnifiedCollectionIndexes:
         indexes = collection.list_indexes()
         assert len(indexes) == 2
         assert any(idx["name"] == "fifo" and idx["type"] == "fifo" for idx in indexes)
-        assert any(
-            idx["name"] == "vector" and idx["type"] == "faiss" for idx in indexes
-        )
+        assert any(idx["name"] == "vector" and idx["type"] == "faiss" for idx in indexes)
 
     def test_insert_to_index(self):
         """测试将数据加入索引"""
@@ -133,7 +131,7 @@ class TestUnifiedCollectionIndexes:
         collection.add_index("idx1", "fifo", {"max_size": 100})
         id1 = collection.insert("Text 1", {})
         id2 = collection.insert("Text 2", {})
-        id3 = collection.insert("Text 3", {})
+        collection.insert("Text 3", {})
 
         # 查询所有数据
         results = collection.query_by_index("idx1", query=None)
@@ -146,7 +144,7 @@ class TestUnifiedCollectionIndexes:
         assert len(results_top2) == 2
 
         # 查询不存在的索引
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Index 'nonexistent' not found"):
             collection.query_by_index("nonexistent", query=None)
 
     def test_retrieve(self):
@@ -155,8 +153,8 @@ class TestUnifiedCollectionIndexes:
 
         # 添加索引并插入数据
         collection.add_index("idx1", "fifo", {"max_size": 100})
-        id1 = collection.insert("Text 1", {"idx": 0})
-        id2 = collection.insert("Text 2", {"idx": 1})
+        collection.insert("Text 1", {"idx": 0})
+        collection.insert("Text 2", {"idx": 1})
 
         # 检索完整数据
         results = collection.retrieve("idx1", query=None)

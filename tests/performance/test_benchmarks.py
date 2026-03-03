@@ -142,7 +142,7 @@ class TestInsertionPerformance:
 
         start_time = time.time()
 
-        for i, (text, vector) in enumerate(zip(texts, vectors)):
+        for _i, (text, vector) in enumerate(zip(texts, vectors)):
             service.insert(text, vector=vector)
 
         end_time = time.time()
@@ -228,7 +228,7 @@ class TestRetrievalPerformance:
         num_queries = 1000
         start_time = time.time()
 
-        for i in range(num_queries):
+        for _i in range(num_queries):
             results = populated_fifo_service.retrieve(query="", top_k=10)
             assert len(results) > 0
 
@@ -309,7 +309,7 @@ class TestRetrievalPerformance:
         num_queries = 100
         start_time = time.time()
 
-        for i in range(num_queries):
+        for _i in range(num_queries):
             # 随机选择一个节点
             import random
 

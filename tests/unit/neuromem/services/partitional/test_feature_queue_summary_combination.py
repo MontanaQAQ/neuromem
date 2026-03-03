@@ -32,8 +32,7 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def collection(temp_data_dir):
     """创建 UnifiedCollection"""
-    col = UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
-    yield col
+    return UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
 
 
 @pytest.fixture
@@ -258,7 +257,9 @@ class TestSummaryGeneration:
 
     def test_generate_summary_long(self, service):
         """测试长文本摘要"""
-        text = "这是一条非常长的文本内容，需要被截断并生成摘要。它包含了很多有用的信息和详细的描述。"
+        text = (
+            "这是一条非常长的文本内容，需要被截断并生成摘要。它包含了很多有用的信息和详细的描述。"
+        )
         summary = service._generate_summary(text)
         assert len(summary) <= 53  # 50 + "..."
         assert "..." in summary or summary == text

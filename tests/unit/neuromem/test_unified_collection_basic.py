@@ -8,8 +8,6 @@
 - test_delete: 删除数据
 """
 
-import pytest
-
 from sage.neuromem.memory_collection.unified_collection import (
     UnifiedCollection,
 )

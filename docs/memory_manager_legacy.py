@@ -503,8 +503,7 @@ class MemoryManager:
                 "status": self.collection_status.get(name, "unknown"),
                 **self.collection_metadata[name],
             }
-        else:
-            return self.list_collections()
+        return self.list_collections()
 
     # ==================== 批量操作 ====================
 

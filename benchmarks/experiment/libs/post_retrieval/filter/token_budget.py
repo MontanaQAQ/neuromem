@@ -5,7 +5,7 @@
 功能: 根据 token 预算限制截断检索结果
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -36,7 +36,7 @@ class TokenBudgetFilterAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """根据 token 预算过滤结果
 
@@ -92,6 +92,5 @@ class TokenBudgetFilterAction(BasePostRetrievalAction):
         """
         if self.tokenizer is not None:
             return len(self.tokenizer.encode(text))
-        else:
-            # 简单估算：1 token ≈ 4 chars
-            return len(text) // 4
+        # 简单估算：1 token ≈ 4 chars
+        return len(text) // 4

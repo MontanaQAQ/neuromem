@@ -5,7 +5,7 @@ None Action - Passthrough without post-processing
 Used by: HippoRAG2, SCM
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from .base import BasePostInsertAction, PostInsertInput, PostInsertOutput
 
@@ -19,13 +19,12 @@ class NoneAction(BasePostInsertAction):
 
     def _init_action(self) -> None:
         """Initialize none action (no setup required)."""
-        pass
 
     def execute(
         self,
         input_data: PostInsertInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostInsertOutput:
         """Execute passthrough action.
 

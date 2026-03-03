@@ -35,8 +35,7 @@ class MockEmbedder:
         import hashlib
 
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
-        vector = [(hash_val >> i) % 100 / 100.0 for i in range(self.dim)]
-        return vector
+        return [(hash_val >> i) % 100 / 100.0 for i in range(self.dim)]
 
     def embed(self, texts: list[str] | str) -> list[list[float]]:
         """批量embedding，与服务代码兼容"""
@@ -60,8 +59,7 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def collection(temp_data_dir):
     """创建 UnifiedCollection"""
-    col = UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
-    yield col
+    return UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
 
 
 @pytest.fixture

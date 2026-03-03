@@ -173,7 +173,7 @@ class TestServicePerformance:
         # 随机创建关系
         import random
 
-        for i in range(500):
+        for _i in range(500):
             source = random.choice(entity_ids)
             target = random.choice(entity_ids)
             if source != target:

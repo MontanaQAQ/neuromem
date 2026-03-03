@@ -7,9 +7,7 @@
 
 import math
 from datetime import UTC, datetime
-from typing import Any, Optional
-
-UTC = UTC
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -43,7 +41,7 @@ class WeightedRerankAction(BasePostRetrievalAction):
             self.factors = None
 
         self.time_field = self.config.get("time_field", "timestamp")
-        self.embedding: Optional[Any] = None
+        self.embedding: Any | None = None
 
     def _parse_factors(self, factors: list[dict]) -> None:
         """解析 factors 列表配置
@@ -83,7 +81,7 @@ class WeightedRerankAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """使用多因子加权重排序
 
@@ -196,12 +194,12 @@ class WeightedRerankAction(BasePostRetrievalAction):
         if factor_name == "relevance" or source == "embedding_similarity":
             if query_embedding and item.metadata.get("embedding"):
                 return self._cosine_similarity(query_embedding, item.metadata["embedding"])
-            elif item.score is not None:
+            if item.score is not None:
                 return item.score
             return 0.5
 
         # 2. recency / time decay
-        elif factor_name == "recency":
+        if factor_name == "recency":
             timestamp = item.get_timestamp(self.time_field)
             if not timestamp:
                 return 0.5
@@ -215,21 +213,20 @@ class WeightedRerankAction(BasePostRetrievalAction):
                 # LD-Agent 格式: exp(-decay_rate * time_diff_seconds)
                 time_diff_seconds = (now - timestamp).total_seconds()
                 return math.exp(-decay_rate * time_diff_seconds)
-            else:
-                # 默认按天衰减
-                time_diff_days = (now - timestamp).total_seconds() / 86400
-                return math.exp(-decay_rate * time_diff_days)
+            # 默认按天衰减
+            time_diff_days = (now - timestamp).total_seconds() / 86400
+            return math.exp(-decay_rate * time_diff_days)
 
         # 3. topic_overlap / keyword_jaccard
-        elif factor_name == "topic_overlap" or source == "keyword_jaccard":
+        if factor_name == "topic_overlap" or source == "keyword_jaccard":
             return self._calculate_keyword_jaccard(query_keywords, item)
 
         # 4. importance
-        elif factor_name == "importance":
+        if factor_name == "importance":
             return item.metadata.get("importance", 0.5)
 
         # 5. frequency
-        elif factor_name == "frequency":
+        if factor_name == "frequency":
             frequency = item.metadata.get("access_count", 1)
             return min(1.0, math.log(frequency + 1) / math.log(100))
 
@@ -270,8 +267,7 @@ class WeightedRerankAction(BasePostRetrievalAction):
             return 0.0
 
         # LD-Agent 的 Jaccard 变体: 平均相对重叠
-        score = 0.5 * (overlap_count / len(query_set)) + 0.5 * (overlap_count / len(memory_set))
-        return score
+        return 0.5 * (overlap_count / len(query_set)) + 0.5 * (overlap_count / len(memory_set))
 
     def _score_legacy(self, items, input_data: PostRetrievalInput) -> list:
         """使用旧的独立参数计算分数（向后兼容）

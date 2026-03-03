@@ -11,26 +11,25 @@ from __future__ import annotations
 
 import asyncio
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from sage.neuromem import AsyncMemoryAdapter
 from sage.neuromem.memory_collection.unified_collection import UnifiedCollection
 
-
 # ---------------------------------------------------------------------------
 # 辅助 Fixtures
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def simple_collection() -> UnifiedCollection:
     """返回一个最简的 UnifiedCollection（无向量索引，不依赖 FAISS/模型）。"""
     return UnifiedCollection(name="test_async", config={})
 
 
-@pytest.fixture()
+@pytest.fixture
 def adapter(simple_collection: UnifiedCollection) -> AsyncMemoryAdapter:
     return AsyncMemoryAdapter(simple_collection)
 
@@ -165,9 +164,7 @@ class TestAsyncRetrieve:
     async def test_retrieve_with_mock_index(self, adapter):
         """retrieve 在线程池中调用底层 UnifiedCollection.retrieve，返回正确结果。"""
         mock_collection = MagicMock(spec=UnifiedCollection)
-        mock_collection.retrieve.return_value = [
-            {"id": "abc", "text": "hello", "metadata": {}}
-        ]
+        mock_collection.retrieve.return_value = [{"id": "abc", "text": "hello", "metadata": {}}]
         adapter_mock = AsyncMemoryAdapter(mock_collection)
 
         results = await adapter_mock.retrieve("my_index", "hello")

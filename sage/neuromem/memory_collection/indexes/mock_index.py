@@ -118,7 +118,6 @@ class MockIndex(BaseIndex):
             path: 保存路径
         """
         # Mock 版本不实现持久化
-        pass
 
     def load(self, path: Path | str) -> None:
         """
@@ -128,7 +127,6 @@ class MockIndex(BaseIndex):
             path: 加载路径
         """
         # Mock 版本不实现持久化
-        pass
 
     def clear(self) -> None:
         """

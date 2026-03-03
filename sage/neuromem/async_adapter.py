@@ -26,8 +26,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .memory_manager import MemoryManager
     from .memory_collection import UnifiedCollection
+    from .memory_manager import MemoryManager
 
 # 模块级共享线程池（max_workers 可通过环境变量调整，默认 4）
 _executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="neuromem")

@@ -31,8 +31,7 @@ def temp_data_dir(tmp_path):
 @pytest.fixture
 def collection(temp_data_dir):
     """创建 UnifiedCollection"""
-    col = UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
-    yield col
+    return UnifiedCollection(name="test_collection", config={"data_dir": str(temp_data_dir)})
     # UnifiedCollection 不需要 close()
 
 
@@ -148,9 +147,7 @@ class TestRetrieveRRF:
 
         # 检索
         query_vector = np.random.randn(128).tolist()
-        results = service.retrieve(
-            "Document", top_k=1, query_vector=query_vector, strategy="rrf"
-        )
+        results = service.retrieve("Document", top_k=1, query_vector=query_vector, strategy="rrf")
 
         assert len(results) >= 0
 

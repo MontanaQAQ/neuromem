@@ -23,6 +23,8 @@ try:
 except ImportError:
     PYTEST_AVAILABLE = False
 
+import contextlib
+
 from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
@@ -36,10 +38,8 @@ if PYTEST_AVAILABLE:
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
         # Cleanup after test
-        try:
+        with contextlib.suppress(Exception):
             shutil.rmtree(temp_dir)
-        except Exception:
-            pass
 
     @pytest.fixture
     def embedding_model():

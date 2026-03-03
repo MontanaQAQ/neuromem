@@ -5,7 +5,7 @@
 功能: 使用 embedding 计算查询和记忆条目的语义相似度，重新排序
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from ..base import BasePostRetrievalAction, PostRetrievalInput, PostRetrievalOutput
 
@@ -19,7 +19,7 @@ class SemanticRerankAction(BasePostRetrievalAction):
     def _init_action(self) -> None:
         """初始化配置"""
         self.similarity_metric = self.config.get("similarity_metric", "cosine")
-        self.embedding: Optional[Any] = None
+        self.embedding: Any | None = None
 
     def set_embedding_generator(self, embedding_generator: Any) -> None:
         """设置 embedding 生成器
@@ -33,7 +33,7 @@ class SemanticRerankAction(BasePostRetrievalAction):
         self,
         input_data: PostRetrievalInput,
         service: Any,
-        llm: Optional[Any] = None,
+        llm: Any | None = None,
     ) -> PostRetrievalOutput:
         """使用语义相似度重排序
 
@@ -101,11 +101,10 @@ class SemanticRerankAction(BasePostRetrievalAction):
         """
         if self.similarity_metric == "cosine":
             return self._cosine_similarity(vec1, vec2)
-        elif self.similarity_metric == "dot":
+        if self.similarity_metric == "dot":
             return sum(a * b for a, b in zip(vec1, vec2))
-        else:
-            # 默认使用余弦相似度
-            return self._cosine_similarity(vec1, vec2)
+        # 默认使用余弦相似度
+        return self._cosine_similarity(vec1, vec2)
 
     def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """计算余弦相似度

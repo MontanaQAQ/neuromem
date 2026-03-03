@@ -5,7 +5,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -39,10 +39,10 @@ class PreRetrievalOutput:
     """
 
     query: str
-    query_embedding: Optional[list[float]] = None
+    query_embedding: list[float] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     retrieve_mode: str = "passive"
-    retrieve_params: Optional[dict[str, Any]] = None
+    retrieve_params: dict[str, Any] | None = None
 
 
 class BasePreRetrievalAction(ABC):
@@ -74,7 +74,6 @@ class BasePreRetrievalAction(ABC):
         - 初始化工具（如NLP模型、LLM客户端）
         - 设置默认值
         """
-        pass
 
     @abstractmethod
     def execute(self, input_data: PreRetrievalInput) -> PreRetrievalOutput:
@@ -90,7 +89,6 @@ class BasePreRetrievalAction(ABC):
             ValueError: 输入数据无效
             RuntimeError: Action执行失败
         """
-        pass
 
     def _get_config_value(
         self,
