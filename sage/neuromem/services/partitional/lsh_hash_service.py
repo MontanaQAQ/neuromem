@@ -43,8 +43,8 @@ class LSHHashService(BaseMemoryService):
         embedder: Embedding 模型对象（必需）
 
     使用示例:
-        >>> from some_embedder import SentenceTransformer
-        >>> embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        >>> from some_embedder import LocalEmbedder
+        >>> embedder = LocalEmbedder("BAAI/bge-small-zh-v1.5")
         >>> service = LSHHashService(collection, {
         ...     "embedding_dim": 384,
         ...     "num_tables": 10,

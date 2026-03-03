@@ -12,9 +12,10 @@ EXTENDED_EMBEDDING_DIMENSIONS = {
     "intfloat/e5-large-v2": 1024,
     "intfloat/e5-base-v2": 768,
     "intfloat/e5-small-v2": 384,
-    "sentence-transformers/all-mpnet-base-v2": 768,
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 384,
+    "BAAI/bge-m3": 1024,
+    "BAAI/bge-small-zh-v1.5": 384,
 }
+
 
 def apply_embedding_model(
     name: str,

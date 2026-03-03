@@ -44,17 +44,17 @@ runtime:
 services:
   # LD-Agent 架构（基于原始代码 /home/zrc/develop_item/LD-Agent）:
   # - short_term_memory: Python list（临时缓存，检索时返回最近30条）
-  # - ChromaDB collection: 长期事件摘要库（会话间隔>1小时时存储批量摘要）
+  # - 向量摘要库: 长期事件摘要库（会话间隔>1小时时存储批量摘要）
   # - 话题重叠检索: spaCy 名词提取 + Jaccard 相似度
   #
   # SAGE 实现映射:
   # - fifo_index → short_term_memory (会话缓存)
-  # - summary_index → ChromaDB collection (事件摘要)
+  # - summary_index → 向量摘要库 (事件摘要)
   # - feature_index → 话题重叠检索（BM25 模拟名词匹配）
   services_type: "partitional.feature_queue_summary_combination"
   feature_queue_summary_combination:
     fifo_max_size: 50                 # STM 容量（原代码用 list，无固定上限，这里设50）
-    summary_max_size: 10000           # LTM 摘要库容量（原代码用 ChromaDB，设大值模拟无限）
+    summary_max_size: 10000           # LTM 摘要库容量（设大值模拟无限）
     summary_min_length: 10            # 生成摘要的最小长度
     enable_feature_extraction: true   # 话题重叠检索（模拟 spaCy 名词提取）
     enable_summary_generation: false  # ❌ 禁用自动摘要（原代码在会话结束时批量生成，由 PreInsert 控制）
