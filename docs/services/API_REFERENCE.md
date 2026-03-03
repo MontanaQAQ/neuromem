@@ -2,7 +2,7 @@
 
 完整的 API 签名、参数说明和返回值文档。
 
-> **注意**: 本文档专注于 Memory Services API。关于 CollectionConfig 和 YAML 配置的详细信息，请参阅 [CollectionConfig 使用指南](../../../docs/COLLECTION_CONFIG_GUIDE.md)。
+> **注意**: 本文档专注于 Memory Services API。关于 CollectionConfig 和 YAML 配置的详细信息，请参阅 [CollectionConfig 使用指南](../COLLECTION_CONFIG_GUIDE.md)。
 
 ---
 
@@ -21,7 +21,7 @@
 
 NeuroMem 使用 `CollectionConfig` 类统一管理集合配置。详细信息请参阅：
 
-- **[CollectionConfig 使用指南](../../../docs/COLLECTION_CONFIG_GUIDE.md)** - 完整的配置文档
+- **[CollectionConfig 使用指南](../COLLECTION_CONFIG_GUIDE.md)** - 完整的配置文档
   - 从代码、字典、YAML 创建配置
   - 索引配置详解
   - 存储后端选择
@@ -714,7 +714,7 @@ service.insert("text", vector=vector)
 
 ## 参考资料
 
-- **使用指南**: [README.md](README.md)
+- **使用指南**: [SERVICES_README.md](SERVICES_README.md)
 - **性能基准**: [BENCHMARKS.md](BENCHMARKS.md)
 - **Partitional Services**: [partitional/README.md](partitional/README.md)
 - **Hierarchical Services**: [hierarchical/README.md](hierarchical/README.md)

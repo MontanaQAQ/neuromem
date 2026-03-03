@@ -2,10 +2,10 @@
 Standalone smoke tests for neuromem package.
 
 These tests validate basic neuromem functionality when installed as a standalone package.
-Comprehensive integration tests are maintained in SAGE main repository.
+Comprehensive behavior tests live under this repository's integration and e2e suites.
 
 Note: These tests only verify package structure and imports that don't require
-SAGE dependencies. Full functionality tests run in SAGE CI.
+heavy optional dependencies. Full functionality is covered by project test suites.
 """
 
 import os

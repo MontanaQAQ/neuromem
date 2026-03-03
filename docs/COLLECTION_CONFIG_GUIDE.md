@@ -227,18 +227,18 @@ collection:
 #### 兼容格式（顶层 indexes）
 
 ```yaml
-# config/legacy_collection.yaml
+# config/compatible_collection.yaml
 version: "2.0"
 service:
-  name: "legacy_service"
+    name: "compatible_service"
   type: "partitional.fifo_queue"
 
 collection:
-  name: "legacy_collection"
+    name: "compatible_collection"
   storage:
     type: "simple"  # 自动映射到 "memory"
     config:
-      persist_dir: "~/.local/share/sage/memory/legacy"
+            persist_dir: "~/.local/share/sage/memory/compatible"
 
 indexes:  # 顶层 indexes（自动合并到 collection）
   - name: "main_index"
@@ -412,7 +412,7 @@ config = CollectionConfig(
 
 ### 从旧的 Collection 类迁移
 
-**之前（legacy_collection.py）：**
+**之前（旧 Collection API）：**
 
 ```python
 from sage.neuromem.memory_collection import Collection

@@ -12,6 +12,9 @@ from pathlib import Path
 
 import pytest
 
+DOCS_ROOT = Path(__file__).parents[2] / "docs"
+SERVICES_DOCS_DIR = DOCS_ROOT / "services"
+
 
 class TestDocumentationValidation:
     """文档验证测试"""
@@ -19,16 +22,13 @@ class TestDocumentationValidation:
     @pytest.fixture(scope="class")
     def docs_dir(self) -> Path:
         """文档目录"""
-        # 从 tests/unit/services/test_documentation.py
-        # 到 src/sage/middleware/components/sage_mem/neuromem/services/
-        base_dir = Path(__file__).parents[3]  # 返回到 sage-middleware/
-        return base_dir / "src/sage/middleware/components/sage_mem/neuromem/services"
+        return SERVICES_DOCS_DIR
 
     def test_readme_exists(self, docs_dir: Path):
-        """测试 README.md 存在"""
-        readme = docs_dir / "README.md"
-        assert readme.exists(), "README.md 不存在"
-        assert readme.stat().st_size > 1000, "README.md 内容太少"
+        """测试 SERVICES_README.md 存在"""
+        readme = docs_dir / "SERVICES_README.md"
+        assert readme.exists(), "SERVICES_README.md 不存在"
+        assert readme.stat().st_size > 1000, "SERVICES_README.md 内容太少"
 
     def test_benchmarks_exists(self, docs_dir: Path):
         """测试 BENCHMARKS.md 存在"""
@@ -55,8 +55,8 @@ class TestDocumentationValidation:
         assert hierarchical_readme.stat().st_size > 1000, "hierarchical/README.md 内容太少"
 
     def test_readme_links(self, docs_dir: Path):
-        """测试 README.md 中的链接"""
-        readme = docs_dir / "README.md"
+        """测试 SERVICES_README.md 中的链接"""
+        readme = docs_dir / "SERVICES_README.md"
         content = readme.read_text()
 
         # 提取所有 Markdown 链接
@@ -71,11 +71,7 @@ class TestDocumentationValidation:
             if link_path.startswith("#"):
                 continue
 
-            # 解析相对路径
-            if link_path.startswith("../"):
-                target = (docs_dir / link_path).resolve()
-            else:
-                target = (docs_dir / link_path).resolve()
+            target = (docs_dir / link_path).resolve()
 
             assert target.exists(), f"链接 '{link_text}' 指向的文件 '{link_path}' 不存在"
 
@@ -137,42 +133,42 @@ class TestDocumentationValidation:
     def test_fifo_queue_config_consistency(self, docs_dir: Path):
         """测试 FIFO Queue 配置参数一致性"""
         # 读取所有文档
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
         partitional_readme = (docs_dir / "partitional/README.md").read_text()
         api_ref = (docs_dir / "API_REFERENCE.md").read_text()
 
         # 检查 max_size 参数在所有文档中提到
-        assert "max_size" in readme, "README.md 缺少 max_size 参数说明"
+        assert "max_size" in readme, "SERVICES_README.md 缺少 max_size 参数说明"
         assert "max_size" in partitional_readme, "partitional/README.md 缺少 max_size 参数说明"
         assert "max_size" in api_ref, "API_REFERENCE.md 缺少 max_size 参数说明"
 
     def test_lsh_hash_config_consistency(self, docs_dir: Path):
         """测试 LSH Hash 配置参数一致性"""
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
         partitional_readme = (docs_dir / "partitional/README.md").read_text()
         api_ref = (docs_dir / "API_REFERENCE.md").read_text()
 
         # 检查关键参数
         for param in ["embedding_dim", "num_tables", "hash_size"]:
-            assert param in readme, f"README.md 缺少 {param} 参数说明"
+            assert param in readme, f"SERVICES_README.md 缺少 {param} 参数说明"
             assert param in partitional_readme, f"partitional/README.md 缺少 {param} 参数说明"
             assert param in api_ref, f"API_REFERENCE.md 缺少 {param} 参数说明"
 
     def test_segment_config_consistency(self, docs_dir: Path):
         """测试 Segment 配置参数一致性"""
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
         partitional_readme = (docs_dir / "partitional/README.md").read_text()
         api_ref = (docs_dir / "API_REFERENCE.md").read_text()
 
         # 检查关键参数
         for param in ["max_segment_length", "overlap"]:
-            assert param in readme, f"README.md 缺少 {param} 参数说明"
+            assert param in readme, f"SERVICES_README.md 缺少 {param} 参数说明"
             assert param in partitional_readme, f"partitional/README.md 缺少 {param} 参数说明"
             assert param in api_ref, f"API_REFERENCE.md 缺少 {param} 参数说明"
 
     def test_service_types_consistency(self, docs_dir: Path):
         """测试服务类型在文档中的一致性"""
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
         partitional_readme = (docs_dir / "partitional/README.md").read_text()
         api_ref = (docs_dir / "API_REFERENCE.md").read_text()
 
@@ -187,7 +183,7 @@ class TestDocumentationValidation:
 
         # 检查每个服务类型在文档中提到
         for service_type in service_types:
-            assert service_type in readme, f"README.md 缺少 {service_type} 服务说明"
+            assert service_type in readme, f"SERVICES_README.md 缺少 {service_type} 服务说明"
             # partitional 只包含 partitional 服务
             if service_type in ["fifo_queue", "lsh_hash", "segment"]:
                 assert service_type in partitional_readme, (
@@ -197,12 +193,12 @@ class TestDocumentationValidation:
 
     def test_code_examples_syntax(self, docs_dir: Path):
         """测试代码示例的语法（简单检查）"""
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
 
         # 提取代码块
         code_blocks = re.findall(r"```python\n(.*?)\n```", readme, re.DOTALL)
 
-        assert len(code_blocks) > 0, "README.md 缺少代码示例"
+        assert len(code_blocks) > 0, "SERVICES_README.md 缺少代码示例"
 
         # 简单语法检查
         for code in code_blocks:
@@ -232,27 +228,29 @@ class TestDocumentationValidation:
         assert "TypedDict" in api_ref or "类型定义" in api_ref, "缺少类型定义"
 
     def test_hierarchical_services_in_readme(self, docs_dir: Path):
-        """测试 README.md 包含 Hierarchical Services 说明"""
-        readme = (docs_dir / "README.md").read_text()
+        """测试 SERVICES_README.md 包含 Hierarchical Services 说明"""
+        readme = (docs_dir / "SERVICES_README.md").read_text()
 
         # 检查 Hierarchical Services 章节
         assert "LinknoteGraphService" in readme, "缺少 LinknoteGraphService 说明"
         assert "PropertyGraphService" in readme, "缺少 PropertyGraphService 说明"
 
     def test_troubleshooting_section(self, docs_dir: Path):
-        """测试 README.md 包含故障排查章节"""
-        readme = (docs_dir / "README.md").read_text()
+        """测试 SERVICES_README.md 包含故障排查章节"""
+        readme = (docs_dir / "SERVICES_README.md").read_text()
 
         # 检查故障排查章节
         assert "故障排查" in readme or "Troubleshooting" in readme, "缺少故障排查章节"
 
     def test_best_practices_section(self, docs_dir: Path):
         """测试文档包含最佳实践章节"""
-        readme = (docs_dir / "README.md").read_text()
+        readme = (docs_dir / "SERVICES_README.md").read_text()
         partitional_readme = (docs_dir / "partitional/README.md").read_text()
 
         # 检查最佳实践章节
-        assert "最佳实践" in readme or "Best Practices" in readme, "README.md 缺少最佳实践章节"
+        assert "最佳实践" in readme or "Best Practices" in readme, (
+            "SERVICES_README.md 缺少最佳实践章节"
+        )
         assert "最佳实践" in partitional_readme or "Best Practices" in partitional_readme, (
             "partitional/README.md 缺少最佳实践章节"
         )

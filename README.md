@@ -221,10 +221,10 @@ NeuroMem is part of the SAGE ecosystem and installed as a namespace package:
 - **[CollectionConfig Guide](docs/COLLECTION_CONFIG_GUIDE.md)** - Complete configuration management documentation
   - Creating collections from code, dict, and YAML
   - Index configuration and storage backend selection
-  - Migration guide from legacy formats
+  - Migration guide from earlier compatible formats
   - Best practices and examples
 
-- **[Memory Services API Reference](sage/neuromem/services/API_REFERENCE.md)** - Detailed API documentation for memory services
+- **[Memory Services API Reference](docs/services/API_REFERENCE.md)** - Detailed API documentation for memory services
 - **[Contributing Guide](docs/CONTRIBUTING.md)** - Development guidelines and contribution workflow
 
 ## Benchmarks

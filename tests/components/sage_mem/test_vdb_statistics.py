@@ -8,6 +8,7 @@ including:
 - Index rebuild frequency tracking
 """
 
+import contextlib
 import json
 import os
 import shutil
@@ -15,20 +16,23 @@ import tempfile
 import time
 
 import numpy as np
+import pytest
+from sagellm.embedding import get_embedding_model
 
 try:
-    import pytest
+    from sage.neuromem.memory_collection.vdb_collection import (
+        VDBMemoryCollection,
+    )
 
     PYTEST_AVAILABLE = True
 except ImportError:
+    VDBMemoryCollection = None
     PYTEST_AVAILABLE = False
 
-import contextlib
-
-from sage.neuromem.memory_collection.vdb_collection import (
-    VDBMemoryCollection,
+pytestmark = pytest.mark.skipif(
+    not PYTEST_AVAILABLE,
+    reason="Legacy VDBMemoryCollection has been removed in UnifiedCollection architecture.",
 )
-from sagellm.embedding import get_embedding_model
 
 
 class _LegacyEmbeddingAdapter:
@@ -41,6 +45,7 @@ class _LegacyEmbeddingAdapter:
 
 def apply_embedding_model(name: str):
     return _LegacyEmbeddingAdapter(get_embedding_model(name))
+
 
 if PYTEST_AVAILABLE:
 

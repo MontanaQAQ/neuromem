@@ -1,7 +1,7 @@
 """
 Unit tests for Paper Features with UnifiedCollection (Week 2.2).
 
-这是 test_paper_features.py 的重构版本，使用 UnifiedCollection + Mixin 替代 legacy enhanced collections。
+这是 test_paper_features.py 的重构版本，使用 UnifiedCollection + Mixin 替代旧增强集合实现。
 
 Tests for:
 - 5.1 Triple Storage (TiM)

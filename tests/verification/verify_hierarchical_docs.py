@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
-"""
-T2.8 验证脚本
+"""Standalone 验证脚本
 
-验证 Hierarchical Services 的文档和示例完整性。
+验证 neuromem 仓库内 Hierarchical Services 文档与测试完整性。
 """
 
 import sys
 from pathlib import Path
 
-# 项目根目录（从脚本位置向上查找）
 SCRIPT_PATH = Path(__file__).resolve()
-# 从 packages/sage-middleware/tests/verification/ 向上4层到项目根
-ROOT = SCRIPT_PATH.parent.parent.parent.parent.parent
-HIERARCHICAL_DIR = (
-    ROOT
-    / "packages/sage-middleware/src/sage/middleware/components/sage_mem/neuromem/services/hierarchical"
-)
-EXAMPLES_DIR = ROOT / "examples/services"
+ROOT = SCRIPT_PATH.parents[2]
+DOCS_DIR = ROOT / "docs" / "services"
+HIERARCHICAL_DOCS_DIR = DOCS_DIR / "hierarchical"
+UNIT_TEST_DIR = ROOT / "tests" / "unit" / "neuromem" / "services"
+INTEGRATION_TEST_DIR = ROOT / "tests" / "integration" / "services"
 
 
 def check_file_exists(path: Path, description: str) -> bool:
@@ -35,33 +31,11 @@ def check_documentation():
     print("=" * 60)
 
     checks = [
-        (HIERARCHICAL_DIR / "README.md", "完整文档"),
-        (HIERARCHICAL_DIR / "QUICKSTART.md", "快速开始"),
-        (HIERARCHICAL_DIR / "__init__.py", "模块初始化"),
-        (
-            HIERARCHICAL_DIR / "linknote_graph_service.py",
-            "Linknote 服务实现",
-        ),
-        (
-            HIERARCHICAL_DIR / "property_graph_service.py",
-            "PropertyGraph 服务实现",
-        ),
-    ]
-
-    results = [check_file_exists(path, desc) for path, desc in checks]
-    return all(results)
-
-
-def check_examples():
-    """检查示例文件"""
-    print("\n" + "=" * 60)
-    print("2. 检查示例文件")
-    print("=" * 60)
-
-    checks = [
-        (EXAMPLES_DIR / "linknote_example.py", "Linknote 完整示例"),
-        (EXAMPLES_DIR / "property_graph_example.py", "PropertyGraph 完整示例"),
-        (EXAMPLES_DIR / "hybrid_knowledge_base.py", "混合知识库示例"),
+        (DOCS_DIR / "SERVICES_README.md", "Services 总览文档"),
+        (DOCS_DIR / "API_REFERENCE.md", "API 参考文档"),
+        (DOCS_DIR / "BENCHMARKS.md", "性能基准文档"),
+        (HIERARCHICAL_DOCS_DIR / "README.md", "Hierarchical 完整文档"),
+        (HIERARCHICAL_DOCS_DIR / "QUICKSTART.md", "Hierarchical 快速开始"),
     ]
 
     results = [check_file_exists(path, desc) for path, desc in checks]
@@ -71,18 +45,15 @@ def check_examples():
 def check_tests():
     """检查测试文件"""
     print("\n" + "=" * 60)
-    print("3. 检查测试文件")
+    print("2. 检查测试文件")
     print("=" * 60)
 
-    test_dir = ROOT / "packages/sage-middleware/tests/unit/components/sage_mem/neuromem/services"
-    integration_dir = ROOT / "packages/sage-middleware/tests/integration/services"
-
     checks = [
-        (test_dir / "test_linknote_graph.py", "Linknote 单元测试"),
-        (test_dir / "test_property_graph.py", "PropertyGraph 单元测试"),
+        (UNIT_TEST_DIR / "test_linknote_graph.py", "Linknote 单元测试"),
+        (UNIT_TEST_DIR / "test_property_graph.py", "PropertyGraph 单元测试"),
         (
-            integration_dir / "test_hierarchical_services_integration.py",
-            "集成测试",
+            INTEGRATION_TEST_DIR / "test_hierarchical_services_integration.py",
+            "Hierarchical 集成测试",
         ),
     ]
 
@@ -90,51 +61,13 @@ def check_tests():
     return all(results)
 
 
-def run_examples():
-    """运行示例验证"""
-    print("\n" + "=" * 60)
-    print("4. 运行示例验证")
-    print("=" * 60)
-
-    import subprocess
-
-    examples = [
-        ("Linknote 示例", EXAMPLES_DIR / "linknote_example.py"),
-        ("PropertyGraph 示例", EXAMPLES_DIR / "property_graph_example.py"),
-        ("混合知识库示例", EXAMPLES_DIR / "hybrid_knowledge_base.py"),
-    ]
-
-    results = []
-    for name, example_path in examples:
-        try:
-            result = subprocess.run(
-                [sys.executable, str(example_path)],
-                cwd=ROOT,
-                capture_output=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                print(f"✅ {name} 运行成功")
-                results.append(True)
-            else:
-                print(f"❌ {name} 运行失败 (退出码: {result.returncode})")
-                print(f"   错误: {result.stderr.decode()[:200]}")
-                results.append(False)
-        except Exception as e:
-            print(f"❌ {name} 运行异常: {e}")
-            results.append(False)
-
-    return all(results)
-
-
 def check_content():
     """检查文档内容完整性"""
     print("\n" + "=" * 60)
-    print("5. 检查文档内容")
+    print("3. 检查文档内容")
     print("=" * 60)
 
-    # 检查 README.md
-    readme = HIERARCHICAL_DIR / "README.md"
+    readme = HIERARCHICAL_DOCS_DIR / "README.md"
     if readme.exists():
         content = readme.read_text()
         required_sections = [
@@ -153,8 +86,7 @@ def check_content():
             print(f"❌ README.md 缺少章节: {missing}")
             return False
 
-    # 检查 QUICKSTART.md
-    quickstart = HIERARCHICAL_DIR / "QUICKSTART.md"
+    quickstart = HIERARCHICAL_DOCS_DIR / "QUICKSTART.md"
     if quickstart.exists():
         content = quickstart.read_text()
         required_sections = [
@@ -177,18 +109,17 @@ def check_content():
 def print_statistics():
     """打印统计信息"""
     print("\n" + "=" * 60)
-    print("6. 统计信息")
+    print("4. 统计信息")
     print("=" * 60)
 
-    # 文档行数
     readme_lines = (
-        len((HIERARCHICAL_DIR / "README.md").read_text().split("\n"))
-        if (HIERARCHICAL_DIR / "README.md").exists()
+        len((HIERARCHICAL_DOCS_DIR / "README.md").read_text().split("\n"))
+        if (HIERARCHICAL_DOCS_DIR / "README.md").exists()
         else 0
     )
     quickstart_lines = (
-        len((HIERARCHICAL_DIR / "QUICKSTART.md").read_text().split("\n"))
-        if (HIERARCHICAL_DIR / "QUICKSTART.md").exists()
+        len((HIERARCHICAL_DOCS_DIR / "QUICKSTART.md").read_text().split("\n"))
+        if (HIERARCHICAL_DOCS_DIR / "QUICKSTART.md").exists()
         else 0
     )
 
@@ -196,13 +127,10 @@ def print_statistics():
     print(f"QUICKSTART.md: {quickstart_lines} 行")
     print(f"文档总行数: {readme_lines + quickstart_lines} 行")
 
-    # 示例代码行数
-    example_files = list(EXAMPLES_DIR.glob("*.py"))
-    total_example_lines = sum(len(f.read_text().split("\n")) for f in example_files)
-    print(f"\n示例代码总行数: {total_example_lines} 行")
-    for f in example_files:
-        lines = len(f.read_text().split("\n"))
-        print(f"  - {f.name}: {lines} 行")
+    service_tests = sorted(UNIT_TEST_DIR.glob("test_*.py"))
+    print(f"\nservices 单元测试文件数: {len(service_tests)}")
+    for test_file in service_tests:
+        print(f"  - {test_file.name}")
 
 
 def main():
@@ -215,10 +143,8 @@ def main():
 
     # 执行所有检查
     results.append(check_documentation())
-    results.append(check_examples())
     results.append(check_tests())
     results.append(check_content())
-    results.append(run_examples())
 
     # 统计信息
     print_statistics()

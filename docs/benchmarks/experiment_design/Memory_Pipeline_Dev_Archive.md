@@ -1860,7 +1860,7 @@ Storage 层 (text_storage + metadata_storage + index)
 
 **步骤1: Collection层实现get_storage_stats()**
 
-文件: `packages/sage-middleware/src/sage/middleware/components/sage_mem/neuromem/memory_collection/`
+文件: `sage/neuromem/memory_collection/`
 
 **1.1 基类接口定义** (`base_collection.py`)
 

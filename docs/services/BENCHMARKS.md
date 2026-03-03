@@ -308,7 +308,7 @@ pytest packages/sage-middleware/tests/performance/test_benchmarks.py::TestScalab
 
 - **性能测试**: `packages/sage-middleware/tests/performance/test_benchmarks.py`
 - **E2E 测试**: `packages/sage-middleware/tests/e2e/test_complete_workflows.py`
-- **使用指南**: [README.md](README.md)
+- **使用指南**: [SERVICES_README.md](SERVICES_README.md)
 - **API 参考**: [API_REFERENCE.md](API_REFERENCE.md)
 
 ---

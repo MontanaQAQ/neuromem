@@ -7,7 +7,7 @@ This directory contains documentation and helper scripts for NeuroMem.
 - **CI_CD_README.md** - CI/CD pipeline documentation
 - **CONTRIBUTING.md** - Contribution guidelines
 - **NAMESPACE_MIGRATION_GUIDE.md** - Guide for migrating to sage.neuromem namespace
-- **SUBMODULE.md** - Submodule management documentation
+- **SUBMODULE.md** - Repository workflow documentation
 
 ## Scripts
 

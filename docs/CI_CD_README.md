@@ -4,18 +4,18 @@ This document describes the CI/CD setup for the neuromem repository.
 
 ## Overview
 
-Neuromem is a submodule of the SAGE project but also maintains its own CI/CD pipeline for:
+Neuromem is an independent repository and maintains its own CI/CD pipeline for:
 - Code quality checks
 - Build validation
 - Pre-commit hooks for local development
 
-**Note**: Comprehensive tests are run in the main SAGE repository where neuromem is integrated.
+**Note**: Comprehensive tests are maintained in this repository (`tests/`).
 
 ## Tool Versions
 
-To ensure consistency between local development, CI/CD, and SAGE main repository:
+To ensure consistency between local development and CI/CD:
 
-- **Ruff**: `0.14.2` (pinned to match SAGE main repo)
+- **Ruff**: `0.14.2`
 - **Python**: `3.11` (default), supports `3.8+`
 - **Pre-commit hooks**: `v5.0.0`
 
@@ -23,12 +23,10 @@ To ensure consistency between local development, CI/CD, and SAGE main repository
 - `.pre-commit-config.yaml`: Uses `ruff-pre-commit@v0.14.2`
 - `.github/workflows/test.yml`: Installs `ruff==0.14.2`
 - `pyproject.toml`: Requires `ruff>=0.1.0` in benchmark dependencies
-- **SAGE main repo**: Also uses `ruff@v0.14.2`
-
 This ensures that:
 - `pre-commit run --all-files` produces the same results as CI/CD checks
-- neuromem code quality standards align with SAGE main repository
-- No version conflicts when developing within SAGE
+- neuromem code quality standards stay stable across local and CI runs
+- No version conflicts between local tooling and GitHub Actions
 
 ## GitHub Actions CI/CD
 
@@ -174,17 +172,11 @@ git push origin your-branch
 
 ### Integration Testing
 
-Neuromem is tested comprehensively as part of SAGE:
+Run integration tests directly in this repository:
 
 ```bash
-# In SAGE repository
-cd /path/to/SAGE
-
-# Run neuromem-specific tests
-pytest packages/sage-middleware/tests/components/sage_mem/ -v
-
-# Run all sage-middleware tests
-pytest packages/sage-middleware/tests/ -v
+cd /path/to/neuromem
+pytest tests/integration -v
 ```
 
 ## Code Quality Standards
@@ -207,7 +199,7 @@ neuromem/
 ├── pyproject.toml            # Tool configuration
 ├── CI_CD_README.md           # This file
 ├── README.md                 # Main documentation
-├── SUBMODULE.md              # Submodule usage guide
+├── SUBMODULE.md              # Repository workflow guide
 ├── memory_collection/        # Core modules
 ├── storage_engine/
 ├── search_engine/

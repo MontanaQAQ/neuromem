@@ -7,8 +7,8 @@ including:
 - Retrieval performance monitoring
 - Index rebuild frequency tracking
 
-Note: This test is designed to run in SAGE main repository.
-For standalone neuromem testing, simpler smoke tests are provided.
+Note: This compatibility-focused test is retained for backward-compatibility checks only.
+UnifiedCollection is the primary architecture for neuromem.
 """
 
 import contextlib
@@ -19,12 +19,18 @@ import tempfile
 import time
 
 import numpy as np
-from sagellm.embedding import get_embedding_model
+import pytest
+
+try:
+    from sagellm.embedding import get_embedding_model
+
+    EMBEDDING_AVAILABLE = True
+except Exception:
+    EMBEDDING_AVAILABLE = False
+    get_embedding_model = None
 
 # Skip this test file if not in SAGE environment
-pytest = None
 try:
-    import pytest
     from sage.neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )
@@ -32,13 +38,15 @@ try:
     PYTEST_AVAILABLE = True
 except ImportError:
     PYTEST_AVAILABLE = False
-    pytest = None
-    pytestmark = None
+    VDBMemoryCollection = None
 
-if not PYTEST_AVAILABLE:
-    # Create dummy module to avoid import errors
-    def skip_all():
-        pass
+pytestmark = pytest.mark.skipif(
+    not PYTEST_AVAILABLE or not EMBEDDING_AVAILABLE,
+    reason=(
+        "Compatibility VDB test requires legacy VDBMemoryCollection and optional sagellm embedding "
+        "dependencies."
+    ),
+)
 
 
 class _LegacyEmbeddingAdapter:
@@ -50,6 +58,8 @@ class _LegacyEmbeddingAdapter:
 
 
 def apply_embedding_model(name: str):
+    if not EMBEDDING_AVAILABLE or get_embedding_model is None:
+        raise RuntimeError("sagellm embedding dependency is not available")
     return _LegacyEmbeddingAdapter(get_embedding_model(name))
 
 

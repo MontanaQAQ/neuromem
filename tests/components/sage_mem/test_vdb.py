@@ -2,10 +2,20 @@ import json
 import os
 
 import numpy as np
-from sage.neuromem.memory_collection.vdb_collection import (
-    VDBMemoryCollection,
-)
+import pytest
 from sagellm.embedding import get_embedding_model
+
+try:
+    from sage.neuromem.memory_collection.vdb_collection import (
+        VDBMemoryCollection,
+    )
+except ImportError:
+    VDBMemoryCollection = None
+
+pytestmark = pytest.mark.skipif(
+    VDBMemoryCollection is None,
+    reason="Legacy VDBMemoryCollection has been removed in UnifiedCollection architecture.",
+)
 
 
 class _LegacyEmbeddingAdapter:

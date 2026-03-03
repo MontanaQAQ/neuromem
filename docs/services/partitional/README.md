@@ -558,7 +558,7 @@ pytest packages/sage-middleware/tests/e2e/test_complete_workflows.py::TestFIFOQu
 
 ## 参考资料
 
-- **Service Registry**: [../README.md](../README.md)
+- **Service Registry**: [../SERVICES_README.md](../SERVICES_README.md)
 - **性能基准**: [../BENCHMARKS.md](../BENCHMARKS.md)
 - **Hierarchical Services**: [../hierarchical/README.md](../hierarchical/README.md)
 
