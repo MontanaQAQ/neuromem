@@ -102,6 +102,20 @@ if [[ -f ".pre-commit-config.yaml" ]] && command -v git &> /dev/null; then
     fi
 fi
 
+# Install project hook templates (pre-push/post-commit) when available
+if [[ -d ".git/hooks" ]] && [[ -d "hooks" ]]; then
+    if [[ -f "hooks/pre-push" ]]; then
+        cp "hooks/pre-push" ".git/hooks/pre-push"
+        chmod +x ".git/hooks/pre-push"
+        print_success "Installed pre-push hook"
+    fi
+    if [[ -f "hooks/post-commit" ]]; then
+        cp "hooks/post-commit" ".git/hooks/post-commit"
+        chmod +x ".git/hooks/post-commit"
+        print_success "Installed post-commit hook"
+    fi
+fi
+
 # Show version
 VERSION=$(python3 -c "from sage.neuromem import __version__; print(__version__)" 2>/dev/null || echo "unknown")
 print_info "Installed version: $VERSION"
