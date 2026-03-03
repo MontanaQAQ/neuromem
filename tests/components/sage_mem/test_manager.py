@@ -3,6 +3,7 @@ import shutil
 
 import numpy as np
 import pytest
+from sagellm.embedding import get_embedding_model
 
 from sage.neuromem.memory_manager import MemoryManager
 from sage.neuromem.utils.path_utils import (
@@ -11,6 +12,18 @@ from sage.neuromem.utils.path_utils import (
 
 # Skip: Service implementation issues (Vector requirements, float() errors, etc.)
 pytestmark = pytest.mark.skip(reason="Service implementation issues")
+
+
+class _LegacyEmbeddingAdapter:
+    def __init__(self, embedder):
+        self._embedder = embedder
+
+    def encode(self, text: str):
+        return self._embedder.embed(text)
+
+
+def apply_embedding_model(name: str):
+    return _LegacyEmbeddingAdapter(get_embedding_model(name))
 
 
 def test_neuromem_manager():
@@ -38,8 +51,6 @@ def test_neuromem_manager():
     vdb_collection.create_index(config=index_config)  # type: ignore[union-attr]
 
     # 创建 embedding 模型并生成向量
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-
     embedding_model = apply_embedding_model("mockembedder")
 
     # 准备测试数据

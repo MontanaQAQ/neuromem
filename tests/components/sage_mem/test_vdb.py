@@ -5,6 +5,19 @@ import numpy as np
 from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
 )
+from sagellm.embedding import get_embedding_model
+
+
+class _LegacyEmbeddingAdapter:
+    def __init__(self, embedder):
+        self._embedder = embedder
+
+    def encode(self, text: str):
+        return self._embedder.embed(text)
+
+
+def apply_embedding_model(name: str):
+    return _LegacyEmbeddingAdapter(get_embedding_model(name))
 
 
 def test_vdb_collection():
@@ -34,8 +47,6 @@ def test_vdb_collection():
     test_collection.create_index(config=index_config)
 
     # 生成嵌入向量 (使用 mockembedder)
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-
     embedding_model = apply_embedding_model("mockembedder")
 
     # 生成向量并归一化

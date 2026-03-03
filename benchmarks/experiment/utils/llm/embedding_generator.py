@@ -5,7 +5,7 @@
 
 import time
 
-from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
+from sagellm.embedding import get_embedding_model
 
 # 扩展的 embedding 模型维度映射（补充 sage-common 中未定义的模型）
 EXTENDED_EMBEDDING_DIMENSIONS = {
@@ -16,46 +16,36 @@ EXTENDED_EMBEDDING_DIMENSIONS = {
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 384,
 }
 
+def apply_embedding_model(
+    name: str,
+    model: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+):
+    """迁移期兼容：创建 embedding 模型实例。"""
+    method = (name or "hash").lower()
 
-def _patch_embedding_model_dimensions():
-    """在运行时动态补丁 sage-common 的 embedding 模型维度映射
+    if method in {"openai", "sagellm"}:
+        normalized_base_url = (base_url or "http://127.0.0.1:8890").rstrip("/")
+        if normalized_base_url.endswith("/v1"):
+            normalized_base_url = normalized_base_url[:-3]
+        return get_embedding_model(
+            "openai",
+            model=model or "BAAI/bge-m3",
+            base_url=normalized_base_url,
+            api_key=api_key,
+        )
 
-    这样可以在不修改 sage-common 源码的情况下支持新的 embedding 模型。
-    """
-    try:
-        from sage.common.components.sage_embedding.embedding_model import EmbeddingModel
+    if method == "mockembedder":
+        dim = EXTENDED_EMBEDDING_DIMENSIONS.get(model or "", 384)
+        return get_embedding_model("mockembedder", fixed_dim=dim)
 
-        # 获取原始的 set_dim 方法
-        original_set_dim = EmbeddingModel.set_dim
+    if method == "hash":
+        dim = EXTENDED_EMBEDDING_DIMENSIONS.get(model or "", 384)
+        return get_embedding_model("hash", dim=dim)
 
-        def patched_set_dim(self, model_name):
-            """补丁版本的 set_dim，优先使用扩展的维度映射"""
-            # 先检查扩展映射
-            if model_name in EXTENDED_EMBEDDING_DIMENSIONS:
-                self.dim = EXTENDED_EMBEDDING_DIMENSIONS[model_name]
-                return
-
-            # 回退到原始方法
-            try:
-                original_set_dim(self, model_name)
-            except ValueError as err:
-                # 如果原始方法也不认识，再抛出错误
-                raise ValueError(
-                    f"Unknown embedding model: {model_name}. "
-                    f"Please add it to EXTENDED_EMBEDDING_DIMENSIONS in "
-                    f"benchmarks/experiment/utils/llm/embedding_generator.py"
-                ) from err
-
-        # 替换方法
-        EmbeddingModel.set_dim = patched_set_dim
-
-    except Exception as e:
-        # 补丁失败不影响主流程（对于已知模型）
-        print(f"[WARNING] Failed to patch EmbeddingModel dimensions: {e}")
-
-
-# 在模块加载时自动应用补丁
-_patch_embedding_model_dimensions()
+    dim = EXTENDED_EMBEDDING_DIMENSIONS.get(model or "", 384)
+    return get_embedding_model("hash", dim=dim)
 
 
 class EmbeddingGenerator:

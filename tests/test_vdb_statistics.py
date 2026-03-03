@@ -19,12 +19,12 @@ import tempfile
 import time
 
 import numpy as np
+from sagellm.embedding import get_embedding_model
 
 # Skip this test file if not in SAGE environment
 pytest = None
 try:
     import pytest
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
     from sage.neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )
@@ -39,6 +39,18 @@ if not PYTEST_AVAILABLE:
     # Create dummy module to avoid import errors
     def skip_all():
         pass
+
+
+class _LegacyEmbeddingAdapter:
+    def __init__(self, embedder):
+        self._embedder = embedder
+
+    def encode(self, text: str):
+        return self._embedder.embed(text)
+
+
+def apply_embedding_model(name: str):
+    return _LegacyEmbeddingAdapter(get_embedding_model(name))
 
 
 def normalize_vector(vector):
@@ -429,7 +441,6 @@ def test_statistics_accuracy_after_operations(collection_with_index):
 
 
 if __name__ == "__main__":
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
     from sage.neuromem.memory_collection.vdb_collection import (
         VDBMemoryCollection,
     )

@@ -25,10 +25,22 @@ except ImportError:
 
 import contextlib
 
-from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
 from sage.neuromem.memory_collection.vdb_collection import (
     VDBMemoryCollection,
 )
+from sagellm.embedding import get_embedding_model
+
+
+class _LegacyEmbeddingAdapter:
+    def __init__(self, embedder):
+        self._embedder = embedder
+
+    def encode(self, text: str):
+        return self._embedder.embed(text)
+
+
+def apply_embedding_model(name: str):
+    return _LegacyEmbeddingAdapter(get_embedding_model(name))
 
 if PYTEST_AVAILABLE:
 
@@ -399,8 +411,6 @@ def test_statistics_accuracy_after_operations(collection_with_index, embedding_m
 
 if __name__ == "__main__":
     # Run a simple test to verify the module works
-    from sage.common.components.sage_embedding.embedding_api import apply_embedding_model
-
     def normalize_vector_main(vector):
         """Normalize a vector using L2 normalization."""
         if hasattr(vector, "detach") and hasattr(vector, "cpu"):
