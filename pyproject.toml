@@ -63,7 +63,7 @@ classifiers = [
 dependencies = [
     # SAGE 生态组件（已发布到 PyPI）
     "isage-common",             # 日志、嵌入、配置等核心工具
-    "isage-libs>=0.2.4.29",    # L3 接口层：VDBBackend 等抽象接口
+    "isage-libs>=0.2.4.12",    # L3 接口层：VDBBackend 等抽象接口
     "isage-kernel",            # SAGE Kernel 服务工厂和运行时
 
     # 核心依赖

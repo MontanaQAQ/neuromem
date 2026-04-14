@@ -23,16 +23,29 @@ echo "║              NeuroMem (sage.neuromem) Quick Start                    �
 echo "╚══════════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Check Python version
-print_info "Checking Python version..."
-PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-REQUIRED_VERSION="3.10"
+# Check Python version (prefer python3.11 for isage-common compatibility)
+if command -v python3.11 &> /dev/null; then
+    PYTHON=python3.11
+elif command -v python3 &> /dev/null; then
+    PYTHON=python3
+else
+    print_error "No Python 3 found. Please install Python 3.11+."
+    exit 1
+fi
 
-if python3 -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
+print_info "Checking Python version..."
+PYTHON_VERSION=$($PYTHON --version 2>&1 | awk '{print $2}')
+
+if $PYTHON -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
     print_success "Python $PYTHON_VERSION detected (>= 3.10 required)"
 else
     print_error "Python 3.10+ is required. Current version: $PYTHON_VERSION"
     exit 1
+fi
+
+# Warn if not Python 3.11+ (isage-common requires Python 3.11 bytecode)
+if ! $PYTHON -c "import sys; exit(0 if sys.version_info >= (3, 11) else 1)" 2>/dev/null; then
+    print_warning "Python 3.11+ recommended: isage-common is compiled for Python 3.11"
 fi
 
 # Check environment policy (non-venv preferred)
@@ -43,19 +56,12 @@ if [[ -n "$VIRTUAL_ENV" ]]; then
 fi
 
 if [[ -z "$CONDA_DEFAULT_ENV" ]]; then
-    print_warning "No conda environment detected. Please ensure you are using an existing non-venv environment."
-    echo ""
-    read -p "Continue with current environment? (y/N) " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Exiting. Please activate an existing non-venv environment first."
-        exit 0
-    fi
+    print_warning "No conda environment detected. Proceeding with current Python environment."
 fi
 
 # Install in development mode
 print_info "Installing NeuroMem in development mode..."
-if pip install -e . > /tmp/neuromem_install.log 2>&1; then
+if $PYTHON -m pip install -e . > /tmp/neuromem_install.log 2>&1; then
     print_success "NeuroMem installed successfully"
 else
     print_error "Installation failed. Check /tmp/neuromem_install.log for details"
@@ -65,7 +71,7 @@ fi
 
 # Verify installation
 print_info "Verifying installation..."
-if python3 -c "from sage.neuromem import MemoryManager; print('sage.neuromem import OK')" 2>/dev/null; then
+if $PYTHON -c "from sage.neuromem import MemoryManager; print('sage.neuromem import OK')" 2>/dev/null; then
     print_success "Import verification passed"
 else
     print_error "Import verification failed"
@@ -88,7 +94,7 @@ if [[ -f ".pre-commit-config.yaml" ]] && command -v git &> /dev/null; then
             fi
         else
             print_info "Installing pre-commit package..."
-            if pip install pre-commit > /dev/null 2>&1; then
+            if $PYTHON -m pip install pre-commit > /dev/null 2>&1; then
                 if pre-commit install > /tmp/precommit_install.log 2>&1; then
                     print_success "Pre-commit hooks installed"
                 else
@@ -117,7 +123,7 @@ if [[ -d ".git/hooks" ]] && [[ -d "hooks" ]]; then
 fi
 
 # Show version
-VERSION=$(python3 -c "from sage.neuromem import __version__; print(__version__)" 2>/dev/null || echo "unknown")
+VERSION=$($PYTHON -c "from sage.neuromem import __version__; print(__version__)" 2>/dev/null || echo "unknown")
 print_info "Installed version: $VERSION"
 
 # Optional: Run tests
@@ -126,7 +132,7 @@ read -p "Run basic tests? (y/N) " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_info "Running tests..."
-    if pytest tests/unit/neuromem/test_memory_manager.py -v --tb=short 2>&1 | tail -20; then
+    if $PYTHON -m pytest tests/unit/neuromem/test_memory_manager.py -v --tb=short 2>&1 | tail -20; then
         print_success "Tests completed"
     else
         print_warning "Some tests may have failed (check if dependencies are installed)"
@@ -204,7 +210,7 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [[ -f "examples/memory_os_hybrid_example.py" ]]; then
         print_info "Running example..."
-        python3 examples/memory_os_hybrid_example.py 2>&1 | head -50
+        $PYTHON examples/memory_os_hybrid_example.py 2>&1 | head -50
     else
         print_warning "Example script not found"
     fi
